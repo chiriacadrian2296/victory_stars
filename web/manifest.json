@@ -1,11 +1,11 @@
 {
-    "name": "victory_stars",
-    "short_name": "victory_stars",
+    "name": "Victory Stars",
+    "short_name": "Victory Stars",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Victory Stars: a personal growth app for recording the moments you got through.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

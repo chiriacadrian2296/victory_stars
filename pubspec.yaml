@@ -1,5 +1,5 @@
 name: victory_stars
-description: "A new Flutter project."
+description: "Victory Stars: a personal growth app for recording the moments you got through."
 publish_to: 'none'
 version: 0.1.0+1
 
@@ -9,6 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:

@@ -1,3 +1,3 @@
-# victory_stars
+# Victory Stars
 
-A new Flutter project.
+A personal growth app for recording the moments you got through.

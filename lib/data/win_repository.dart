@@ -14,7 +14,10 @@ import '../models/win.dart';
 class WinRepository {
   WinRepository(this._prefs);
 
-  static const _storageKey = 'wins-list';
+  // v2: wins now carry projectId instead of a direct area. No real user
+  // data exists yet, so this is a clean key bump rather than an in-place
+  // migration.
+  static const _storageKey = 'wins-list-v2';
 
   final SharedPreferences _prefs;
 
@@ -43,9 +46,22 @@ class WinRepository {
     }
   }
 
+  /// Wins belonging to [projectId], oldest first. This ordering is what a
+  /// constellation's star slots are assigned against, so it lives here once
+  /// rather than being re-derived (and risking a reversed order) at each
+  /// call site.
+  ///
+  /// Assumes wins are append-only for a project: a win's position in this
+  /// list is used as its permanent star-slot index, so deleting a win would
+  /// silently shift every star after it. There is no delete anywhere in this
+  /// repository today; revisit this assumption if that ever changes.
+  List<Win> getAllForProject(int projectId) {
+    return getAll().where((w) => w.projectId == projectId).toList().reversed.toList();
+  }
+
   /// Records a new win and persists the updated list. [number] is assigned
   /// automatically as one more than the highest existing number.
-  Future<Win> add({required String title, String? description}) async {
+  Future<Win> add({required String title, String? description, required int projectId}) async {
     final wins = getAll();
     final nextNumber = wins.fold<int>(0, (max, w) => w.number > max ? w.number : max) + 1;
     final trimmedDescription = description?.trim();
@@ -53,6 +69,7 @@ class WinRepository {
     final win = Win(
       id: DateTime.now().millisecondsSinceEpoch,
       number: nextNumber,
+      projectId: projectId,
       title: title.trim(),
       description: (trimmedDescription == null || trimmedDescription.isEmpty) ? null : trimmedDescription,
       date: DateTime.now(),
@@ -63,9 +80,10 @@ class WinRepository {
   }
 
   /// Updates the title/description of the win identified by [id], keeping
-  /// its number and date unchanged. Throws a [StateError] if no win with
-  /// that id exists — callers always resolve it from a currently-displayed
-  /// [Win], so a missing id would mean the list changed under them.
+  /// its number, project, and date unchanged. Throws a [StateError] if no
+  /// win with that id exists — callers always resolve it from a
+  /// currently-displayed [Win], so a missing id would mean the list changed
+  /// under them.
   Future<Win> update({required int id, required String title, String? description}) async {
     final wins = getAll();
     final index = wins.indexWhere((w) => w.id == id);
@@ -77,6 +95,7 @@ class WinRepository {
     final updated = Win(
       id: wins[index].id,
       number: wins[index].number,
+      projectId: wins[index].projectId,
       title: title.trim(),
       description: (trimmedDescription == null || trimmedDescription.isEmpty) ? null : trimmedDescription,
       date: wins[index].date,

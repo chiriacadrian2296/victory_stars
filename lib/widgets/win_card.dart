@@ -5,10 +5,15 @@ import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
 
 class WinCard extends StatelessWidget {
-  const WinCard({super.key, required this.win, this.onTap});
+  const WinCard({super.key, required this.win, this.onTap, this.projectLabel});
 
   final Win win;
   final VoidCallback? onTap;
+
+  /// The win's project name, shown as light context now that Home's list
+  /// spans every project. Null when the project can't be resolved (e.g.
+  /// stale data) — the card still renders fine without it.
+  final String? projectLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +41,16 @@ class WinCard extends StatelessWidget {
                     formatDisplayDate(win.date),
                     style: const TextStyle(fontSize: 12, color: AppColors.muted),
                   ),
+                  if (projectLabel != null) ...[
+                    const Text(' · ', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+                    Expanded(
+                      child: Text(
+                        projectLabel!,
+                        style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 8),

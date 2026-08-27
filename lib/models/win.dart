@@ -7,6 +7,7 @@ class Win {
   const Win({
     required this.id,
     required this.number,
+    required this.projectId,
     required this.title,
     this.description,
     required this.date,
@@ -14,6 +15,7 @@ class Win {
 
   final int id;
   final int number;
+  final int projectId;
   final String title;
   final String? description;
   final DateTime date;
@@ -21,6 +23,7 @@ class Win {
   Win copyWith({
     int? id,
     int? number,
+    int? projectId,
     String? title,
     String? description,
     DateTime? date,
@@ -28,6 +31,7 @@ class Win {
     return Win(
       id: id ?? this.id,
       number: number ?? this.number,
+      projectId: projectId ?? this.projectId,
       title: title ?? this.title,
       description: description ?? this.description,
       date: date ?? this.date,
@@ -38,6 +42,7 @@ class Win {
     return Win(
       id: json['id'] as int,
       number: json['number'] as int,
+      projectId: json['projectId'] as int,
       title: json['title'] as String,
       description: json['description'] as String?,
       date: DateTime.parse(json['date'] as String),
@@ -48,6 +53,7 @@ class Win {
     return {
       'id': id,
       'number': number,
+      'projectId': projectId,
       'title': title,
       'description': description,
       'date': date.toIso8601String(),
@@ -59,11 +65,12 @@ class Win {
     return other is Win &&
         other.id == id &&
         other.number == number &&
+        other.projectId == projectId &&
         other.title == title &&
         other.description == description &&
         other.date == date;
   }
 
   @override
-  int get hashCode => Object.hash(id, number, title, description, date);
+  int get hashCode => Object.hash(id, number, projectId, title, description, date);
 }

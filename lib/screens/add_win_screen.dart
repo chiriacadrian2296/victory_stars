@@ -1,27 +1,51 @@
 import 'package:flutter/material.dart';
 
+import '../data/project_repository.dart';
+import '../models/life_area.dart';
+import '../models/project.dart';
 import '../models/win.dart';
 import '../theme/app_colors.dart';
+import '../utils/icon_for_slug.dart';
+import 'new_project_screen.dart';
 
 /// What the user entered, handed back to whoever pushed this screen.
 /// Trimming and blank-to-null normalization for [description] happen in
 /// [WinRepository.add]/[WinRepository.update], not here, so that logic
 /// lives in one place regardless of whether this was an add or an edit.
+/// [projectId] is only populated when creating a win — editing never
+/// changes which project a win belongs to.
 class AddWinResult {
-  const AddWinResult({required this.title, this.description});
+  const AddWinResult({required this.title, this.description, this.projectId});
 
   final String title;
   final String? description;
+  final int? projectId;
 }
 
 /// Also doubles as the edit screen: pass [existingWin] to pre-fill the
 /// fields with a win's current title/description. The caller decides
 /// whether the returned [AddWinResult] should create a new win or update
 /// an existing one — this screen just collects the form input either way.
+///
+/// When creating a new win, a project must be resolved one of two ways:
+/// - [lockedProject]: the project is already known (e.g. opened from that
+///   project's own constellation screen) and isn't user-selectable here.
+/// - [projectRepository]: no project is implied yet, so a picker lets the
+///   user choose an existing project or create a new one inline.
 class AddWinScreen extends StatefulWidget {
-  const AddWinScreen({super.key, this.existingWin});
+  const AddWinScreen({
+    super.key,
+    this.existingWin,
+    this.lockedProject,
+    this.projectRepository,
+  }) : assert(
+         existingWin != null || lockedProject != null || projectRepository != null,
+         'Provide existingWin (edit), lockedProject (pre-scoped add), or projectRepository (add with a picker).',
+       );
 
   final Win? existingWin;
+  final Project? lockedProject;
+  final ProjectRepository? projectRepository;
 
   bool get isEditing => existingWin != null;
 
@@ -29,9 +53,14 @@ class AddWinScreen extends StatefulWidget {
   State<AddWinScreen> createState() => _AddWinScreenState();
 }
 
+class _CreateNewProject {
+  const _CreateNewProject();
+}
+
 class _AddWinScreenState extends State<AddWinScreen> {
   late final _titleController = TextEditingController(text: widget.existingWin?.title ?? '');
   late final _descriptionController = TextEditingController(text: widget.existingWin?.description ?? '');
+  late Project? _selectedProject = widget.lockedProject;
 
   @override
   void dispose() {
@@ -43,9 +72,64 @@ class _AddWinScreenState extends State<AddWinScreen> {
   void _save() {
     final title = _titleController.text.trim();
     if (title.isEmpty) return;
+    if (!widget.isEditing && _selectedProject == null) return;
+
     Navigator.of(context).pop(
-      AddWinResult(title: title, description: _descriptionController.text),
+      AddWinResult(
+        title: title,
+        description: _descriptionController.text,
+        projectId: widget.isEditing ? null : _selectedProject!.id,
+      ),
     );
+  }
+
+  Future<void> _openProjectPicker() async {
+    final repository = widget.projectRepository;
+    if (repository == null) return;
+    final projects = repository.getAll();
+
+    final result = await showModalBottomSheet<Object>(
+      context: context,
+      backgroundColor: AppColors.nightPanel,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.add, color: AppColors.gold),
+                title: const Text(
+                  'New project',
+                  style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.w600),
+                ),
+                onTap: () => Navigator.of(sheetContext).pop(const _CreateNewProject()),
+              ),
+              if (projects.isNotEmpty) const Divider(color: AppColors.nightBorder, height: 1),
+              for (final project in projects)
+                ListTile(
+                  leading: Icon(iconForSlug(project.iconSlug), color: AppColors.gold),
+                  title: Text(project.name, style: const TextStyle(color: AppColors.text)),
+                  subtitle: Text(project.area.displayName, style: const TextStyle(color: AppColors.muted)),
+                  onTap: () => Navigator.of(sheetContext).pop(project),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (!mounted) return;
+    if (result is Project) {
+      setState(() => _selectedProject = result);
+    } else if (result is _CreateNewProject) {
+      final created = await Navigator.of(context).push<Project>(
+        MaterialPageRoute(builder: (_) => NewProjectScreen(projectRepository: repository)),
+      );
+      if (created != null && mounted) {
+        setState(() => _selectedProject = created);
+      }
+    }
   }
 
   @override
@@ -84,6 +168,44 @@ class _AddWinScreenState extends State<AddWinScreen> {
                 ),
               ),
               const SizedBox(height: 24),
+              if (!widget.isEditing && widget.lockedProject == null) ...[
+                const Text(
+                  'Project',
+                  style: TextStyle(fontSize: 13, color: AppColors.muted),
+                ),
+                const SizedBox(height: 6),
+                InkWell(
+                  onTap: _openProjectPicker,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.nightPanel,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.nightBorder),
+                    ),
+                    child: Row(
+                      children: [
+                        if (_selectedProject != null)
+                          Icon(iconForSlug(_selectedProject!.iconSlug), color: AppColors.gold, size: 18),
+                        if (_selectedProject != null) const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _selectedProject?.name ?? 'Select a project',
+                            style: TextStyle(
+                              color: _selectedProject != null ? AppColors.text : AppColors.muted,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                        const Icon(Icons.expand_more, color: AppColors.muted),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
               const Text(
                 'In a few words',
                 style: TextStyle(fontSize: 13, color: AppColors.muted),
@@ -119,7 +241,8 @@ class _AddWinScreenState extends State<AddWinScreen> {
                 child: ValueListenableBuilder<TextEditingValue>(
                   valueListenable: _titleController,
                   builder: (context, value, child) {
-                    final canSave = value.text.trim().isNotEmpty;
+                    final canSave =
+                        value.text.trim().isNotEmpty && (widget.isEditing || _selectedProject != null);
                     return ElevatedButton(
                       onPressed: canSave ? _save : null,
                       style: ElevatedButton.styleFrom(

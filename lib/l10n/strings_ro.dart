@@ -157,6 +157,28 @@ class StringsRo implements AppStrings {
   String get noStarsInSelection => 'Nicio stea aprinsă încă în zonele alese.';
   @override
   String get viewYourStars => 'Privește-ți stelele';
+  @override
+  String get encouragementCta => 'Sau citește ceva încurajator';
+
+  @override
+  List<String> get upliftingQuotes => const [
+        'Nu trebuie să vezi toată scara, doar primul pas.',
+        'Și pașii mici te duc mai departe.',
+        'Ai trecut prin fiecare zi grea de până acum. Un record perfect.',
+        'Odihna nu înseamnă renunțare.',
+        'Poți fi în același timp o lucrare în desfășurare și demn de iubire.',
+        'Acest sentiment e real, dar nu e permanent.',
+        'Nu trebuie să ai totul clar ca să mergi mai departe.',
+        'Progres, nu perfecțiune.',
+        'Unele zile, singura victorie e că ești încă aici. Și contează.',
+        'Ai trecut prin 100% din cele mai grele zile ale tale, până acum.',
+        'Fii răbdător cu tine. Nimic în natură nu înflorește tot anul.',
+        'E în regulă să nu fii bine — doar nu rămâne acolo singur.',
+        'O respirație pe rând. Atât îți cere acest moment.',
+        'Ești mai puternic decât crezi și mai iubit decât știi.',
+        'Chiar și cea mai întunecată noapte se termină, iar soarele răsare din nou.',
+        'Vindecarea nu e liniară, și e în regulă așa.',
+      ];
 
   @override
   String indexOfCount(int index, int total) => '$index din $total';

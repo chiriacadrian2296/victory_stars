@@ -156,6 +156,28 @@ class StringsEn implements AppStrings {
   String get noStarsInSelection => "No stars lit yet in the areas you picked.";
   @override
   String get viewYourStars => 'View your stars';
+  @override
+  String get encouragementCta => 'Or just read something uplifting';
+
+  @override
+  List<String> get upliftingQuotes => const [
+        "You don't have to see the whole staircase, just take the first step.",
+        'Small steps still move you forward.',
+        "You've survived every hard day so far. That's a perfect record.",
+        'Rest is not the same as giving up.',
+        'You are allowed to be both a work in progress and worthy of love at the same time.',
+        'This feeling is real, but it is not permanent.',
+        "You don't have to have it all figured out to keep going.",
+        'Progress, not perfection.',
+        "Some days the only win is that you're still here. That counts.",
+        "You've made it through 100% of your worst days so far.",
+        'Be patient with yourself. Nothing in nature blooms all year.',
+        "It's okay to not be okay — just don't stay there alone.",
+        "One breath at a time. That's all this moment is asking of you.",
+        'You are stronger than you think and more loved than you know.',
+        'Even the darkest night will end, and the sun will rise.',
+        "Healing isn't linear, and that's alright.",
+      ];
 
   @override
   String indexOfCount(int index, int total) => '$index of $total';

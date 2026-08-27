@@ -157,6 +157,28 @@ class StringsIt implements AppStrings {
   String get noStarsInSelection => 'Nessuna stella ancora accesa nelle aree scelte.';
   @override
   String get viewYourStars => 'Guarda le tue stelle';
+  @override
+  String get encouragementCta => 'Oppure leggi qualcosa di incoraggiante';
+
+  @override
+  List<String> get upliftingQuotes => const [
+        'Non devi vedere tutta la scala, basta il primo gradino.',
+        'Anche i piccoli passi ti portano avanti.',
+        'Hai superato ogni giorno difficile finora. Un record perfetto.',
+        'Riposare non significa arrendersi.',
+        'Puoi essere un lavoro in corso e meritare amore, allo stesso tempo.',
+        'Questo sentimento è reale, ma non è per sempre.',
+        'Non devi avere tutte le risposte per continuare ad andare avanti.',
+        'Progresso, non perfezione.',
+        "Certi giorni l'unica vittoria è che sei ancora qui. E conta.",
+        'Hai superato il 100% dei tuoi giorni peggiori, finora.',
+        'Sii paziente con te stesso. In natura nulla fiorisce tutto l\'anno.',
+        'Va bene non stare bene — solo non restarci da solo.',
+        'Un respiro alla volta. È tutto ciò che questo momento ti chiede.',
+        'Sei più forte di quanto pensi e più amato di quanto sai.',
+        'Anche la notte più buia finisce, e il sole sorge di nuovo.',
+        "Guarire non è un percorso lineare, ed è normale.",
+      ];
 
   @override
   String indexOfCount(int index, int total) => '$index di $total';

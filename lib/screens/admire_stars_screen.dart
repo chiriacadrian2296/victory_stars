@@ -7,6 +7,7 @@ import '../models/life_area.dart';
 import '../models/project.dart';
 import '../models/win.dart';
 import '../theme/app_colors.dart';
+import 'encouragement_screen.dart';
 import 'win_reader_screen.dart';
 
 /// Entry point for reflecting on saved wins — reachable from every tab
@@ -182,6 +183,14 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                         ),
                       ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const EncouragementScreen()),
+                      ),
+                      style: TextButton.styleFrom(foregroundColor: colors.crisisMuted),
+                      child: Text(strings.encouragementCta, textAlign: TextAlign.center),
                     ),
                   ],
                 ),

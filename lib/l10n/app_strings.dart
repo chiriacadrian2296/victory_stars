@@ -97,6 +97,12 @@ abstract class AppStrings {
   String get pickAtLeastOneArea;
   String get noStarsInSelection;
   String get viewYourStars;
+  String get encouragementCta;
+
+  /// A fixed set of short, hand-written uplifting phrases — shown one at a
+  /// time, shuffled, in [EncouragementScreen]. Not a translation of a
+  /// single canonical list; each language's phrasing is its own.
+  List<String> get upliftingQuotes;
 
   // Win reader
   String indexOfCount(int index, int total);

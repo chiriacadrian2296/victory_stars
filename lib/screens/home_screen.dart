@@ -11,6 +11,7 @@ import '../utils/win_stats.dart';
 import '../widgets/star_heatmap.dart';
 import '../widgets/win_card.dart';
 import 'add_win_screen.dart';
+import 'new_project_screen.dart';
 import 'win_reader_screen.dart';
 
 /// The dashboard — one tab of [RootScreen]: a quick read on consistency
@@ -36,6 +37,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+enum _CreateChoice { star, constellation }
+
 class _HomeScreenState extends State<HomeScreen> {
   Map<int, Project> _projectsById() {
     return {for (final project in widget.projectRepository.getAll()) project.id: project};
@@ -54,6 +57,51 @@ class _HomeScreenState extends State<HomeScreen> {
       intensity: result.intensity,
     );
     setState(() {});
+  }
+
+  Future<void> _openNewProjectScreen() async {
+    await Navigator.of(context).push<Project>(
+      MaterialPageRoute(builder: (_) => NewProjectScreen(projectRepository: widget.projectRepository)),
+    );
+    setState(() {});
+  }
+
+  Future<void> _showCreateMenu() async {
+    final colors = context.colors;
+    final strings = context.strings;
+
+    final choice = await showModalBottomSheet<_CreateChoice>(
+      context: context,
+      backgroundColor: colors.nightPanel,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.star, color: colors.gold),
+                title: Text(strings.addWinFabLabel, style: TextStyle(color: colors.text)),
+                onTap: () => Navigator.of(sheetContext).pop(_CreateChoice.star),
+              ),
+              ListTile(
+                leading: Icon(Icons.auto_awesome, color: colors.gold),
+                title: Text(strings.newConstellationOption, style: TextStyle(color: colors.text)),
+                onTap: () => Navigator.of(sheetContext).pop(_CreateChoice.constellation),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    switch (choice) {
+      case _CreateChoice.star:
+        await _openAddWinScreen();
+      case _CreateChoice.constellation:
+        await _openNewProjectScreen();
+      case null:
+        break;
+    }
   }
 
   List<Win> _winsOnDay(DateTime day) {
@@ -198,24 +246,31 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      floatingActionButton: Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: colors.gold.withValues(alpha: 0.35),
-              blurRadius: 20,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: FloatingActionButton(
-          heroTag: 'addWinFab',
-          onPressed: _openAddWinScreen,
-          backgroundColor: colors.gold,
-          elevation: 0,
-          shape: const CircleBorder(),
-          child: Icon(Icons.add, color: colors.onGold),
+      floatingActionButton: GestureDetector(
+        // Hold for a choice between logging a star or starting a whole new
+        // constellation, instead of only ever landing on the single-star
+        // flow.
+        onLongPress: _showCreateMenu,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: colors.gold.withValues(alpha: 0.35),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: FloatingActionButton.extended(
+            heroTag: 'addWinFab',
+            onPressed: _openAddWinScreen,
+            backgroundColor: colors.gold,
+            elevation: 0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+            icon: Icon(Icons.add, color: colors.onGold),
+            label: Text(strings.addWinFabLabel, style: TextStyle(color: colors.onGold)),
+          ),
         ),
       ),
     );

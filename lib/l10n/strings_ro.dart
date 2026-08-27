@@ -161,6 +161,11 @@ class StringsRo implements AppStrings {
   String get encouragementCta => 'Sau citește ceva încurajator';
 
   @override
+  String get addWinFabLabel => 'Stea nouă';
+  @override
+  String get newConstellationOption => 'Constelație nouă';
+
+  @override
   List<String> get upliftingQuotes => const [
         'Nu trebuie să vezi toată scara, doar primul pas.',
         'Și pașii mici te duc mai departe.',

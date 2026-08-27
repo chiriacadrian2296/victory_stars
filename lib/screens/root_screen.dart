@@ -114,20 +114,38 @@ class _RootScreenState extends State<RootScreen> {
             ),
       // Persistent across every tab — not just Home — since this is meant
       // to be reachable whenever it's needed, not something you have to
-      // navigate to a specific screen first to find.
+      // navigate to a specific screen first to find. Labeled (not just an
+      // icon) so a first-time user has some idea what it does; parked right
+      // above Home's own add-win FAB so both sit within thumb's reach on
+      // the same side, instead of opposite corners.
       floatingActionButton: !ready
           ? null
-          : FloatingActionButton.small(
+          : FloatingActionButton.extended(
               heroTag: 'admireStarsFab',
               onPressed: _openAdmireStars,
               backgroundColor: colors.nightPanel,
               foregroundColor: colors.gold,
               elevation: 2,
-              shape: CircleBorder(side: BorderSide(color: colors.goldDim)),
-              tooltip: strings.admireYourStars,
-              child: const Icon(Icons.auto_awesome),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+                side: BorderSide(color: colors.goldDim),
+              ),
+              icon: const Icon(Icons.auto_awesome, size: 18),
+              label: Text(strings.admireYourStars),
             ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
+      floatingActionButtonLocation: const _AboveMainFabLocation(),
     );
+  }
+}
+
+/// [FloatingActionButtonLocation.endFloat], shifted up to leave room for
+/// Home's own add-win FAB directly below it.
+class _AboveMainFabLocation extends FloatingActionButtonLocation {
+  const _AboveMainFabLocation();
+
+  @override
+  Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
+    final standard = FloatingActionButtonLocation.endFloat.getOffset(scaffoldGeometry);
+    return Offset(standard.dx, standard.dy - 64);
   }
 }

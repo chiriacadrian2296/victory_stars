@@ -160,6 +160,11 @@ class StringsEn implements AppStrings {
   String get encouragementCta => 'Or just read something uplifting';
 
   @override
+  String get addWinFabLabel => 'New star';
+  @override
+  String get newConstellationOption => 'New constellation';
+
+  @override
   List<String> get upliftingQuotes => const [
         "You don't have to see the whole staircase, just take the first step.",
         'Small steps still move you forward.',

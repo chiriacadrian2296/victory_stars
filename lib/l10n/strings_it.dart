@@ -161,6 +161,11 @@ class StringsIt implements AppStrings {
   String get encouragementCta => 'Oppure leggi qualcosa di incoraggiante';
 
   @override
+  String get addWinFabLabel => 'Nuova stella';
+  @override
+  String get newConstellationOption => 'Nuova costellazione';
+
+  @override
   List<String> get upliftingQuotes => const [
         'Non devi vedere tutta la scala, basta il primo gradino.',
         'Anche i piccoli passi ti portano avanti.',

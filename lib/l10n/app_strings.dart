@@ -99,6 +99,10 @@ abstract class AppStrings {
   String get viewYourStars;
   String get encouragementCta;
 
+  // Home FAB + its long-press "create" menu
+  String get addWinFabLabel;
+  String get newConstellationOption;
+
   /// A fixed set of short, hand-written uplifting phrases — shown one at a
   /// time, shuffled, in [EncouragementScreen]. Not a translation of a
   /// single canonical list; each language's phrasing is its own.

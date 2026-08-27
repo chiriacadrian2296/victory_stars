@@ -148,13 +148,13 @@ class StringsIt implements AppStrings {
   String get lightThisStar => 'Accendi questa stella';
 
   @override
-  String get crisisTitle => 'In questo momento sembra tutto buio.';
+  String get admireTagline => 'Per quando sei nel buio e hai bisogno di un po\' di luce.';
   @override
-  String crisisSubtitleWithWins(int count) => count == 1
-      ? 'Hai già acceso 1 stella finora. Guardiamole una alla volta.'
-      : 'Hai già acceso $count stelle finora. Guardiamole una alla volta.';
+  String get allAreasLabel => 'Tutte le aree';
   @override
-  String get crisisSubtitleNoWins => 'Non hai ancora acceso nessuna stella. Torna qui quando ne avrai una.';
+  String get pickAtLeastOneArea => 'Scegli almeno un\'area per continuare.';
+  @override
+  String get noStarsInSelection => 'Nessuna stella ancora accesa nelle aree scelte.';
   @override
   String get viewYourStars => 'Guarda le tue stelle';
 

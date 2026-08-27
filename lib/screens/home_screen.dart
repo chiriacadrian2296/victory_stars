@@ -11,7 +11,6 @@ import '../utils/win_stats.dart';
 import '../widgets/star_heatmap.dart';
 import '../widgets/win_card.dart';
 import 'add_win_screen.dart';
-import 'crisis_intro_screen.dart';
 import 'win_reader_screen.dart';
 
 /// The dashboard — one tab of [RootScreen]: a quick read on consistency
@@ -53,20 +52,6 @@ class _HomeScreenState extends State<HomeScreen> {
       description: result.description,
       projectId: result.projectId,
       intensity: result.intensity,
-    );
-    setState(() {});
-  }
-
-  Future<void> _openCrisisIntro() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => CrisisIntroScreen(
-          wins: widget.winRepository.getAll(),
-          repository: widget.winRepository,
-          projectsById: _projectsById(),
-          projectRepository: widget.projectRepository,
-        ),
-      ),
     );
     setState(() {});
   }
@@ -178,12 +163,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 6),
             Text(strings.homeSubtitle, style: TextStyle(fontSize: 14, color: colors.muted)),
-            const SizedBox(height: 20),
-            _SecondaryButton(
-              icon: Icons.auto_awesome,
-              label: strings.admireYourStars,
-              onPressed: _openCrisisIntro,
-            ),
             const SizedBox(height: 24),
             Row(
               children: [
@@ -231,38 +210,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         child: FloatingActionButton(
+          heroTag: 'addWinFab',
           onPressed: _openAddWinScreen,
           backgroundColor: colors.gold,
           elevation: 0,
           shape: const CircleBorder(),
           child: Icon(Icons.add, color: colors.onGold),
         ),
-      ),
-    );
-  }
-}
-
-class _SecondaryButton extends StatelessWidget {
-  const _SecondaryButton({required this.icon, required this.label, required this.onPressed});
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 17, color: colors.gold),
-      label: Text(label, overflow: TextOverflow.ellipsis),
-      style: OutlinedButton.styleFrom(
-        backgroundColor: colors.gold.withValues(alpha: 0.1),
-        foregroundColor: colors.gold,
-        side: BorderSide(color: colors.goldDim),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }

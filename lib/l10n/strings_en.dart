@@ -147,12 +147,13 @@ class StringsEn implements AppStrings {
   String get lightThisStar => 'Light this star';
 
   @override
-  String get crisisTitle => 'It looks dark right now.';
+  String get admireTagline => "For when you're in the dark and you need some light.";
   @override
-  String crisisSubtitleWithWins(int count) =>
-      "You've already lit $count star${count == 1 ? '' : 's'} before now. Let's look at them one at a time.";
+  String get allAreasLabel => 'All areas';
   @override
-  String get crisisSubtitleNoWins => "You haven't lit any stars yet. Come back here once you have one.";
+  String get pickAtLeastOneArea => 'Pick at least one area to continue.';
+  @override
+  String get noStarsInSelection => "No stars lit yet in the areas you picked.";
   @override
   String get viewYourStars => 'View your stars';
 

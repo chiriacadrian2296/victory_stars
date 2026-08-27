@@ -91,10 +91,11 @@ abstract class AppStrings {
   String get saveChanges;
   String get lightThisStar;
 
-  // Crisis mode
-  String get crisisTitle;
-  String crisisSubtitleWithWins(int count);
-  String get crisisSubtitleNoWins;
+  // Admire Your Stars (random reflection, filterable by area)
+  String get admireTagline;
+  String get allAreasLabel;
+  String get pickAtLeastOneArea;
+  String get noStarsInSelection;
   String get viewYourStars;
 
   // Win reader

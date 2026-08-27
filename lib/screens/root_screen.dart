@@ -5,6 +5,7 @@ import '../data/win_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../settings/settings_controller.dart';
 import '../theme/app_colors.dart';
+import 'admire_stars_screen.dart';
 import 'home_screen.dart';
 import 'settings_screen.dart';
 import 'sky_screen.dart';
@@ -42,6 +43,18 @@ class _RootScreenState extends State<RootScreen> {
       _winRepository = winRepository;
       _projectRepository = projectRepository;
     });
+  }
+
+  void _openAdmireStars() {
+    final winRepository = _winRepository;
+    final projectRepository = _projectRepository;
+    if (winRepository == null || projectRepository == null) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AdmireStarsScreen(winRepository: winRepository, projectRepository: projectRepository),
+      ),
+    );
   }
 
   @override
@@ -99,6 +112,22 @@ class _RootScreenState extends State<RootScreen> {
                 ),
               ],
             ),
+      // Persistent across every tab — not just Home — since this is meant
+      // to be reachable whenever it's needed, not something you have to
+      // navigate to a specific screen first to find.
+      floatingActionButton: !ready
+          ? null
+          : FloatingActionButton.small(
+              heroTag: 'admireStarsFab',
+              onPressed: _openAdmireStars,
+              backgroundColor: colors.nightPanel,
+              foregroundColor: colors.gold,
+              elevation: 2,
+              shape: CircleBorder(side: BorderSide(color: colors.goldDim)),
+              tooltip: strings.admireYourStars,
+              child: const Icon(Icons.auto_awesome),
+            ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
     );
   }
 }

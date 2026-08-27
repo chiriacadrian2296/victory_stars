@@ -148,13 +148,13 @@ class StringsRo implements AppStrings {
   String get lightThisStar => 'Aprinde această stea';
 
   @override
-  String get crisisTitle => 'Acum pare întuneric.';
+  String get admireTagline => 'Pentru când ești în întuneric și ai nevoie de puțină lumină.';
   @override
-  String crisisSubtitleWithWins(int count) => count == 1
-      ? 'Ai aprins deja 1 stea până acum. Hai să le privim pe rând.'
-      : 'Ai aprins deja $count stele până acum. Hai să le privim pe rând.';
+  String get allAreasLabel => 'Toate zonele';
   @override
-  String get crisisSubtitleNoWins => 'Nu ai aprins încă nicio stea. Revino aici când ai una.';
+  String get pickAtLeastOneArea => 'Alege cel puțin o zonă pentru a continua.';
+  @override
+  String get noStarsInSelection => 'Nicio stea aprinsă încă în zonele alese.';
   @override
   String get viewYourStars => 'Privește-ți stelele';
 

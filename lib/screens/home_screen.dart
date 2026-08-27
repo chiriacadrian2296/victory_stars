@@ -253,7 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onLongPress: _showCreateMenu,
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(30),
+            shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
                 color: colors.gold.withValues(alpha: 0.35),
@@ -262,14 +262,13 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-          child: FloatingActionButton.extended(
+          child: FloatingActionButton(
             heroTag: 'addWinFab',
             onPressed: _openAddWinScreen,
             backgroundColor: colors.gold,
             elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-            icon: Icon(Icons.add, color: colors.onGold),
-            label: Text(strings.addWinFabLabel, style: TextStyle(color: colors.onGold)),
+            shape: const CircleBorder(),
+            child: Icon(Icons.add, color: colors.onGold),
           ),
         ),
       ),

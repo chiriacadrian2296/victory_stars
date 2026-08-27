@@ -114,24 +114,20 @@ class _RootScreenState extends State<RootScreen> {
             ),
       // Persistent across every tab — not just Home — since this is meant
       // to be reachable whenever it's needed, not something you have to
-      // navigate to a specific screen first to find. Labeled (not just an
-      // icon) so a first-time user has some idea what it does; parked right
-      // above Home's own add-win FAB so both sit within thumb's reach on
-      // the same side, instead of opposite corners.
+      // navigate to a specific screen first to find. Parked right above
+      // Home's own add-win FAB so both sit within thumb's reach on the
+      // same side, instead of opposite corners.
       floatingActionButton: !ready
           ? null
-          : FloatingActionButton.extended(
+          : FloatingActionButton.small(
               heroTag: 'admireStarsFab',
               onPressed: _openAdmireStars,
               backgroundColor: colors.nightPanel,
               foregroundColor: colors.gold,
               elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-                side: BorderSide(color: colors.goldDim),
-              ),
-              icon: const Icon(Icons.auto_awesome, size: 18),
-              label: Text(strings.admireYourStars),
+              shape: CircleBorder(side: BorderSide(color: colors.goldDim)),
+              tooltip: strings.admireYourStars,
+              child: const Icon(Icons.auto_awesome),
             ),
       floatingActionButtonLocation: const _AboveMainFabLocation(),
     );

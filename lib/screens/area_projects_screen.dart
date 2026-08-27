@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/project_repository.dart';
 import '../data/win_repository.dart';
+import '../l10n/strings_scope.dart';
 import '../models/life_area.dart';
 import '../models/project.dart';
 import '../theme/app_colors.dart';
@@ -60,8 +61,12 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final strings = context.strings;
+    final areaName = widget.area.displayName(strings);
+
     return Scaffold(
-      backgroundColor: AppColors.night,
+      backgroundColor: colors.night,
       body: SafeArea(
         child: Column(
           children: [
@@ -69,18 +74,18 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
               children: [
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.arrow_back, color: AppColors.muted),
+                  icon: Icon(Icons.arrow_back, color: colors.muted),
                 ),
                 Expanded(
                   child: Text(
-                    widget.area.displayName,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20, color: AppColors.text),
+                    areaName,
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20, color: colors.text),
                   ),
                 ),
                 IconButton(
                   onPressed: _createProject,
-                  icon: const Icon(Icons.add, color: AppColors.gold),
-                  tooltip: 'New project',
+                  icon: Icon(Icons.add, color: colors.gold),
+                  tooltip: strings.newProjectTooltip,
                 ),
               ],
             ),
@@ -90,10 +95,9 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 32),
                       child: Center(
                         child: Text(
-                          'No projects yet in ${widget.area.displayName}. '
-                          'Start one to begin lighting stars here.',
+                          strings.areaEmptyProjects(areaName),
                           textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 14, color: AppColors.muted),
+                          style: TextStyle(fontSize: 14, color: colors.muted),
                         ),
                       ),
                     )
@@ -128,8 +132,9 @@ class _ProjectCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Material(
-      color: AppColors.nightPanel,
+      color: colors.nightPanel,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
@@ -138,17 +143,17 @@ class _ProjectCard extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
           decoration: BoxDecoration(
-            border: Border.all(color: AppColors.nightBorder),
+            border: Border.all(color: colors.nightBorder),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             children: [
               Expanded(
-                child: ProjectTag(project: project, iconSize: 22, fontSize: 16, textColor: AppColors.text),
+                child: ProjectTag(project: project, iconSize: 22, fontSize: 16, textColor: colors.text),
               ),
               Text(
-                '$starCount star${starCount == 1 ? '' : 's'}',
-                style: const TextStyle(fontSize: 13, color: AppColors.muted),
+                context.strings.starsCount(starCount),
+                style: TextStyle(fontSize: 13, color: colors.muted),
               ),
             ],
           ),

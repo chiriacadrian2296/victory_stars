@@ -11,16 +11,17 @@ class IntensityStars extends StatelessWidget {
     required this.intensity,
     this.size = 14,
     this.spacing = 2,
-    this.color = AppColors.gold,
+    this.color,
   });
 
   final int intensity;
   final double size;
   final double spacing;
-  final Color color;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final resolvedColor = color ?? context.colors.gold;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -29,7 +30,7 @@ class IntensityStars extends StatelessWidget {
           Icon(
             i <= intensity ? Icons.star : Icons.star_border,
             size: size,
-            color: i <= intensity ? color : color.withValues(alpha: 0.35),
+            color: i <= intensity ? resolvedColor : resolvedColor.withValues(alpha: 0.35),
           ),
         ],
       ],

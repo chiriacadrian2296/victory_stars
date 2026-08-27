@@ -1,12 +1,10 @@
-const _months = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
+import '../l10n/app_strings.dart';
 
-/// Formats a date as e.g. "26 Aug 2026".
-String formatDisplayDate(DateTime date) {
+/// Formats a date as e.g. "26 Aug 2026", using [strings]' localized month
+/// abbreviations.
+String formatDisplayDate(DateTime date, AppStrings strings) {
   final day = date.day.toString().padLeft(2, '0');
-  final month = _months[date.month - 1];
+  final month = strings.monthAbbreviations[date.month - 1];
   return '$day $month ${date.year}';
 }
 
@@ -18,6 +16,6 @@ String formatDisplayTime(DateTime date) {
 }
 
 /// Formats a date and time as e.g. "26 Aug 2026 · 14:32".
-String formatDisplayDateTime(DateTime date) {
-  return '${formatDisplayDate(date)} · ${formatDisplayTime(date)}';
+String formatDisplayDateTime(DateTime date, AppStrings strings) {
+  return '${formatDisplayDate(date, strings)} · ${formatDisplayTime(date)}';
 }

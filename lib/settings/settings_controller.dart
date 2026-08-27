@@ -1,0 +1,51 @@
+import 'package:flutter/material.dart';
+
+import '../data/settings_repository.dart';
+
+/// In-memory, listenable view over [SettingsRepository] — the single
+/// instance created in `main.dart` and threaded down to [MaterialApp] (for
+/// theme/locale) and to [SettingsScreen] (for editing). Every setter
+/// persists immediately, then notifies so the app re-renders.
+class SettingsController extends ChangeNotifier {
+  SettingsController(this._repository)
+      : themeMode = _repository.themeMode == 'light' ? ThemeMode.light : ThemeMode.dark,
+        locale = _repository.locale,
+        reminderEnabled = _repository.reminderEnabled,
+        reminderHour = _repository.reminderHour,
+        reminderMinute = _repository.reminderMinute;
+
+  final SettingsRepository _repository;
+
+  static Future<SettingsController> create() async {
+    final repository = await SettingsRepository.create();
+    return SettingsController(repository);
+  }
+
+  ThemeMode themeMode;
+  String locale;
+  bool reminderEnabled;
+  int reminderHour;
+  int reminderMinute;
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    if (mode == themeMode) return;
+    themeMode = mode;
+    await _repository.setThemeMode(mode == ThemeMode.light ? 'light' : 'dark');
+    notifyListeners();
+  }
+
+  Future<void> setLocale(String code) async {
+    if (code == locale) return;
+    locale = code;
+    await _repository.setLocale(code);
+    notifyListeners();
+  }
+
+  Future<void> setReminder({required bool enabled, required int hour, required int minute}) async {
+    reminderEnabled = enabled;
+    reminderHour = hour;
+    reminderMinute = minute;
+    await _repository.setReminder(enabled: enabled, hour: hour, minute: minute);
+    notifyListeners();
+  }
+}

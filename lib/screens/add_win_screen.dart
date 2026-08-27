@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/project_repository.dart';
+import '../l10n/strings_scope.dart';
 import '../models/project.dart';
 import '../models/win.dart';
 import '../theme/app_colors.dart';
@@ -104,10 +105,12 @@ class _AddWinScreenState extends State<AddWinScreen> {
     final repository = widget.projectRepository;
     if (repository == null) return;
     final projects = repository.getAll();
+    final colors = context.colors;
+    final strings = context.strings;
 
     final result = await showModalBottomSheet<Object>(
       context: context,
-      backgroundColor: AppColors.nightPanel,
+      backgroundColor: colors.nightPanel,
       isScrollControlled: true,
       builder: (sheetContext) {
         return SafeArea(
@@ -115,17 +118,17 @@ class _AddWinScreenState extends State<AddWinScreen> {
             shrinkWrap: true,
             children: [
               ListTile(
-                leading: const Icon(Icons.add, color: AppColors.gold),
-                title: const Text(
-                  'New project',
-                  style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.w600),
+                leading: Icon(Icons.add, color: colors.gold),
+                title: Text(
+                  strings.newProject,
+                  style: TextStyle(color: colors.gold, fontWeight: FontWeight.w600),
                 ),
                 onTap: () => Navigator.of(sheetContext).pop(const _CreateNewProject()),
               ),
-              if (projects.isNotEmpty) const Divider(color: AppColors.nightBorder, height: 1),
+              if (projects.isNotEmpty) Divider(color: colors.nightBorder, height: 1),
               for (final project in projects)
                 ListTile(
-                  title: ProjectTag(project: project, fontSize: 15, textColor: AppColors.text),
+                  title: ProjectTag(project: project, fontSize: 15, textColor: colors.text),
                   subtitle: Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: AreaTag(area: project.area, iconSize: 13, fontSize: 12),
@@ -153,6 +156,9 @@ class _AddWinScreenState extends State<AddWinScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final strings = context.strings;
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -164,26 +170,26 @@ class _AddWinScreenState extends State<AddWinScreen> {
                 children: [
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.arrow_back, color: AppColors.muted),
+                    icon: Icon(Icons.arrow_back, color: colors.muted),
                   ),
                   Text(
-                    widget.isEditing ? 'EDIT STAR' : 'NEW STAR',
-                    style: const TextStyle(
+                    widget.isEditing ? strings.editStarEyebrow : strings.newStarEyebrow,
+                    style: TextStyle(
                       fontSize: 12,
                       letterSpacing: 1.4,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.gold,
+                      color: colors.gold,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
-              const Text(
-                'What did you get through?',
+              Text(
+                strings.addWinQuestion,
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 24,
-                  color: AppColors.text,
+                  color: colors.text,
                 ),
               ),
               if (_selectedProject != null) ...[
@@ -192,9 +198,9 @@ class _AddWinScreenState extends State<AddWinScreen> {
               ],
               const SizedBox(height: 24),
               if (widget.lockedProject == null) ...[
-                const Text(
-                  'Project',
-                  style: TextStyle(fontSize: 13, color: AppColors.muted),
+                Text(
+                  strings.projectLabel,
+                  style: TextStyle(fontSize: 13, color: colors.muted),
                 ),
                 const SizedBox(height: 6),
                 InkWell(
@@ -204,9 +210,9 @@ class _AddWinScreenState extends State<AddWinScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     decoration: BoxDecoration(
-                      color: AppColors.nightPanel,
+                      color: colors.nightPanel,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.nightBorder),
+                      border: Border.all(color: colors.nightBorder),
                     ),
                     child: Row(
                       children: [
@@ -216,68 +222,68 @@ class _AddWinScreenState extends State<AddWinScreen> {
                                   project: _selectedProject!,
                                   iconSize: 18,
                                   fontSize: 15,
-                                  textColor: AppColors.text,
+                                  textColor: colors.text,
                                 )
-                              : const Text(
-                                  'Select a project',
-                                  style: TextStyle(color: AppColors.muted, fontSize: 15),
+                              : Text(
+                                  strings.selectAProject,
+                                  style: TextStyle(color: colors.muted, fontSize: 15),
                                 ),
                         ),
-                        const Icon(Icons.expand_more, color: AppColors.muted),
+                        Icon(Icons.expand_more, color: colors.muted),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 20),
               ],
-              const Text(
-                'In a few words',
-                style: TextStyle(fontSize: 13, color: AppColors.muted),
+              Text(
+                strings.titleFieldLabel,
+                style: TextStyle(fontSize: 13, color: colors.muted),
               ),
               const SizedBox(height: 6),
               TextField(
                 controller: _titleController,
                 autofocus: true,
                 textInputAction: TextInputAction.next,
-                style: const TextStyle(color: AppColors.text, fontSize: 15),
-                decoration: const InputDecoration(
-                  hintText: 'E.g. I held on after a rejection and kept going',
+                style: TextStyle(color: colors.text, fontSize: 15),
+                decoration: InputDecoration(
+                  hintText: strings.titleHint,
                 ),
               ),
               const SizedBox(height: 20),
-              const Text(
-                'Details (optional)',
-                style: TextStyle(fontSize: 13, color: AppColors.muted),
+              Text(
+                strings.detailsLabel,
+                style: TextStyle(fontSize: 13, color: colors.muted),
               ),
               const SizedBox(height: 6),
               TextField(
                 controller: _descriptionController,
                 minLines: 4,
                 maxLines: 6,
-                style: const TextStyle(color: AppColors.text, fontSize: 15),
-                decoration: const InputDecoration(
-                  hintText: 'What made this moment hard, and how you got through it',
+                style: TextStyle(color: colors.text, fontSize: 15),
+                decoration: InputDecoration(
+                  hintText: strings.detailsHint,
                 ),
               ),
               const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Intensity — how much this took out of you',
-                    style: TextStyle(fontSize: 13, color: AppColors.muted),
+                  Text(
+                    strings.intensityLabel,
+                    style: TextStyle(fontSize: 13, color: colors.muted),
                   ),
                   IntensityStars(intensity: _intensity, size: 16),
                 ],
               ),
               SliderTheme(
                 data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: AppColors.gold,
-                  inactiveTrackColor: AppColors.nightBorder,
-                  thumbColor: AppColors.gold,
-                  overlayColor: AppColors.gold.withValues(alpha: 0.2),
-                  valueIndicatorColor: AppColors.gold,
-                  valueIndicatorTextStyle: const TextStyle(color: AppColors.onGold, fontWeight: FontWeight.w600),
+                  activeTrackColor: colors.gold,
+                  inactiveTrackColor: colors.nightBorder,
+                  thumbColor: colors.gold,
+                  overlayColor: colors.gold.withValues(alpha: 0.2),
+                  valueIndicatorColor: colors.gold,
+                  valueIndicatorTextStyle: TextStyle(color: colors.onGold, fontWeight: FontWeight.w600),
                 ),
                 child: Slider(
                   value: _intensity.toDouble(),
@@ -298,17 +304,17 @@ class _AddWinScreenState extends State<AddWinScreen> {
                     return ElevatedButton(
                       onPressed: canSave ? _save : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.gold,
-                        foregroundColor: AppColors.onGold,
-                        disabledBackgroundColor: AppColors.nightBorder,
-                        disabledForegroundColor: AppColors.muted,
+                        backgroundColor: colors.gold,
+                        foregroundColor: colors.onGold,
+                        disabledBackgroundColor: colors.nightBorder,
+                        disabledForegroundColor: colors.muted,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                       child: Text(
-                        widget.isEditing ? 'Save changes' : 'Light this star',
+                        widget.isEditing ? strings.saveChanges : strings.lightThisStar,
                         style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
                       ),
                     );

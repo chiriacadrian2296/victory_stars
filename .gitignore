@@ -53,9 +53,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/build/
 
 # Widget Preview related
 .widget_preview/
 
-# Claude Code local settings (personal, not shared)
+# Claude Code local settings and runtime state (personal, not shared)
 .claude/settings.local.json
+.claude/scheduled_tasks.lock

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/strings_scope.dart';
 import '../models/project.dart';
 import '../models/win.dart';
 import '../theme/app_colors.dart';
@@ -21,6 +22,7 @@ class WinCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final borderRadius = BorderRadius.circular(12);
 
     return Material(
@@ -30,8 +32,8 @@ class WinCard extends StatelessWidget {
         borderRadius: borderRadius,
         child: Ink(
           decoration: BoxDecoration(
-            color: AppColors.nightPanel,
-            border: Border.all(color: AppColors.nightBorder),
+            color: colors.nightPanel,
+            border: Border.all(color: colors.nightBorder),
             borderRadius: borderRadius,
           ),
           child: Padding(
@@ -41,12 +43,12 @@ class WinCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.star, size: 13, color: AppColors.gold),
+                    Icon(Icons.star, size: 13, color: colors.gold),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        formatDisplayDateTime(win.date),
-                        style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                        formatDisplayDateTime(win.date, context.strings),
+                        style: TextStyle(fontSize: 12, color: colors.muted),
                       ),
                     ),
                     IntensityStars(intensity: win.intensity, size: 10, spacing: 1),
@@ -61,17 +63,17 @@ class WinCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   win.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 19,
-                    color: AppColors.text,
+                    color: colors.text,
                   ),
                 ),
                 if (win.description != null) ...[
                   const SizedBox(height: 6),
                   Text(
                     win.description!,
-                    style: const TextStyle(fontSize: 14, color: AppColors.muted, height: 1.4),
+                    style: TextStyle(fontSize: 14, color: colors.muted, height: 1.4),
                   ),
                 ],
               ],

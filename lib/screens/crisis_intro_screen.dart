@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/project_repository.dart';
 import '../data/win_repository.dart';
+import '../l10n/strings_scope.dart';
 import '../models/project.dart';
 import '../models/win.dart';
 import '../theme/app_colors.dart';
@@ -46,10 +47,12 @@ class CrisisIntroScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasWins = wins.isNotEmpty;
+    final colors = context.colors;
+    final strings = context.strings;
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.crisisGradient),
+        decoration: BoxDecoration(gradient: colors.crisisGradient),
         child: SafeArea(
           child: Stack(
             children: [
@@ -58,7 +61,7 @@ class CrisisIntroScreen extends StatelessWidget {
                 left: 4,
                 child: IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close, color: AppColors.crisisMuted),
+                  icon: Icon(Icons.close, color: colors.crisisMuted),
                 ),
               ),
               Center(
@@ -67,27 +70,24 @@ class CrisisIntroScreen extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        'It looks dark right now.',
+                      Text(
+                        strings.crisisTitle,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 28,
                           fontStyle: FontStyle.italic,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.text,
+                          color: colors.text,
                         ),
                       ),
                       const SizedBox(height: 18),
                       Text(
-                        hasWins
-                            ? "You've already lit ${wins.length} star${wins.length == 1 ? '' : 's'} "
-                                'before now. Let\'s look at them one at a time.'
-                            : "You haven't lit any stars yet. Come back here once you have one.",
+                        hasWins ? strings.crisisSubtitleWithWins(wins.length) : strings.crisisSubtitleNoWins,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           height: 1.6,
-                          color: AppColors.crisisMuted,
+                          color: colors.crisisMuted,
                         ),
                       ),
                       if (hasWins) ...[
@@ -95,10 +95,10 @@ class CrisisIntroScreen extends StatelessWidget {
                         ElevatedButton.icon(
                           onPressed: () => _openReader(context),
                           icon: const Icon(Icons.auto_awesome, size: 17),
-                          label: const Text('View your stars'),
+                          label: Text(strings.viewYourStars),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.gold,
-                            foregroundColor: AppColors.onGold,
+                            backgroundColor: colors.gold,
+                            foregroundColor: colors.onGold,
                             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30),

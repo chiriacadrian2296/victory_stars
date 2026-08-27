@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_strings.dart';
+
 /// The 8 fixed areas of life a [Project] (and, through it, every [Win]) can
 /// belong to. Fixed and closed — not user-extensible.
 enum LifeArea {
@@ -14,24 +16,27 @@ enum LifeArea {
 }
 
 extension LifeAreaX on LifeArea {
-  String get displayName {
+  /// Localized name for this area. Takes [AppStrings] rather than reading
+  /// it off a [BuildContext] itself, since an enum extension has no context
+  /// of its own — call sites already have one via `context.strings`.
+  String displayName(AppStrings s) {
     switch (this) {
       case LifeArea.physical:
-        return 'Physical';
+        return s.areaPhysical;
       case LifeArea.psychological:
-        return 'Psychological';
+        return s.areaPsychological;
       case LifeArea.professional:
-        return 'Professional';
+        return s.areaProfessional;
       case LifeArea.financial:
-        return 'Financial';
+        return s.areaFinancial;
       case LifeArea.personal:
-        return 'Personal';
+        return s.areaPersonal;
       case LifeArea.social:
-        return 'Social';
+        return s.areaSocial;
       case LifeArea.spiritual:
-        return 'Spiritual';
+        return s.areaSpiritual;
       case LifeArea.philanthropic:
-        return 'Philanthropic';
+        return s.areaPhilanthropic;
     }
   }
 

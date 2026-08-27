@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/project_repository.dart';
 import '../data/win_repository.dart';
+import '../l10n/strings_scope.dart';
 import '../models/project.dart';
 import '../models/win.dart';
 import '../theme/app_colors.dart';
@@ -110,10 +111,12 @@ class _WinReaderScreenState extends State<WinReaderScreen> {
   Widget build(BuildContext context) {
     final win = _wins[_index];
     final project = widget.projectsById[win.projectId];
+    final colors = context.colors;
+    final strings = context.strings;
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.crisisGradient),
+        decoration: BoxDecoration(gradient: colors.crisisGradient),
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 28),
@@ -124,16 +127,16 @@ class _WinReaderScreenState extends State<WinReaderScreen> {
                   children: [
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close, color: AppColors.crisisMuted),
+                      icon: Icon(Icons.close, color: colors.crisisMuted),
                     ),
                     Text(
-                      '${_index + 1} of ${_wins.length}',
-                      style: const TextStyle(fontSize: 12, color: AppColors.crisisMuted),
+                      strings.indexOfCount(_index + 1, _wins.length),
+                      style: TextStyle(fontSize: 12, color: colors.crisisMuted),
                     ),
                     if (widget.allowEdit)
                       IconButton(
                         onPressed: _editCurrent,
-                        icon: const Icon(Icons.edit_outlined, color: AppColors.crisisMuted),
+                        icon: Icon(Icons.edit_outlined, color: colors.crisisMuted),
                       )
                     else
                       const SizedBox(width: 48),
@@ -146,27 +149,27 @@ class _WinReaderScreenState extends State<WinReaderScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.star, size: 30, color: AppColors.gold),
+                          Icon(Icons.star, size: 30, color: colors.gold),
                           const SizedBox(height: 20),
                           Text(
-                            formatDisplayDateTime(win.date),
-                            style: const TextStyle(fontSize: 12, color: AppColors.crisisMuted),
+                            formatDisplayDateTime(win.date, strings),
+                            style: TextStyle(fontSize: 12, color: colors.crisisMuted),
                           ),
                           if (project != null) ...[
                             const SizedBox(height: 12),
                             AreaTag(area: project.area, iconSize: 18, fontSize: 17),
                             const SizedBox(height: 6),
-                            ProjectTag(project: project, textColor: AppColors.crisisMuted),
+                            ProjectTag(project: project, textColor: colors.crisisMuted),
                           ],
                           const SizedBox(height: 16),
                           Text(
                             win.title,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 26,
                               fontWeight: FontWeight.w600,
                               height: 1.35,
-                              color: AppColors.text,
+                              color: colors.text,
                             ),
                           ),
                           if (win.description != null) ...[
@@ -174,10 +177,10 @@ class _WinReaderScreenState extends State<WinReaderScreen> {
                             Text(
                               win.description!,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 15,
                                 height: 1.6,
-                                color: AppColors.crisisMuted,
+                                color: colors.crisisMuted,
                               ),
                             ),
                           ],
@@ -221,7 +224,7 @@ class _NavCircleButton extends StatelessWidget {
         child: SizedBox(
           width: 48,
           height: 48,
-          child: Icon(icon, color: AppColors.text),
+          child: Icon(icon, color: context.colors.text),
         ),
       ),
     );

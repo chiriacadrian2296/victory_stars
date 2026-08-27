@@ -3,8 +3,6 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
-
 /// One lit star: which win it represents, and where it sits in the
 /// constellation's normalized (0..1) coordinate space.
 class ConstellationStar {
@@ -39,10 +37,18 @@ class ConstellationPainter extends CustomPainter {
     required this.stars,
     required this.glowSprite,
     required this.revision,
+    required this.starColor,
+    required this.coreColor,
   });
 
   final List<ConstellationStar> stars;
   final ui.Image? glowSprite;
+
+  /// Passed in rather than read from a static palette — a [CustomPainter]
+  /// has no [BuildContext], and these must follow the active light/dark
+  /// theme.
+  final Color starColor;
+  final Color coreColor;
 
   /// Bumped by the caller whenever [stars] actually changes (a win was
   /// added/edited or the screen reloaded) — deliberately NOT a deep list
@@ -74,12 +80,12 @@ class ConstellationPainter extends CustomPainter {
         ),
       );
       srcRects.add(srcRect);
-      colors.add(AppColors.gold);
+      colors.add(starColor);
     }
 
     canvas.drawAtlas(sprite, transforms, srcRects, colors, BlendMode.modulate, null, Paint());
 
-    final corePaint = Paint()..color = AppColors.text;
+    final corePaint = Paint()..color = coreColor;
     for (final star in stars) {
       canvas.drawCircle(_toCanvas(star.position, size), _starCoreRadius, corePaint);
     }
@@ -87,7 +93,10 @@ class ConstellationPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant ConstellationPainter oldDelegate) {
-    return revision != oldDelegate.revision || glowSprite != oldDelegate.glowSprite;
+    return revision != oldDelegate.revision ||
+        glowSprite != oldDelegate.glowSprite ||
+        starColor != oldDelegate.starColor ||
+        coreColor != oldDelegate.coreColor;
   }
 }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/constellation_shapes.dart';
 import '../data/project_repository.dart';
+import '../l10n/strings_scope.dart';
 import '../models/life_area.dart';
 import '../models/project.dart';
 import '../theme/app_colors.dart';
@@ -63,6 +64,9 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final strings = context.strings;
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -74,27 +78,27 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
                 children: [
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.arrow_back, color: AppColors.muted),
+                    icon: Icon(Icons.arrow_back, color: colors.muted),
                   ),
-                  const Text(
-                    'NEW PROJECT',
+                  Text(
+                    strings.newProjectEyebrow,
                     style: TextStyle(
                       fontSize: 12,
                       letterSpacing: 1.4,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.gold,
+                      color: colors.gold,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
-              const Text(
-                'What project is this?',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 24, color: AppColors.text),
+              Text(
+                strings.newProjectQuestion,
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 24, color: colors.text),
               ),
               const SizedBox(height: 24),
               if (widget.presetArea == null) ...[
-                const Text('Area', style: TextStyle(fontSize: 13, color: AppColors.muted)),
+                Text(strings.areaLabel, style: TextStyle(fontSize: 13, color: colors.muted)),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -110,16 +114,16 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
                 ),
                 const SizedBox(height: 20),
               ],
-              const Text('Name', style: TextStyle(fontSize: 13, color: AppColors.muted)),
+              Text(strings.nameLabel, style: TextStyle(fontSize: 13, color: colors.muted)),
               const SizedBox(height: 6),
               TextField(
                 controller: _nameController,
                 autofocus: widget.presetArea != null,
-                style: const TextStyle(color: AppColors.text, fontSize: 15),
-                decoration: const InputDecoration(hintText: 'E.g. Build this app'),
+                style: TextStyle(color: colors.text, fontSize: 15),
+                decoration: InputDecoration(hintText: strings.newProjectNameHint),
               ),
               const SizedBox(height: 20),
-              const Text('Icon', style: TextStyle(fontSize: 13, color: AppColors.muted)),
+              Text(strings.iconLabel, style: TextStyle(fontSize: 13, color: colors.muted)),
               const SizedBox(height: 8),
               GridView.count(
                 crossAxisCount: 6,
@@ -147,16 +151,16 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
                     return ElevatedButton(
                       onPressed: canSave ? _save : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.gold,
-                        foregroundColor: AppColors.onGold,
-                        disabledBackgroundColor: AppColors.nightBorder,
-                        disabledForegroundColor: AppColors.muted,
+                        backgroundColor: colors.gold,
+                        foregroundColor: colors.onGold,
+                        disabledBackgroundColor: colors.nightBorder,
+                        disabledForegroundColor: colors.muted,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: const Text(
-                        'Create project',
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                      child: Text(
+                        strings.createProject,
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
                       ),
                     );
                   },
@@ -179,26 +183,27 @@ class _AreaChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.nightPanel,
-          border: Border.all(color: selected ? AppColors.gold : AppColors.nightBorder),
+          color: selected ? colors.gold.withValues(alpha: 0.15) : colors.nightPanel,
+          border: Border.all(color: selected ? colors.gold : colors.nightBorder),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(area.icon, size: 15, color: selected ? AppColors.gold : AppColors.muted),
+            Icon(area.icon, size: 15, color: selected ? colors.gold : colors.muted),
             const SizedBox(width: 6),
             Text(
-              area.displayName,
+              area.displayName(context.strings),
               style: TextStyle(
                 fontSize: 13,
-                color: selected ? AppColors.gold : AppColors.muted,
+                color: selected ? colors.gold : colors.muted,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
@@ -218,18 +223,19 @@ class _IconOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
       child: Container(
         decoration: BoxDecoration(
-          color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.nightPanel,
-          border: Border.all(color: selected ? AppColors.gold : AppColors.nightBorder),
+          color: selected ? colors.gold.withValues(alpha: 0.15) : colors.nightPanel,
+          border: Border.all(color: selected ? colors.gold : colors.nightBorder),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(
           iconForSlug(slug),
-          color: selected ? AppColors.gold : AppColors.muted,
+          color: selected ? colors.gold : colors.muted,
           size: 20,
         ),
       ),

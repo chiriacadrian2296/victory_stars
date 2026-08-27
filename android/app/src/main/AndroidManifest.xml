@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Android 13+ requires this to show the daily reminder notification;
+         requested at runtime from the Settings screen, not just declared here. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="Victory Stars"
         android:name="${applicationName}"

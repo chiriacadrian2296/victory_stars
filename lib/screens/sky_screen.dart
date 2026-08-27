@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/project_repository.dart';
 import '../data/win_repository.dart';
+import '../l10n/strings_scope.dart';
 import '../models/life_area.dart';
 import '../theme/app_colors.dart';
 import '../widgets/area_tag.dart';
@@ -46,22 +47,11 @@ class _SkyScreenState extends State<SkyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.night,
+      backgroundColor: context.colors.night,
       body: SafeArea(
         child: Column(
           children: [
-            Row(
-              children: [
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.arrow_back, color: AppColors.muted),
-                ),
-                const Text(
-                  'Your sky',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20, color: AppColors.text),
-                ),
-              ],
-            ),
+            const _Header(),
             Expanded(
               child: ListView.separated(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
@@ -85,6 +75,47 @@ class _SkyScreenState extends State<SkyScreen> {
   }
 }
 
+class _Header extends StatelessWidget {
+  const _Header();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final strings = context.strings;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            strings.skyEyebrow,
+            style: TextStyle(
+              fontSize: 12,
+              letterSpacing: 2,
+              fontWeight: FontWeight.w600,
+              color: colors.goldDim,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            strings.skyTitle,
+            style: TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.w700,
+              color: colors.text,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            strings.skySubtitle,
+            style: TextStyle(fontSize: 14, color: colors.muted),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _AreaCard extends StatelessWidget {
   const _AreaCard({required this.area, required this.starCount, required this.onTap});
 
@@ -94,8 +125,9 @@ class _AreaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Material(
-      color: AppColors.nightPanel,
+      color: colors.nightPanel,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
@@ -104,7 +136,7 @@ class _AreaCard extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
           decoration: BoxDecoration(
-            border: Border.all(color: AppColors.nightBorder),
+            border: Border.all(color: colors.nightBorder),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -113,11 +145,11 @@ class _AreaCard extends StatelessWidget {
                 child: AreaTag(area: area, iconSize: 20, fontSize: 16),
               ),
               Text(
-                '$starCount star${starCount == 1 ? '' : 's'}',
-                style: const TextStyle(fontSize: 13, color: AppColors.muted),
+                context.strings.starsCount(starCount),
+                style: TextStyle(fontSize: 13, color: colors.muted),
               ),
               const SizedBox(width: 8),
-              const Icon(Icons.chevron_right, color: AppColors.muted, size: 18),
+              Icon(Icons.chevron_right, color: colors.muted, size: 18),
             ],
           ),
         ),

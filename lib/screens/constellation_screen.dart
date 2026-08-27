@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../data/constellation_shapes.dart';
 import '../data/project_repository.dart';
 import '../data/win_repository.dart';
+import '../l10n/strings_scope.dart';
 import '../models/project.dart';
 import '../models/win.dart';
 import '../theme/app_colors.dart';
@@ -166,9 +167,11 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
   @override
   Widget build(BuildContext context) {
     final shape = _shape;
+    final colors = context.colors;
+    final strings = context.strings;
 
     return Scaffold(
-      backgroundColor: AppColors.night,
+      backgroundColor: colors.night,
       body: SafeArea(
         child: Column(
           children: [
@@ -176,34 +179,34 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
               children: [
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.arrow_back, color: AppColors.muted),
+                  icon: Icon(Icons.arrow_back, color: colors.muted),
                 ),
                 Expanded(
                   child: Text(
                     widget.project.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
-                      color: AppColors.text,
+                      color: colors.text,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 IconButton(
                   onPressed: shape == null ? null : _addWin,
-                  icon: const Icon(Icons.add, color: AppColors.gold),
-                  tooltip: 'Add a win',
+                  icon: Icon(Icons.add, color: colors.gold),
+                  tooltip: strings.addWinTooltip,
                 ),
               ],
             ),
             Expanded(
               child: shape == null
-                  ? const Center(
+                  ? Center(
                       child: Padding(
-                        padding: EdgeInsets.all(24),
+                        padding: const EdgeInsets.all(24),
                         child: Text(
-                          "This project's constellation shape couldn't be found.",
-                          style: TextStyle(color: AppColors.muted),
+                          strings.constellationShapeMissing,
+                          style: TextStyle(color: colors.muted),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -234,6 +237,8 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
                                   stars: _stars,
                                   glowSprite: _glowSprite,
                                   revision: _revision,
+                                  starColor: colors.gold,
+                                  coreColor: colors.text,
                                 ),
                               ),
                             ),

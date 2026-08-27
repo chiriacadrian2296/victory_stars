@@ -21,13 +21,30 @@ abstract class AppStrings {
   // Bottom navigation
   String get navHome;
   String get navSky;
+  String get navStars;
   String get navSettings;
 
-  // Home screen
+  // Home dashboard
   String get homeEyebrow;
   String get homeTitle;
   String get homeSubtitle;
   String get admireYourStars;
+  String get totalStarsLabel;
+  String get currentStreakLabel;
+  String get longestStreakLabel;
+  String get activityLabel;
+  String get dayDetailEmpty;
+
+  // Stars tab (browse by area + search)
+  String get starsEyebrow;
+  String get starsTitle;
+  String get starsSubtitle;
+  String get searchHint;
+  String get noSearchResults;
+  String get areaWinsEmpty;
+
+  // Settings — data section (seed/reset, moved here from the old Home)
+  String get dataSection;
   String get seedSampleData;
   String seedSampleDataResult(int count);
   String get resetAllData;

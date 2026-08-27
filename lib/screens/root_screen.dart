@@ -8,11 +8,13 @@ import '../theme/app_colors.dart';
 import 'home_screen.dart';
 import 'settings_screen.dart';
 import 'sky_screen.dart';
+import 'stars_screen.dart';
 
-/// The app's root scaffold: a bottom nav bar switching between the flat wins
-/// archive (Home), the life-areas hub (Sky), and app Settings. Owns both
-/// data repositories so they're loaded once and shared between tabs, rather
-/// than each tab loading its own copy.
+/// The app's root scaffold: a bottom nav bar switching between the
+/// dashboard (Home), the life-areas hub (Sky), the searchable win browser
+/// (Stars), and app Settings. Owns both data repositories so they're
+/// loaded once and shared between tabs, rather than each tab loading its
+/// own copy.
 class RootScreen extends StatefulWidget {
   const RootScreen({super.key, required this.settings});
 
@@ -58,7 +60,12 @@ class _RootScreenState extends State<RootScreen> {
               children: [
                 HomeScreen(winRepository: winRepository, projectRepository: projectRepository),
                 SkyScreen(projectRepository: projectRepository, winRepository: winRepository),
-                SettingsScreen(settings: widget.settings),
+                StarsScreen(projectRepository: projectRepository, winRepository: winRepository),
+                SettingsScreen(
+                  settings: widget.settings,
+                  winRepository: winRepository,
+                  projectRepository: projectRepository,
+                ),
               ],
             ),
       bottomNavigationBar: !ready
@@ -71,14 +78,19 @@ class _RootScreenState extends State<RootScreen> {
               surfaceTintColor: Colors.transparent,
               destinations: [
                 NavigationDestination(
-                  icon: Icon(Icons.auto_awesome_outlined, color: colors.muted),
-                  selectedIcon: Icon(Icons.auto_awesome, color: colors.gold),
+                  icon: Icon(Icons.insights_outlined, color: colors.muted),
+                  selectedIcon: Icon(Icons.insights, color: colors.gold),
                   label: strings.navHome,
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.explore_outlined, color: colors.muted),
                   selectedIcon: Icon(Icons.explore, color: colors.gold),
                   label: strings.navSky,
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.star_border, color: colors.muted),
+                  selectedIcon: Icon(Icons.star, color: colors.gold),
+                  label: strings.navStars,
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.settings_outlined, color: colors.muted),

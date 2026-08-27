@@ -7,27 +7,27 @@ import '../models/life_area.dart';
 import '../theme/app_colors.dart';
 import '../utils/win_stats.dart';
 import '../widgets/area_tag.dart';
-import 'area_projects_screen.dart';
+import 'area_wins_screen.dart';
 
-/// The Sky hub: the 8 fixed life areas, each showing how many stars are lit
-/// across all of its projects combined. Tapping an area opens its project
-/// list ([AreaProjectsScreen]) — an area itself has no single constellation
-/// once it can hold more than one project.
-class SkyScreen extends StatefulWidget {
-  const SkyScreen({super.key, required this.projectRepository, required this.winRepository});
+/// The Stars tab: pick a life area, then browse/search every win in it
+/// (across all of that area's projects) as a flat, searchable list —
+/// distinct from Sky's constellation-first browsing. Reuses the same area
+/// cards as Sky for a consistent "pick an area" step.
+class StarsScreen extends StatefulWidget {
+  const StarsScreen({super.key, required this.projectRepository, required this.winRepository});
 
   final ProjectRepository projectRepository;
   final WinRepository winRepository;
 
   @override
-  State<SkyScreen> createState() => _SkyScreenState();
+  State<StarsScreen> createState() => _StarsScreenState();
 }
 
-class _SkyScreenState extends State<SkyScreen> {
+class _StarsScreenState extends State<StarsScreen> {
   Future<void> _openArea(LifeArea area) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => AreaProjectsScreen(
+        builder: (_) => AreaWinsScreen(
           area: area,
           projectRepository: widget.projectRepository,
           winRepository: widget.winRepository,
@@ -53,11 +53,7 @@ class _SkyScreenState extends State<SkyScreen> {
                 itemBuilder: (context, index) {
                   final area = LifeArea.values[index];
                   final starCount = starsInArea(area, widget.projectRepository, widget.winRepository);
-                  return _AreaCard(
-                    area: area,
-                    starCount: starCount,
-                    onTap: () => _openArea(area),
-                  );
+                  return _AreaCard(area: area, starCount: starCount, onTap: () => _openArea(area));
                 },
               ),
             ),
@@ -81,28 +77,16 @@ class _Header extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            strings.skyEyebrow,
-            style: TextStyle(
-              fontSize: 12,
-              letterSpacing: 2,
-              fontWeight: FontWeight.w600,
-              color: colors.goldDim,
-            ),
+            strings.starsEyebrow,
+            style: TextStyle(fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.w600, color: colors.goldDim),
           ),
           const SizedBox(height: 6),
           Text(
-            strings.skyTitle,
-            style: TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.w700,
-              color: colors.text,
-            ),
+            strings.starsTitle,
+            style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: colors.text),
           ),
           const SizedBox(height: 6),
-          Text(
-            strings.skySubtitle,
-            style: TextStyle(fontSize: 14, color: colors.muted),
-          ),
+          Text(strings.starsSubtitle, style: TextStyle(fontSize: 14, color: colors.muted)),
         ],
       ),
     );
@@ -134,13 +118,8 @@ class _AreaCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Expanded(
-                child: AreaTag(area: area, iconSize: 20, fontSize: 16),
-              ),
-              Text(
-                context.strings.starsCount(starCount),
-                style: TextStyle(fontSize: 13, color: colors.muted),
-              ),
+              Expanded(child: AreaTag(area: area, iconSize: 20, fontSize: 16)),
+              Text(context.strings.starsCount(starCount), style: TextStyle(fontSize: 13, color: colors.muted)),
               const SizedBox(width: 8),
               Icon(Icons.chevron_right, color: colors.muted, size: 18),
             ],

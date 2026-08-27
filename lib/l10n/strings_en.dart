@@ -28,16 +28,44 @@ class StringsEn implements AppStrings {
   @override
   String get navSky => 'Sky';
   @override
+  String get navStars => 'Stars';
+  @override
   String get navSettings => 'Settings';
 
   @override
-  String get homeEyebrow => 'YOUR ARCHIVE';
+  String get homeEyebrow => 'YOUR PROGRESS';
   @override
-  String get homeTitle => 'Your wins';
+  String get homeTitle => 'Your dashboard';
   @override
   String get homeSubtitle => 'Every win is a star, lit when you needed the light.';
   @override
   String get admireYourStars => 'Admire Your Stars';
+  @override
+  String get totalStarsLabel => 'Total stars';
+  @override
+  String get currentStreakLabel => 'Current streak';
+  @override
+  String get longestStreakLabel => 'Longest streak';
+  @override
+  String get activityLabel => 'Activity';
+  @override
+  String get dayDetailEmpty => 'No stars lit this day.';
+
+  @override
+  String get starsEyebrow => 'YOUR STARS';
+  @override
+  String get starsTitle => 'Browse your stars';
+  @override
+  String get starsSubtitle => 'Pick an area, then search within it.';
+  @override
+  String get searchHint => 'Search by title or description';
+  @override
+  String get noSearchResults => 'No stars match your search.';
+  @override
+  String get areaWinsEmpty => 'No stars lit in this area yet.';
+
+  @override
+  String get dataSection => 'Data';
   @override
   String get seedSampleData => 'Seed sample data';
   @override

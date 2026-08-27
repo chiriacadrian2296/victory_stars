@@ -28,16 +28,44 @@ class StringsRo implements AppStrings {
   @override
   String get navSky => 'Cer';
   @override
+  String get navStars => 'Stele';
+  @override
   String get navSettings => 'Setări';
 
   @override
-  String get homeEyebrow => 'ARHIVA TA';
+  String get homeEyebrow => 'PROGRESUL TĂU';
   @override
-  String get homeTitle => 'Victoriile tale';
+  String get homeTitle => 'Panoul tău';
   @override
   String get homeSubtitle => 'Fiecare victorie e o stea, aprinsă atunci când aveai nevoie de lumină.';
   @override
   String get admireYourStars => 'Admiră-ți stelele';
+  @override
+  String get totalStarsLabel => 'Stele în total';
+  @override
+  String get currentStreakLabel => 'Serie curentă';
+  @override
+  String get longestStreakLabel => 'Cea mai lungă serie';
+  @override
+  String get activityLabel => 'Activitate';
+  @override
+  String get dayDetailEmpty => 'Nicio stea aprinsă în această zi.';
+
+  @override
+  String get starsEyebrow => 'STELELE TALE';
+  @override
+  String get starsTitle => 'Explorează-ți stelele';
+  @override
+  String get starsSubtitle => 'Alege o zonă, apoi caută în ea.';
+  @override
+  String get searchHint => 'Caută după titlu sau descriere';
+  @override
+  String get noSearchResults => 'Nicio stea nu corespunde căutării.';
+  @override
+  String get areaWinsEmpty => 'Nicio stea aprinsă încă în această zonă.';
+
+  @override
+  String get dataSection => 'Date';
   @override
   String get seedSampleData => 'Generează date de exemplu';
   @override

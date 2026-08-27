@@ -28,16 +28,44 @@ class StringsIt implements AppStrings {
   @override
   String get navSky => 'Cielo';
   @override
+  String get navStars => 'Stelle';
+  @override
   String get navSettings => 'Impostazioni';
 
   @override
-  String get homeEyebrow => 'IL TUO ARCHIVIO';
+  String get homeEyebrow => 'I TUOI PROGRESSI';
   @override
-  String get homeTitle => 'Le tue vittorie';
+  String get homeTitle => 'La tua dashboard';
   @override
   String get homeSubtitle => 'Ogni vittoria è una stella, accesa quando ne avevi bisogno.';
   @override
   String get admireYourStars => 'Ammira le tue stelle';
+  @override
+  String get totalStarsLabel => 'Stelle totali';
+  @override
+  String get currentStreakLabel => 'Serie attuale';
+  @override
+  String get longestStreakLabel => 'Serie record';
+  @override
+  String get activityLabel => 'Attività';
+  @override
+  String get dayDetailEmpty => 'Nessuna stella accesa in questo giorno.';
+
+  @override
+  String get starsEyebrow => 'LE TUE STELLE';
+  @override
+  String get starsTitle => 'Esplora le tue stelle';
+  @override
+  String get starsSubtitle => 'Scegli un\'area, poi cerca al suo interno.';
+  @override
+  String get searchHint => 'Cerca per titolo o descrizione';
+  @override
+  String get noSearchResults => 'Nessuna stella corrisponde alla ricerca.';
+  @override
+  String get areaWinsEmpty => 'Nessuna stella accesa in quest\'area, per ora.';
+
+  @override
+  String get dataSection => 'Dati';
   @override
   String get seedSampleData => 'Genera dati di esempio';
   @override

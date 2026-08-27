@@ -2,19 +2,22 @@ import 'package:flutter/material.dart';
 
 import '../data/project_repository.dart';
 import '../data/win_repository.dart';
-import '../debug/seed_data.dart';
 import '../l10n/strings_scope.dart';
 import '../models/project.dart';
 import '../models/win.dart';
 import '../theme/app_colors.dart';
+import '../utils/date_format.dart';
+import '../utils/win_stats.dart';
+import '../widgets/star_heatmap.dart';
 import '../widgets/win_card.dart';
 import 'add_win_screen.dart';
 import 'crisis_intro_screen.dart';
 import 'win_reader_screen.dart';
 
-/// The flat, cross-project archive of every win — one tab of [RootScreen].
-/// Receives its repositories from the root rather than loading its own, so
-/// both tabs (this and Sky) always see the same in-memory data.
+/// The dashboard — one tab of [RootScreen]: a quick read on consistency
+/// (total stars, streaks) and a GitHub-contribution-style calendar of when
+/// stars were lit, rather than a flat list (that's now the Stars tab).
+/// Still owns the "add a win" FAB, since it's the natural landing tab.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.winRepository, required this.projectRepository});
 
@@ -32,6 +35,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _wins = widget.winRepository.getAll();
+  }
+
+  Map<int, Project> _projectsById(ProjectRepository projectRepository) {
+    return {for (final project in projectRepository.getAll()) project.id: project};
   }
 
   Future<void> _openAddWinScreen() async {
@@ -69,11 +76,11 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _wins = winRepository.getAll());
   }
 
-  Map<int, Project> _projectsById(ProjectRepository projectRepository) {
-    return {for (final project in projectRepository.getAll()) project.id: project};
+  List<Win> _winsOnDay(DateTime day) {
+    return _wins.where((w) => w.date.year == day.year && w.date.month == day.month && w.date.day == day.day).toList();
   }
 
-  Future<void> _openWinReader(int index) async {
+  Future<void> _openWinReader(List<Win> wins, int index, DateTime day) async {
     final winRepository = widget.winRepository;
     final projectRepository = widget.projectRepository;
 
@@ -81,132 +88,126 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (_) => WinReaderScreen(
           repository: winRepository,
-          initialWins: _wins,
+          initialWins: wins,
           startIndex: index,
           allowEdit: true,
           projectsById: _projectsById(projectRepository),
           projectRepository: projectRepository,
-          refreshWins: winRepository.getAll,
+          refreshWins: () => _winsOnDay(day),
         ),
       ),
     );
     setState(() => _wins = winRepository.getAll());
   }
 
-  Future<void> _seedSampleData() async {
-    final winRepository = widget.winRepository;
-    final projectRepository = widget.projectRepository;
-    final strings = context.strings;
-
-    await seedSampleData(winRepository: winRepository, projectRepository: projectRepository);
-    setState(() => _wins = winRepository.getAll());
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(strings.seedSampleDataResult(winsPerSeedTap))),
-      );
-    }
-  }
-
-  Future<void> _resetAllData() async {
-    final winRepository = widget.winRepository;
-    final projectRepository = widget.projectRepository;
+  Future<void> _openDayDetail(DateTime day) async {
     final colors = context.colors;
     final strings = context.strings;
+    final projectsById = _projectsById(widget.projectRepository);
+    final dayWins = _winsOnDay(day);
 
-    final confirmed = await showDialog<bool>(
+    await showModalBottomSheet<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: colors.nightPanel,
-        title: Text(strings.resetAllDataConfirmTitle, style: TextStyle(color: colors.text)),
-        content: Text(
-          strings.resetAllDataConfirmBody,
-          style: TextStyle(color: colors.muted),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(strings.cancel, style: TextStyle(color: colors.muted)),
+      backgroundColor: colors.nightPanel,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  formatDisplayDate(day, strings),
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: colors.text),
+                ),
+                const SizedBox(height: 16),
+                if (dayWins.isEmpty)
+                  Text(strings.dayDetailEmpty, style: TextStyle(color: colors.muted, fontSize: 14))
+                else
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: dayWins.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final win = dayWins[index];
+                        return WinCard(
+                          win: win,
+                          project: projectsById[win.projectId],
+                          onTap: () {
+                            Navigator.of(sheetContext).pop();
+                            _openWinReader(dayWins, index, day);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
           ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(strings.deleteEverything, style: TextStyle(color: colors.danger)),
-          ),
-        ],
-      ),
+        );
+      },
     );
-    if (confirmed != true) return;
-
-    await winRepository.clear();
-    await projectRepository.clear();
-    setState(() => _wins = winRepository.getAll());
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(strings.allDataCleared)),
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final projectsById = _projectsById(widget.projectRepository);
     final colors = context.colors;
     final strings = context.strings;
+    final dayCounts = winCountsByDay(_wins);
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 32, 20, 100),
           children: [
-            const _Header(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              child: _SecondaryButton(
-                icon: Icons.auto_awesome,
-                label: strings.admireYourStars,
-                onPressed: _openCrisisIntro,
-              ),
+            Text(
+              strings.homeEyebrow,
+              style: TextStyle(fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.w600, color: colors.goldDim),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              child: Wrap(
-                spacing: 4,
-                children: [
-                  TextButton.icon(
-                    onPressed: _seedSampleData,
-                    icon: Icon(Icons.science_outlined, size: 16, color: colors.muted),
-                    label: Text(
-                      strings.seedSampleData,
-                      style: TextStyle(color: colors.muted, fontSize: 12),
-                    ),
-                  ),
-                  TextButton.icon(
-                    onPressed: _resetAllData,
-                    icon: Icon(Icons.delete_outline, size: 16, color: colors.danger),
-                    label: Text(
-                      strings.resetAllData,
-                      style: TextStyle(color: colors.danger, fontSize: 12),
-                    ),
-                  ),
-                ],
-              ),
+            const SizedBox(height: 6),
+            Text(
+              strings.homeTitle,
+              style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: colors.text),
             ),
-            if (_wins.isEmpty)
-              _EmptyState(strings.archiveEmpty)
-            else
-              Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 100),
-                  itemCount: _wins.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final win = _wins[index];
-                    return WinCard(
-                      win: win,
-                      project: projectsById[win.projectId],
-                      onTap: () => _openWinReader(index),
-                    );
-                  },
+            const SizedBox(height: 6),
+            Text(strings.homeSubtitle, style: TextStyle(fontSize: 14, color: colors.muted)),
+            const SizedBox(height: 20),
+            _SecondaryButton(icon: Icons.auto_awesome, label: strings.admireYourStars, onPressed: _openCrisisIntro),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: _StatCard(label: strings.totalStarsLabel, value: '${_wins.length}'),
                 ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _StatCard(label: strings.currentStreakLabel, value: '${currentStreak(dayCounts)}'),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _StatCard(label: strings.longestStreakLabel, value: '${longestStreak(dayCounts)}'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Text(
+              strings.activityLabel,
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.muted),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: colors.nightPanel,
+                border: Border.all(color: colors.nightBorder),
+                borderRadius: BorderRadius.circular(12),
               ),
+              child: StarHeatmap(countsByDay: dayCounts, onDayTap: _openDayDetail),
+            ),
           ],
         ),
       ),
@@ -259,69 +260,32 @@ class _SecondaryButton extends StatelessWidget {
   }
 }
 
-class _Header extends StatelessWidget {
-  const _Header();
+class _StatCard extends StatelessWidget {
+  const _StatCard({required this.label, required this.value});
+
+  final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final strings = context.strings;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+      decoration: BoxDecoration(
+        color: colors.nightPanel,
+        border: Border.all(color: colors.nightBorder),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: colors.gold)),
+          const SizedBox(height: 4),
           Text(
-            strings.homeEyebrow,
-            style: TextStyle(
-              fontSize: 12,
-              letterSpacing: 2,
-              fontWeight: FontWeight.w600,
-              color: colors.goldDim,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            strings.homeTitle,
-            style: TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.w700,
-              color: colors.text,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            strings.homeSubtitle,
-            style: TextStyle(fontSize: 14, color: colors.muted),
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 11, color: colors.muted),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState(this.message);
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
-        decoration: BoxDecoration(
-          border: Border.all(color: colors.nightBorder),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Text(
-          message,
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 14, color: colors.muted),
-        ),
       ),
     );
   }

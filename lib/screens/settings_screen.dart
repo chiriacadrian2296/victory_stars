@@ -1,18 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../data/project_repository.dart';
+import '../data/win_repository.dart';
+import '../debug/seed_data.dart';
 import '../l10n/strings_scope.dart';
 import '../notifications/reminder_service.dart';
 import '../settings/settings_controller.dart';
 import '../theme/app_colors.dart';
 
 /// The Settings tab: appearance (light/dark), language, the daily reminder
-/// notification, and a short "about" block. Reads/writes through
-/// [SettingsController], which persists each change immediately.
+/// notification, a "Data" section (seed/reset — dev tooling that lives here
+/// rather than cluttering the dashboard), and a short "about" block. Reads/
+/// writes through [SettingsController], which persists each change
+/// immediately.
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, required this.settings});
+  const SettingsScreen({
+    super.key,
+    required this.settings,
+    required this.winRepository,
+    required this.projectRepository,
+  });
 
   final SettingsController settings;
+  final WinRepository winRepository;
+  final ProjectRepository projectRepository;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -81,6 +93,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     }
     if (mounted) setState(() {});
+  }
+
+  Future<void> _seedSampleData() async {
+    final strings = context.strings;
+    await seedSampleData(winRepository: widget.winRepository, projectRepository: widget.projectRepository);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.seedSampleDataResult(winsPerSeedTap))),
+      );
+    }
+  }
+
+  Future<void> _resetAllData() async {
+    final colors = context.colors;
+    final strings = context.strings;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: colors.nightPanel,
+        title: Text(strings.resetAllDataConfirmTitle, style: TextStyle(color: colors.text)),
+        content: Text(strings.resetAllDataConfirmBody, style: TextStyle(color: colors.muted)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(strings.cancel, style: TextStyle(color: colors.muted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(strings.deleteEverything, style: TextStyle(color: colors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    await widget.winRepository.clear();
+    await widget.projectRepository.clear();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(strings.allDataCleared)));
+    }
   }
 
   @override
@@ -166,6 +219,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
               ),
+            ),
+            const SizedBox(height: 28),
+
+            _SectionLabel(strings.dataSection),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 4,
+              children: [
+                TextButton.icon(
+                  onPressed: _seedSampleData,
+                  icon: Icon(Icons.science_outlined, size: 16, color: colors.muted),
+                  label: Text(strings.seedSampleData, style: TextStyle(color: colors.muted, fontSize: 12)),
+                ),
+                TextButton.icon(
+                  onPressed: _resetAllData,
+                  icon: Icon(Icons.delete_outline, size: 16, color: colors.danger),
+                  label: Text(strings.resetAllData, style: TextStyle(color: colors.danger, fontSize: 12)),
+                ),
+              ],
             ),
             const SizedBox(height: 28),
 

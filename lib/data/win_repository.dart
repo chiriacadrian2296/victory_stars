@@ -62,6 +62,31 @@ class WinRepository {
     return win;
   }
 
+  /// Updates the title/description of the win identified by [id], keeping
+  /// its number and date unchanged. Throws a [StateError] if no win with
+  /// that id exists — callers always resolve it from a currently-displayed
+  /// [Win], so a missing id would mean the list changed under them.
+  Future<Win> update({required int id, required String title, String? description}) async {
+    final wins = getAll();
+    final index = wins.indexWhere((w) => w.id == id);
+    if (index == -1) {
+      throw StateError('No win found with id $id');
+    }
+
+    final trimmedDescription = description?.trim();
+    final updated = Win(
+      id: wins[index].id,
+      number: wins[index].number,
+      title: title.trim(),
+      description: (trimmedDescription == null || trimmedDescription.isEmpty) ? null : trimmedDescription,
+      date: wins[index].date,
+    );
+
+    final nextWins = [...wins]..[index] = updated;
+    await _saveAll(nextWins);
+    return updated;
+  }
+
   Future<void> _saveAll(List<Win> wins) async {
     final encoded = jsonEncode(wins.map((w) => w.toJson()).toList());
     await _prefs.setString(_storageKey, encoded);

@@ -14,4 +14,20 @@ class AppColors {
 
   /// Text/icon color used on top of solid gold surfaces (buttons, FAB).
   static const onGold = Color(0xFF241A04);
+
+  /// A deeper, more intimate variant of [night], used for the reflection
+  /// screens (crisis intro + star reader). Kept close in hue to [night]
+  /// rather than the prototype's purple, so it reads as "the same sky, at
+  /// its darkest" instead of an unrelated palette.
+  static const crisisGradientCenter = Color(0xFF1C2747);
+  static const crisisGradientMid = Color(0xFF10162B);
+  static const crisisGradientOuter = Color(0xFF05070D);
+  static const crisisMuted = Color(0xFFB7C2E0);
+
+  static const crisisGradient = RadialGradient(
+    center: Alignment(0, -0.6),
+    radius: 1.2,
+    colors: [crisisGradientCenter, crisisGradientMid, crisisGradientOuter],
+    stops: [0.0, 0.55, 1.0],
+  );
 }

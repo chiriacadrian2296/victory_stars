@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../models/win.dart';
 import '../theme/app_colors.dart';
 
 /// What the user entered, handed back to whoever pushed this screen.
 /// Trimming and blank-to-null normalization for [description] happen in
-/// [WinRepository.add], not here, so that logic lives in one place.
+/// [WinRepository.add]/[WinRepository.update], not here, so that logic
+/// lives in one place regardless of whether this was an add or an edit.
 class AddWinResult {
   const AddWinResult({required this.title, this.description});
 
@@ -12,16 +14,24 @@ class AddWinResult {
   final String? description;
 }
 
+/// Also doubles as the edit screen: pass [existingWin] to pre-fill the
+/// fields with a win's current title/description. The caller decides
+/// whether the returned [AddWinResult] should create a new win or update
+/// an existing one — this screen just collects the form input either way.
 class AddWinScreen extends StatefulWidget {
-  const AddWinScreen({super.key});
+  const AddWinScreen({super.key, this.existingWin});
+
+  final Win? existingWin;
+
+  bool get isEditing => existingWin != null;
 
   @override
   State<AddWinScreen> createState() => _AddWinScreenState();
 }
 
 class _AddWinScreenState extends State<AddWinScreen> {
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
+  late final _titleController = TextEditingController(text: widget.existingWin?.title ?? '');
+  late final _descriptionController = TextEditingController(text: widget.existingWin?.description ?? '');
 
   @override
   void dispose() {
@@ -53,9 +63,9 @@ class _AddWinScreenState extends State<AddWinScreen> {
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(Icons.arrow_back, color: AppColors.muted),
                   ),
-                  const Text(
-                    'NEW STAR',
-                    style: TextStyle(
+                  Text(
+                    widget.isEditing ? 'EDIT STAR' : 'NEW STAR',
+                    style: const TextStyle(
                       fontSize: 12,
                       letterSpacing: 1.4,
                       fontWeight: FontWeight.w600,
@@ -122,9 +132,9 @@ class _AddWinScreenState extends State<AddWinScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Text(
-                        'Light this star',
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                      child: Text(
+                        widget.isEditing ? 'Save changes' : 'Light this star',
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
                       ),
                     );
                   },

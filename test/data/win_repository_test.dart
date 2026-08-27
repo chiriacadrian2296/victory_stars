@@ -42,4 +42,24 @@ void main() {
     expect(reloaded.getAll().first.title, 'A win');
     expect(reloaded.getAll().first.description, 'Some details');
   });
+
+  test('update() changes title/description but keeps id, number, and date', () async {
+    final repo = await WinRepository.create();
+    final original = await repo.add(title: 'Original', description: 'Original details');
+
+    final updated = await repo.update(id: original.id, title: 'Updated', description: '');
+
+    expect(updated.id, original.id);
+    expect(updated.number, original.number);
+    expect(updated.date, original.date);
+    expect(updated.title, 'Updated');
+    expect(updated.description, isNull);
+    expect(repo.getAll().single.title, 'Updated');
+  });
+
+  test('update() throws for an id that does not exist', () async {
+    final repo = await WinRepository.create();
+
+    expect(() => repo.update(id: 999, title: 'Nope'), throwsStateError);
+  });
 }

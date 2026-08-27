@@ -5,6 +5,8 @@ import '../models/win.dart';
 import '../theme/app_colors.dart';
 import '../widgets/win_card.dart';
 import 'add_win_screen.dart';
+import 'crisis_intro_screen.dart';
+import 'win_reader_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -44,6 +46,34 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _wins = repository.getAll());
   }
 
+  void _openCrisisIntro() {
+    final repository = _repository;
+    if (repository == null) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CrisisIntroScreen(wins: _wins, repository: repository),
+      ),
+    );
+  }
+
+  Future<void> _openWinReader(int index) async {
+    final repository = _repository;
+    if (repository == null) return;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => WinReaderScreen(
+          repository: repository,
+          initialWins: _wins,
+          startIndex: index,
+          allowEdit: true,
+        ),
+      ),
+    );
+    setState(() => _wins = repository.getAll());
+  }
+
   @override
   Widget build(BuildContext context) {
     final repository = _repository;
@@ -55,6 +85,10 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 children: [
                   const _Header(),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                    child: _AdmireStarsButton(onPressed: _openCrisisIntro),
+                  ),
                   if (_wins.isEmpty)
                     const _EmptyState()
                   else
@@ -63,7 +97,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: const EdgeInsets.fromLTRB(20, 4, 20, 100),
                         itemCount: _wins.length,
                         separatorBuilder: (_, _) => const SizedBox(height: 12),
-                        itemBuilder: (context, index) => WinCard(win: _wins[index]),
+                        itemBuilder: (context, index) => WinCard(
+                          win: _wins[index],
+                          onTap: () => _openWinReader(index),
+                        ),
                       ),
                     ),
                 ],
@@ -90,6 +127,32 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const Icon(Icons.add, color: AppColors.onGold),
               ),
             ),
+    );
+  }
+}
+
+class _AdmireStarsButton extends StatelessWidget {
+  const _AdmireStarsButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: const Icon(Icons.auto_awesome, size: 17, color: AppColors.gold),
+        label: const Text('Admire Your Stars'),
+        style: OutlinedButton.styleFrom(
+          backgroundColor: AppColors.gold.withValues(alpha: 0.1),
+          foregroundColor: AppColors.gold,
+          side: const BorderSide(color: AppColors.goldDim),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      ),
     );
   }
 }

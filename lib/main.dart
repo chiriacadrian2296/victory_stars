@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 
+import 'screens/home_screen.dart';
+import 'theme/app_theme.dart';
+
 void main() {
-  runApp(const MainApp());
+  runApp(const VictoryStarsApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class VictoryStarsApp extends StatelessWidget {
+  const VictoryStarsApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(body: Center(child: Text('Hello World!'))),
+    return MaterialApp(
+      title: 'Victory Stars',
+      debugShowCheckedModeBanner: false,
+      theme: buildAppTheme(),
+      home: const HomeScreen(),
     );
   }
 }

@@ -18,6 +18,15 @@ import 'win_reader_screen.dart';
 /// (total stars, streaks) and a GitHub-contribution-style calendar of when
 /// stars were lit, rather than a flat list (that's now the Stars tab).
 /// Still owns the "add a win" FAB, since it's the natural landing tab.
+///
+/// Never caches a win list in a field — [build] always re-reads
+/// [winRepository] fresh. This tab is kept alive (not disposed) by
+/// [RootScreen]'s `IndexedStack`, so a cached list would otherwise go stale
+/// whenever data changes from a *different* tab (e.g. seeding or resetting
+/// from Settings) instead of from here. The empty `setState(() {})` calls
+/// after local mutations exist only to trigger that fresh re-read
+/// immediately, without waiting for an unrelated rebuild (e.g. a tab
+/// switch) to happen to reveal it.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.winRepository, required this.projectRepository});
 
@@ -29,82 +38,71 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<Win> _wins = const [];
-
-  @override
-  void initState() {
-    super.initState();
-    _wins = widget.winRepository.getAll();
-  }
-
-  Map<int, Project> _projectsById(ProjectRepository projectRepository) {
-    return {for (final project in projectRepository.getAll()) project.id: project};
+  Map<int, Project> _projectsById() {
+    return {for (final project in widget.projectRepository.getAll()) project.id: project};
   }
 
   Future<void> _openAddWinScreen() async {
-    final winRepository = widget.winRepository;
-    final projectRepository = widget.projectRepository;
-
     final result = await Navigator.of(context).push<AddWinResult>(
-      MaterialPageRoute(builder: (_) => AddWinScreen(projectRepository: projectRepository)),
+      MaterialPageRoute(builder: (_) => AddWinScreen(projectRepository: widget.projectRepository)),
     );
     if (result == null) return;
 
-    await winRepository.add(
+    await widget.winRepository.add(
       title: result.title,
       description: result.description,
       projectId: result.projectId,
       intensity: result.intensity,
     );
-    setState(() => _wins = winRepository.getAll());
+    setState(() {});
   }
 
   Future<void> _openCrisisIntro() async {
-    final winRepository = widget.winRepository;
-    final projectRepository = widget.projectRepository;
-
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => CrisisIntroScreen(
-          wins: _wins,
-          repository: winRepository,
-          projectsById: _projectsById(projectRepository),
-          projectRepository: projectRepository,
+          wins: widget.winRepository.getAll(),
+          repository: widget.winRepository,
+          projectsById: _projectsById(),
+          projectRepository: widget.projectRepository,
         ),
       ),
     );
-    setState(() => _wins = winRepository.getAll());
+    setState(() {});
   }
 
   List<Win> _winsOnDay(DateTime day) {
-    return _wins.where((w) => w.date.year == day.year && w.date.month == day.month && w.date.day == day.day).toList();
+    return widget.winRepository.getAll().where((w) {
+      return w.date.year == day.year && w.date.month == day.month && w.date.day == day.day;
+    }).toList();
   }
 
   Future<void> _openWinReader(List<Win> wins, int index, DateTime day) async {
-    final winRepository = widget.winRepository;
-    final projectRepository = widget.projectRepository;
-
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => WinReaderScreen(
-          repository: winRepository,
+          repository: widget.winRepository,
           initialWins: wins,
           startIndex: index,
           allowEdit: true,
-          projectsById: _projectsById(projectRepository),
-          projectRepository: projectRepository,
+          projectsById: _projectsById(),
+          projectRepository: widget.projectRepository,
           refreshWins: () => _winsOnDay(day),
         ),
       ),
     );
-    setState(() => _wins = winRepository.getAll());
+    setState(() {});
   }
 
   Future<void> _openDayDetail(DateTime day) async {
     final colors = context.colors;
     final strings = context.strings;
-    final projectsById = _projectsById(widget.projectRepository);
+    final projectsById = _projectsById();
     final dayWins = _winsOnDay(day);
+    // Empty days would otherwise pop up a tiny sheet (just the date + one
+    // line) that feels jarringly different in size from a day with wins —
+    // give it the same rough footprint instead.
+    final emptyStateHeight = MediaQuery.of(context).size.height * 0.3;
 
     await showModalBottomSheet<void>(
       context: context,
@@ -124,7 +122,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 16),
                 if (dayWins.isEmpty)
-                  Text(strings.dayDetailEmpty, style: TextStyle(color: colors.muted, fontSize: 14))
+                  SizedBox(
+                    height: emptyStateHeight,
+                    child: Center(
+                      child: Text(strings.dayDetailEmpty, style: TextStyle(color: colors.muted, fontSize: 14)),
+                    ),
+                  )
                 else
                   Flexible(
                     child: ListView.separated(
@@ -156,7 +159,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final strings = context.strings;
-    final dayCounts = winCountsByDay(_wins);
+    final wins = widget.winRepository.getAll();
+    final dayCounts = winCountsByDay(wins);
 
     return Scaffold(
       body: SafeArea(
@@ -175,12 +179,16 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 6),
             Text(strings.homeSubtitle, style: TextStyle(fontSize: 14, color: colors.muted)),
             const SizedBox(height: 20),
-            _SecondaryButton(icon: Icons.auto_awesome, label: strings.admireYourStars, onPressed: _openCrisisIntro),
+            _SecondaryButton(
+              icon: Icons.auto_awesome,
+              label: strings.admireYourStars,
+              onPressed: _openCrisisIntro,
+            ),
             const SizedBox(height: 24),
             Row(
               children: [
                 Expanded(
-                  child: _StatCard(label: strings.totalStarsLabel, value: '${_wins.length}'),
+                  child: _StatCard(label: strings.totalStarsLabel, value: '${wins.length}'),
                 ),
                 const SizedBox(width: 10),
                 Expanded(

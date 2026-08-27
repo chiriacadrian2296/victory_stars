@@ -200,4 +200,15 @@ class StringsIt implements AppStrings {
         'Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu',
         'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic',
       ];
+
+  @override
+  List<String> get weekdayAbbreviations => const ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+
+  @override
+  String monthTitle(DateTime month) => '${_fullMonths[month.month - 1]} ${month.year}';
 }
+
+const _fullMonths = [
+  'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+  'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre',
+];

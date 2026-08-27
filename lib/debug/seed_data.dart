@@ -5,6 +5,25 @@ import '../models/life_area.dart';
 /// How many wins each seed project gains every time [seedSampleData] runs.
 const winsPerSeedTap = 12;
 
+/// Backdates seeded wins so the dashboard has something to show: day
+/// offsets from today (0 = today), hand-chosen — not random — to exercise
+/// specific things at a glance once seeded:
+/// - 0..5: a live 6-day current streak (today included).
+/// - 6..7: a gap, so the streak visibly breaks in the calendar.
+/// - 8..10: an older, separate 3-day streak (shorter than the current one,
+///   so "longest streak" still correctly reports 6).
+/// - 14 (x5) and 20/25/29: a very busy day and a few sparse single days, to
+///   cover the heatmap's low/medium/high brightness tiers.
+/// Every seed tap re-applies this same pattern from today, so repeat taps
+/// pile more wins onto the same days (brighter, not further back) — which
+/// suits the dashboard's calendar now only showing the current month.
+const _dayOffsets = [
+  0, 0, 0, 1, 1, 2, 3, 4, 5, //
+  8, 8, 9, 10, //
+  14, 14, 14, 14, 14, //
+  20, 25, 29,
+];
+
 /// Debug helper: grows a fixed set of projects — with plausible, hand-written
 /// wins, not random word salad — spread across most areas, so the
 /// Sky/constellation UI can be explored without hand-entering data.
@@ -32,6 +51,10 @@ Future<void> seedSampleData({
     for (final project in projectRepository.getAll()) project.name: project,
   };
 
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  var globalIndex = 0;
+
   for (final spec in _specs) {
     var project = existingByName[spec.name];
     project ??= await projectRepository.add(name: spec.name, area: spec.area, iconSlug: spec.iconSlug);
@@ -41,11 +64,18 @@ Future<void> seedSampleData({
     for (var i = 0; i < winsPerSeedTap; i++) {
       final position = startingCount + i;
       final phrase = spec.wins[position % spec.wins.length];
+      final dayOffset = _dayOffsets[globalIndex % _dayOffsets.length];
+      final hour = 8 + (globalIndex * 3) % 14;
+      final minute = (globalIndex * 17) % 60;
+      final date = today.subtract(Duration(days: dayOffset)).add(Duration(hours: hour, minutes: minute));
+      globalIndex++;
+
       await winRepository.add(
         title: phrase.title,
         description: phrase.description,
         projectId: project.id,
         intensity: 1 + position % 5,
+        date: date,
       );
       // Win ids are millisecondsSinceEpoch; a tight loop without this could
       // mint duplicate ids, which every id-based lookup in the app assumes

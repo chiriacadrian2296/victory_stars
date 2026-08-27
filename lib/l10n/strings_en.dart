@@ -197,4 +197,15 @@ class StringsEn implements AppStrings {
         'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
       ];
+
+  @override
+  List<String> get weekdayAbbreviations => const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  @override
+  String monthTitle(DateTime month) => '${_fullMonths[month.month - 1]} ${month.year}';
 }
+
+const _fullMonths = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];

@@ -29,17 +29,23 @@ class WinRepository {
     return WinRepository(prefs);
   }
 
-  /// All wins currently stored, newest first. Never throws on missing or
-  /// corrupted data — returns an empty list instead, since a blank archive
-  /// is a safe fallback for a personal-growth log.
+  /// All wins currently stored, newest first by [Win.date] (ties broken by
+  /// [Win.id]) — sorted explicitly rather than relying on storage order,
+  /// since backdated wins (e.g. seed data) can be added out of date order.
+  /// Never throws on missing or corrupted data — returns an empty list
+  /// instead, since a blank archive is a safe fallback for a personal-
+  /// growth log.
   List<Win> getAll() {
     final raw = _prefs.getString(_storageKey);
     if (raw == null) return const [];
     try {
       final decoded = jsonDecode(raw) as List<dynamic>;
-      return decoded
-          .map((entry) => Win.fromJson(entry as Map<String, dynamic>))
-          .toList();
+      final wins = decoded.map((entry) => Win.fromJson(entry as Map<String, dynamic>)).toList();
+      wins.sort((a, b) {
+        final byDate = b.date.compareTo(a.date);
+        return byDate != 0 ? byDate : b.id.compareTo(a.id);
+      });
+      return wins;
     } catch (_) {
       return const [];
     }
@@ -59,12 +65,17 @@ class WinRepository {
   }
 
   /// Records a new win and persists the updated list. [number] is assigned
-  /// automatically as one more than the highest existing number.
+  /// automatically as one more than the highest existing number. [date]
+  /// defaults to now; callers that backdate wins (e.g. seed data) can pass
+  /// an explicit date — [id] still comes from the real creation time, so
+  /// uniqueness never depends on the (possibly backdated, possibly
+  /// colliding) [date].
   Future<Win> add({
     required String title,
     String? description,
     required int projectId,
     required int intensity,
+    DateTime? date,
   }) async {
     final wins = getAll();
     final nextNumber = wins.fold<int>(0, (max, w) => w.number > max ? w.number : max) + 1;
@@ -76,7 +87,7 @@ class WinRepository {
       projectId: projectId,
       title: title.trim(),
       description: (trimmedDescription == null || trimmedDescription.isEmpty) ? null : trimmedDescription,
-      date: DateTime.now(),
+      date: date ?? DateTime.now(),
       intensity: intensity,
     );
 

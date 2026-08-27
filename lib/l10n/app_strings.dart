@@ -120,4 +120,11 @@ abstract class AppStrings {
 
   /// 12 short month abbreviations, January first, for [formatDisplayDate].
   List<String> get monthAbbreviations;
+
+  /// 7 short weekday abbreviations, Monday first, for the dashboard's
+  /// calendar header.
+  List<String> get weekdayAbbreviations;
+
+  /// The dashboard calendar's month heading, e.g. "August 2026".
+  String monthTitle(DateTime month);
 }

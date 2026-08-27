@@ -199,4 +199,15 @@ class StringsRo implements AppStrings {
         'Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun',
         'Iul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
       ];
+
+  @override
+  List<String> get weekdayAbbreviations => const ['Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm', 'Dum'];
+
+  @override
+  String monthTitle(DateTime month) => '${_fullMonths[month.month - 1]} ${month.year}';
 }
+
+const _fullMonths = [
+  'Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie',
+  'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie',
+];

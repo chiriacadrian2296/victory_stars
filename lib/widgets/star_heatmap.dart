@@ -1,67 +1,108 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/strings_scope.dart';
 import '../theme/app_colors.dart';
 
-/// A GitHub-contribution-graph-style calendar, using the app's own "lit
-/// star" language instead of colored squares: one star per day, brighter
-/// the more wins were logged that day. Weeks run in columns (Monday first),
-/// oldest on the left, today on the right — scrolls horizontally, starting
-/// scrolled to the most recent week.
+/// A calendar for the current month — one star per day, brighter the more
+/// wins were logged that day (the app's own take on a GitHub-style
+/// contribution graph). Weekday headers on top, up to 6 week rows below;
+/// days outside the current month are blank.
 class StarHeatmap extends StatelessWidget {
-  const StarHeatmap({super.key, required this.countsByDay, this.weeks = 26, this.onDayTap});
+  const StarHeatmap({super.key, required this.countsByDay, this.onDayTap});
 
   final Map<DateTime, int> countsByDay;
-  final int weeks;
   final void Function(DateTime day)? onDayTap;
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final strings = context.strings;
     final today = DateTime.now();
     final todayDate = DateTime(today.year, today.month, today.day);
-    final daysSinceMonday = todayDate.weekday - DateTime.monday;
-    final currentWeekStart = todayDate.subtract(Duration(days: daysSinceMonday));
-    final gridStart = currentWeekStart.subtract(Duration(days: 7 * (weeks - 1)));
+    final firstOfMonth = DateTime(todayDate.year, todayDate.month, 1);
+    final daysInMonth = DateTime(todayDate.year, todayDate.month + 1, 0).day;
+    final leadingBlanks = firstOfMonth.weekday - DateTime.monday;
+    final totalCells = leadingBlanks + daysInMonth;
+    final rows = (totalCells / 7).ceil();
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      reverse: true,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (var w = 0; w < weeks; w++)
-            Padding(
-              padding: const EdgeInsets.only(right: 5),
-              child: Column(
-                children: [
-                  for (var d = 0; d < 7; d++)
-                    _DayCell(
-                      day: gridStart.add(Duration(days: 7 * w + d)),
-                      today: todayDate,
-                      countsByDay: countsByDay,
-                      onTap: onDayTap,
-                    ),
-                ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          strings.monthTitle(todayDate),
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.text),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            for (final label in strings.weekdayAbbreviations)
+              Expanded(
+                child: Center(
+                  child: Text(label, style: TextStyle(fontSize: 11, color: colors.muted)),
+                ),
               ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        for (var row = 0; row < rows; row++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              children: [
+                for (var col = 0; col < 7; col++)
+                  Expanded(
+                    child: Center(
+                      child: _DayCell(
+                        dayNumber: row * 7 + col - leadingBlanks + 1,
+                        daysInMonth: daysInMonth,
+                        month: todayDate,
+                        today: todayDate,
+                        countsByDay: countsByDay,
+                        onTap: onDayTap,
+                      ),
+                    ),
+                  ),
+              ],
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 }
 
 class _DayCell extends StatelessWidget {
-  const _DayCell({required this.day, required this.today, required this.countsByDay, this.onTap});
+  const _DayCell({
+    required this.dayNumber,
+    required this.daysInMonth,
+    required this.month,
+    required this.today,
+    required this.countsByDay,
+    this.onTap,
+  });
 
-  final DateTime day;
+  final int dayNumber;
+  final int daysInMonth;
+  final DateTime month;
   final DateTime today;
   final Map<DateTime, int> countsByDay;
   final void Function(DateTime day)? onTap;
 
   @override
   Widget build(BuildContext context) {
-    const cellSize = 16.0;
+    const cellSize = 22.0;
+    if (dayNumber < 1 || dayNumber > daysInMonth) {
+      return const SizedBox(width: cellSize, height: cellSize);
+    }
+
+    final day = DateTime(month.year, month.month, dayNumber);
     if (day.isAfter(today)) {
-      return const SizedBox(width: cellSize, height: cellSize + 5);
+      return SizedBox(
+        width: cellSize,
+        height: cellSize,
+        child: Center(
+          child: Text('$dayNumber', style: TextStyle(fontSize: 10, color: context.colors.muted.withValues(alpha: 0.4))),
+        ),
+      );
     }
 
     final count = countsByDay[day] ?? 0;
@@ -74,10 +115,11 @@ class _DayCell extends StatelessWidget {
       _ => 1.0,
     };
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 5),
-      child: GestureDetector(
-        onTap: onTap == null ? null : () => onTap!(day),
+    return GestureDetector(
+      onTap: onTap == null ? null : () => onTap!(day),
+      child: SizedBox(
+        width: cellSize,
+        height: cellSize,
         child: Icon(
           count == 0 ? Icons.star_border : Icons.star,
           size: cellSize,

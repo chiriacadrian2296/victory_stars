@@ -11,7 +11,8 @@ class Win {
     required this.title,
     this.description,
     required this.date,
-  });
+    required this.intensity,
+  }) : assert(intensity >= 1 && intensity <= 5, 'intensity must be 1-5, was $intensity');
 
   final int id;
   final int number;
@@ -20,6 +21,10 @@ class Win {
   final String? description;
   final DateTime date;
 
+  /// How much effort/suffering this win took, 1 (light) to 5 (a lot) — named
+  /// to fit the app's star metaphor, like a star's own intensity.
+  final int intensity;
+
   Win copyWith({
     int? id,
     int? number,
@@ -27,6 +32,7 @@ class Win {
     String? title,
     String? description,
     DateTime? date,
+    int? intensity,
   }) {
     return Win(
       id: id ?? this.id,
@@ -35,6 +41,7 @@ class Win {
       title: title ?? this.title,
       description: description ?? this.description,
       date: date ?? this.date,
+      intensity: intensity ?? this.intensity,
     );
   }
 
@@ -46,6 +53,7 @@ class Win {
       title: json['title'] as String,
       description: json['description'] as String?,
       date: DateTime.parse(json['date'] as String),
+      intensity: json['intensity'] as int,
     );
   }
 
@@ -57,6 +65,7 @@ class Win {
       'title': title,
       'description': description,
       'date': date.toIso8601String(),
+      'intensity': intensity,
     };
   }
 
@@ -68,9 +77,10 @@ class Win {
         other.projectId == projectId &&
         other.title == title &&
         other.description == description &&
-        other.date == date;
+        other.date == date &&
+        other.intensity == intensity;
   }
 
   @override
-  int get hashCode => Object.hash(id, number, projectId, title, description, date);
+  int get hashCode => Object.hash(id, number, projectId, title, description, date, intensity);
 }

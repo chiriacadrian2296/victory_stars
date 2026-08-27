@@ -54,6 +54,12 @@ class ProjectRepository {
     return project;
   }
 
+  /// Permanently deletes every project. Used by the "reset all data" action
+  /// — there's no undo.
+  Future<void> clear() async {
+    await _prefs.remove(_storageKey);
+  }
+
   Future<void> _saveAll(List<Project> projects) async {
     final encoded = jsonEncode(projects.map((p) => p.toJson()).toList());
     await _prefs.setString(_storageKey, encoded);

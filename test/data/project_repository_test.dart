@@ -46,4 +46,15 @@ void main() {
     expect(reloaded.getAll().first.name, 'Build this app');
     expect(reloaded.getAll().first.area, LifeArea.professional);
   });
+
+  test('clear() deletes every project, including from a repository reloaded afterward', () async {
+    final repo = await ProjectRepository.create();
+    await repo.add(name: 'Build this app', area: LifeArea.professional, iconSlug: 'rocket_launch');
+
+    await repo.clear();
+
+    expect(repo.getAll(), isEmpty);
+    final reloaded = await ProjectRepository.create();
+    expect(reloaded.getAll(), isEmpty);
+  });
 }

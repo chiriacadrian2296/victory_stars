@@ -14,10 +14,9 @@ import '../models/win.dart';
 class WinRepository {
   WinRepository(this._prefs);
 
-  // v2: wins now carry projectId instead of a direct area. No real user
-  // data exists yet, so this is a clean key bump rather than an in-place
-  // migration.
-  static const _storageKey = 'wins-list-v2';
+  // v3: wins now also carry an intensity (1-5). No real user data exists
+  // yet, so this is a clean key bump rather than an in-place migration.
+  static const _storageKey = 'wins-list-v3';
 
   final SharedPreferences _prefs;
 
@@ -61,7 +60,12 @@ class WinRepository {
 
   /// Records a new win and persists the updated list. [number] is assigned
   /// automatically as one more than the highest existing number.
-  Future<Win> add({required String title, String? description, required int projectId}) async {
+  Future<Win> add({
+    required String title,
+    String? description,
+    required int projectId,
+    required int intensity,
+  }) async {
     final wins = getAll();
     final nextNumber = wins.fold<int>(0, (max, w) => w.number > max ? w.number : max) + 1;
     final trimmedDescription = description?.trim();
@@ -73,18 +77,33 @@ class WinRepository {
       title: title.trim(),
       description: (trimmedDescription == null || trimmedDescription.isEmpty) ? null : trimmedDescription,
       date: DateTime.now(),
+      intensity: intensity,
     );
 
     await _saveAll([win, ...wins]);
     return win;
   }
 
-  /// Updates the title/description of the win identified by [id], keeping
-  /// its number, project, and date unchanged. Throws a [StateError] if no
-  /// win with that id exists — callers always resolve it from a
+  /// Updates the title/description/project/intensity of the win identified
+  /// by [id], keeping its number and date unchanged. Throws a [StateError]
+  /// if no win with that id exists — callers always resolve it from a
   /// currently-displayed [Win], so a missing id would mean the list changed
   /// under them.
-  Future<Win> update({required int id, required String title, String? description}) async {
+  ///
+  /// Reassigning [projectId] moves the win's star to the new project's
+  /// constellation immediately (star slots are derived from
+  /// [getAllForProject], never stored) — but since every other win in the
+  /// *old* project shifts up one slot to fill the gap, their star positions
+  /// can visibly move too. Same underlying assumption as
+  /// [getAllForProject]: fine today because there's no delete to compound
+  /// it with, but worth knowing if this ever needs to feel more stable.
+  Future<Win> update({
+    required int id,
+    required String title,
+    String? description,
+    required int projectId,
+    required int intensity,
+  }) async {
     final wins = getAll();
     final index = wins.indexWhere((w) => w.id == id);
     if (index == -1) {
@@ -95,15 +114,22 @@ class WinRepository {
     final updated = Win(
       id: wins[index].id,
       number: wins[index].number,
-      projectId: wins[index].projectId,
+      projectId: projectId,
       title: title.trim(),
       description: (trimmedDescription == null || trimmedDescription.isEmpty) ? null : trimmedDescription,
       date: wins[index].date,
+      intensity: intensity,
     );
 
     final nextWins = [...wins]..[index] = updated;
     await _saveAll(nextWins);
     return updated;
+  }
+
+  /// Permanently deletes every win. Used by the "reset all data" action —
+  /// there's no undo.
+  Future<void> clear() async {
+    await _prefs.remove(_storageKey);
   }
 
   Future<void> _saveAll(List<Win> wins) async {

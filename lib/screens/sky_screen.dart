@@ -4,6 +4,7 @@ import '../data/project_repository.dart';
 import '../data/win_repository.dart';
 import '../models/life_area.dart';
 import '../theme/app_colors.dart';
+import '../widgets/area_tag.dart';
 import 'area_projects_screen.dart';
 
 /// The Sky hub: the 8 fixed life areas, each showing how many stars are lit
@@ -108,13 +109,8 @@ class _AreaCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(area.icon, color: AppColors.gold, size: 22),
-              const SizedBox(width: 14),
               Expanded(
-                child: Text(
-                  area.displayName,
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: AppColors.text),
-                ),
+                child: AreaTag(area: area, iconSize: 20, fontSize: 16),
               ),
               Text(
                 '$starCount star${starCount == 1 ? '' : 's'}',

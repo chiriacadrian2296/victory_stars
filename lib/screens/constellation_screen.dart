@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../data/constellation_shapes.dart';
+import '../data/project_repository.dart';
 import '../data/win_repository.dart';
 import '../models/project.dart';
 import '../models/win.dart';
@@ -15,13 +16,21 @@ import 'win_reader_screen.dart';
 /// A single project's constellation: a pannable/zoomable star field shaped
 /// like [Project.iconSlug]'s precomputed silhouette, one star per win,
 /// oldest first. Tapping a lit star opens [WinReaderScreen] (with editing
-/// enabled); the header's add icon adds a win pre-scoped to this project
-/// (the FAB is reserved for Home's own "add a win" action).
+/// enabled — including reassigning the win to a different project, which
+/// requires [projectRepository] here too); the header's add icon adds a
+/// win pre-scoped to this project (the FAB is reserved for Home's own
+/// "add a win" action).
 class ConstellationScreen extends StatefulWidget {
-  const ConstellationScreen({super.key, required this.project, required this.winRepository});
+  const ConstellationScreen({
+    super.key,
+    required this.project,
+    required this.winRepository,
+    required this.projectRepository,
+  });
 
   final Project project;
   final WinRepository winRepository;
+  final ProjectRepository projectRepository;
 
   @override
   State<ConstellationScreen> createState() => _ConstellationScreenState();
@@ -129,7 +138,8 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
     await widget.winRepository.add(
       title: result.title,
       description: result.description,
-      projectId: widget.project.id,
+      projectId: result.projectId,
+      intensity: result.intensity,
     );
     _refresh();
   }
@@ -144,6 +154,9 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
           initialWins: _wins,
           startIndex: index,
           allowEdit: true,
+          projectsById: {widget.project.id: widget.project},
+          projectRepository: widget.projectRepository,
+          refreshWins: () => widget.winRepository.getAllForProject(widget.project.id),
         ),
       ),
     );

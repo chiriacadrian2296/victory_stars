@@ -36,9 +36,11 @@ extension LifeAreaX on LifeArea {
   }
 
   /// A generic icon representing the area itself — distinct from a
-  /// project's own [iconSlug]-based constellation icon. Used wherever an
-  /// area is shown as a single UI element (the Sky hub cards, the area
-  /// picker when creating a project) rather than browsed into.
+  /// project's own [Project.iconSlug]-based constellation icon, and
+  /// deliberately never offered as a project icon choice (see [iconSlug])
+  /// so the two never get visually confused. Used wherever an area is
+  /// shown as a single UI element (the Sky hub cards, the area picker when
+  /// creating a project) rather than browsed into.
   IconData get icon {
     switch (this) {
       case LifeArea.physical:
@@ -57,6 +59,32 @@ extension LifeAreaX on LifeArea {
         return Icons.all_inclusive;
       case LifeArea.philanthropic:
         return Icons.volunteer_activism;
+    }
+  }
+
+  /// The slug equivalent of [icon]. Most of these also happen to be keys in
+  /// `constellation_shapes.dart` (same icon, same name) — this getter is
+  /// what lets the project icon picker filter them out, reserving them for
+  /// areas only. `self_improvement` isn't in that shape library at all, so
+  /// it was never selectable as a project icon regardless.
+  String get iconSlug {
+    switch (this) {
+      case LifeArea.physical:
+        return 'fitness_center';
+      case LifeArea.psychological:
+        return 'psychology';
+      case LifeArea.professional:
+        return 'work';
+      case LifeArea.financial:
+        return 'savings';
+      case LifeArea.personal:
+        return 'self_improvement';
+      case LifeArea.social:
+        return 'groups';
+      case LifeArea.spiritual:
+        return 'all_inclusive';
+      case LifeArea.philanthropic:
+        return 'volunteer_activism';
     }
   }
 

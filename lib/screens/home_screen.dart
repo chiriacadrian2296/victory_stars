@@ -1,9 +1,9 @@
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 
 import '../data/project_repository.dart';
 import '../data/win_repository.dart';
 import '../debug/seed_data.dart';
+import '../models/project.dart';
 import '../models/win.dart';
 import '../theme/app_colors.dart';
 import '../widgets/win_card.dart';
@@ -53,20 +53,28 @@ class _HomeScreenState extends State<HomeScreen> {
     await winRepository.add(
       title: result.title,
       description: result.description,
-      projectId: result.projectId!,
+      projectId: result.projectId,
+      intensity: result.intensity,
     );
     setState(() => _wins = winRepository.getAll());
   }
 
-  void _openCrisisIntro() {
+  Future<void> _openCrisisIntro() async {
     final winRepository = _winRepository;
-    if (winRepository == null) return;
+    final projectRepository = _projectRepository;
+    if (winRepository == null || projectRepository == null) return;
 
-    Navigator.of(context).push(
+    await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => CrisisIntroScreen(wins: _wins, repository: winRepository),
+        builder: (_) => CrisisIntroScreen(
+          wins: _wins,
+          repository: winRepository,
+          projectsById: _projectsById(projectRepository),
+          projectRepository: projectRepository,
+        ),
       ),
     );
+    setState(() => _wins = winRepository.getAll());
   }
 
   void _openSky() {
@@ -81,9 +89,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Map<int, Project> _projectsById(ProjectRepository projectRepository) {
+    return {for (final project in projectRepository.getAll()) project.id: project};
+  }
+
   Future<void> _openWinReader(int index) async {
     final winRepository = _winRepository;
-    if (winRepository == null) return;
+    final projectRepository = _projectRepository;
+    if (winRepository == null || projectRepository == null) return;
 
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -92,6 +105,9 @@ class _HomeScreenState extends State<HomeScreen> {
           initialWins: _wins,
           startIndex: index,
           allowEdit: true,
+          projectsById: _projectsById(projectRepository),
+          projectRepository: projectRepository,
+          refreshWins: winRepository.getAll,
         ),
       ),
     );
@@ -112,16 +128,51 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _resetAllData() async {
+    final winRepository = _winRepository;
+    final projectRepository = _projectRepository;
+    if (winRepository == null || projectRepository == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.nightPanel,
+        title: const Text('Reset all data?', style: TextStyle(color: AppColors.text)),
+        content: const Text(
+          'This permanently deletes every win and project. This cannot be undone.',
+          style: TextStyle(color: AppColors.muted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.muted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete everything', style: TextStyle(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    await winRepository.clear();
+    await projectRepository.clear();
+    setState(() => _wins = winRepository.getAll());
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('All data cleared.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final winRepository = _winRepository;
     final projectRepository = _projectRepository;
     final ready = winRepository != null && projectRepository != null;
 
-    final projectNamesById = <int, String>{
-      if (projectRepository != null)
-        for (final project in projectRepository.getAll()) project.id: project.name,
-    };
+    final projectsById = projectRepository == null ? const <int, Project>{} : _projectsById(projectRepository);
 
     return Scaffold(
       body: !ready
@@ -152,12 +203,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-                  if (kDebugMode)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton.icon(
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                    child: Wrap(
+                      spacing: 4,
+                      children: [
+                        TextButton.icon(
                           onPressed: _seedSampleData,
                           icon: const Icon(Icons.science_outlined, size: 16, color: AppColors.muted),
                           label: const Text(
@@ -165,8 +216,17 @@ class _HomeScreenState extends State<HomeScreen> {
                             style: TextStyle(color: AppColors.muted, fontSize: 12),
                           ),
                         ),
-                      ),
+                        TextButton.icon(
+                          onPressed: _resetAllData,
+                          icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
+                          label: const Text(
+                            'Reset all data',
+                            style: TextStyle(color: AppColors.danger, fontSize: 12),
+                          ),
+                        ),
+                      ],
                     ),
+                  ),
                   if (_wins.isEmpty)
                     const _EmptyState()
                   else
@@ -179,7 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           final win = _wins[index];
                           return WinCard(
                             win: win,
-                            projectLabel: projectNamesById[win.projectId],
+                            project: projectsById[win.projectId],
                             onTap: () => _openWinReader(index),
                           );
                         },

@@ -1,19 +1,31 @@
 import 'package:flutter/material.dart';
 
+import '../data/project_repository.dart';
 import '../data/win_repository.dart';
+import '../models/project.dart';
 import '../models/win.dart';
 import '../theme/app_colors.dart';
 import 'win_reader_screen.dart';
 
 /// Entry point for reflecting on saved wins one at a time. Shows how many
-/// stars are already lit and, if there's at least one, a way into the
-/// read-only [WinReaderScreen]. If there are none yet, just asks the user
-/// to come back later — there's nothing to reflect on yet.
+/// stars are already lit and, if there's at least one, a way into
+/// [WinReaderScreen] — editable, same as tapping into a star from Sky, so a
+/// win can be corrected or re-scoped mid-reflection too. If there are none
+/// yet, just asks the user to come back later — there's nothing to reflect
+/// on yet.
 class CrisisIntroScreen extends StatelessWidget {
-  const CrisisIntroScreen({super.key, required this.wins, required this.repository});
+  const CrisisIntroScreen({
+    super.key,
+    required this.wins,
+    required this.repository,
+    required this.projectsById,
+    required this.projectRepository,
+  });
 
   final List<Win> wins;
   final WinRepository repository;
+  final Map<int, Project> projectsById;
+  final ProjectRepository projectRepository;
 
   void _openReader(BuildContext context) {
     Navigator.of(context).push(
@@ -22,6 +34,10 @@ class CrisisIntroScreen extends StatelessWidget {
           repository: repository,
           initialWins: wins,
           startIndex: 0,
+          projectsById: projectsById,
+          allowEdit: true,
+          projectRepository: projectRepository,
+          refreshWins: repository.getAll,
         ),
       ),
     );

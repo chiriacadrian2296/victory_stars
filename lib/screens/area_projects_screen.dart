@@ -5,7 +5,7 @@ import '../data/win_repository.dart';
 import '../models/life_area.dart';
 import '../models/project.dart';
 import '../theme/app_colors.dart';
-import '../utils/icon_for_slug.dart';
+import '../widgets/project_tag.dart';
 import 'constellation_screen.dart';
 import 'new_project_screen.dart';
 
@@ -48,7 +48,11 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
   Future<void> _openProject(Project project) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ConstellationScreen(project: project, winRepository: widget.winRepository),
+        builder: (_) => ConstellationScreen(
+          project: project,
+          winRepository: widget.winRepository,
+          projectRepository: widget.projectRepository,
+        ),
       ),
     );
     _refresh();
@@ -139,14 +143,8 @@ class _ProjectCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(iconForSlug(project.iconSlug), color: AppColors.gold, size: 22),
-              const SizedBox(width: 14),
               Expanded(
-                child: Text(
-                  project.name,
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: AppColors.text),
-                  overflow: TextOverflow.ellipsis,
-                ),
+                child: ProjectTag(project: project, iconSize: 22, fontSize: 16, textColor: AppColors.text),
               ),
               Text(
                 '$starCount star${starCount == 1 ? '' : 's'}',

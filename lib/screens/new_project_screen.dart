@@ -36,10 +36,16 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
     super.dispose();
   }
 
+  /// Area icons (see [LifeAreaX.iconSlug]) are reserved for areas — a
+  /// project can never pick one, so an area and a project never render with
+  /// the same icon and get visually confused.
+  static final _areaOnlySlugs = LifeArea.values.map((a) => a.iconSlug).toSet();
+
   List<String> _orderedIconSlugs(LifeArea? area) {
-    final all = constellationShapes.keys.toList()..sort();
+    final all = constellationShapes.keys.where((slug) => !_areaOnlySlugs.contains(slug)).toList()..sort();
     if (area == null) return all;
-    final suggested = suggestedIconsByArea[area.suggestedIconsKey] ?? const <String>[];
+    final suggested = (suggestedIconsByArea[area.suggestedIconsKey] ?? const <String>[])
+        .where((slug) => !_areaOnlySlugs.contains(slug));
     final rest = all.where((slug) => !suggested.contains(slug)).toList();
     return [...suggested, ...rest];
   }
@@ -49,6 +55,7 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
     final area = _selectedArea;
     final iconSlug = _selectedIconSlug;
     if (name.isEmpty || area == null || iconSlug == null) return;
+    assert(!_areaOnlySlugs.contains(iconSlug), 'Area icons are reserved and should never reach a project.');
 
     final project = await widget.projectRepository.add(name: name, area: area, iconSlug: iconSlug);
     if (mounted) Navigator.of(context).pop(project);

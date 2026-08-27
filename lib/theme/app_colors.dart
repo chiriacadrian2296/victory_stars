@@ -15,6 +15,10 @@ class AppColors {
   /// Text/icon color used on top of solid gold surfaces (buttons, FAB).
   static const onGold = Color(0xFF241A04);
 
+  /// Muted red for destructive actions (e.g. the reset-all-data button),
+  /// desaturated to match the rest of the palette rather than a stock red.
+  static const danger = Color(0xFFE0574F);
+
   /// A deeper, more intimate variant of [night], used for the reflection
   /// screens (crisis intro + star reader). Kept close in hue to [night]
   /// rather than the prototype's purple, so it reads as "the same sky, at

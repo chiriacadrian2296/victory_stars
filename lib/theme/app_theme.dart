@@ -44,6 +44,34 @@ ThemeData buildAppTheme(Brightness brightness) {
         borderSide: BorderSide(color: palette.gold),
       ),
     ),
+    // Material 3's default (teal, from an unset colorScheme.secondary) shows
+    // through on the time picker's AM/PM and hour/minute toggles otherwise —
+    // themed explicitly here so any time/date picker anywhere in the app
+    // stays on-brand, not just the one screen that first surfaced it.
+    timePickerTheme: TimePickerThemeData(
+      backgroundColor: palette.nightPanel,
+      hourMinuteColor: WidgetStateColor.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? palette.gold.withValues(alpha: 0.2)
+            : palette.night,
+      ),
+      hourMinuteTextColor: WidgetStateColor.resolveWith(
+        (states) => states.contains(WidgetState.selected) ? palette.gold : palette.text,
+      ),
+      dayPeriodColor: WidgetStateColor.resolveWith(
+        (states) => states.contains(WidgetState.selected) ? palette.gold : palette.nightPanel,
+      ),
+      dayPeriodTextColor: WidgetStateColor.resolveWith(
+        (states) => states.contains(WidgetState.selected) ? palette.onGold : palette.muted,
+      ),
+      dayPeriodBorderSide: BorderSide(color: palette.nightBorder),
+      dialHandColor: palette.gold,
+      dialBackgroundColor: palette.night,
+      dialTextColor: WidgetStateColor.resolveWith(
+        (states) => states.contains(WidgetState.selected) ? palette.onGold : palette.text,
+      ),
+      entryModeIconColor: palette.muted,
+    ),
     extensions: [palette],
   );
 }

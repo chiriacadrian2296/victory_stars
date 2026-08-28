@@ -124,7 +124,6 @@ abstract class AppStrings {
   String get reminderTimeLabel;
   String get notificationPermissionDenied;
   String get testNotificationButton;
-  String get testNotificationSent;
   String get reminderNotificationTitle;
 
   /// A handful of varied notification body phrases, cycled through day by

@@ -58,7 +58,7 @@ class StringsIt implements AppStrings {
   @override
   String get constellationsModeLabel => 'Costellazioni';
   @override
-  String get listModeLabel => 'Lista';
+  String get listModeLabel => 'Stelle';
 
   @override
   String get dataSection => 'Dati';
@@ -213,8 +213,6 @@ class StringsIt implements AppStrings {
       'Le notifiche sono disattivate per questa app nelle impostazioni del telefono.';
   @override
   String get testNotificationButton => 'Invia notifica di prova';
-  @override
-  String get testNotificationSent => 'Notifica di prova inviata.';
   @override
   String get reminderNotificationTitle => 'Registra una vittoria';
 

@@ -7,7 +7,8 @@ import '../models/life_area.dart';
 import '../models/project.dart';
 import '../models/win.dart';
 import '../theme/app_colors.dart';
-import '../widgets/project_tag.dart';
+import '../utils/date_format.dart';
+import '../utils/icon_for_slug.dart';
 import '../widgets/win_card.dart';
 import 'constellation_screen.dart';
 import 'new_project_screen.dart';
@@ -19,11 +20,12 @@ enum _ViewMode { constellations, list }
 /// area. Offers two views of the same underlying data, switched via a
 /// segmented control rather than living as two separate tabs (they were
 /// close enough in purpose that keeping both as top-level destinations was
-/// redundant):
+/// redundant), sharing one search field that filters whichever is active:
 /// - Constellations: the area's projects, each showing its own lit-star
-///   count; tapping one opens its [ConstellationScreen].
-/// - List: every win in the area (across all its projects), flat and
-///   searchable by title/description.
+///   count and most recent star; tapping one opens its [ConstellationScreen].
+///   Search matches the project name.
+/// - Stars: every win in the area (across all its projects), flat, newest
+///   first. Search matches title or description.
 class AreaProjectsScreen extends StatefulWidget {
   const AreaProjectsScreen({
     super.key,
@@ -47,6 +49,15 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
   List<Project> get _projects => widget.projectRepository.getProjectsForArea(widget.area);
 
   Map<int, Project> get _projectsById => {for (final project in _projects) project.id: project};
+
+  List<Win> _winsForProject(int projectId) => widget.winRepository.getAllForProject(projectId);
+
+  List<Project> get _filteredProjects {
+    final query = _query.trim().toLowerCase();
+    final projects = _projects;
+    if (query.isEmpty) return projects;
+    return projects.where((p) => p.name.toLowerCase().contains(query)).toList();
+  }
 
   List<Win> get _areaWins {
     final projectIds = _projectsById.keys.toSet();
@@ -145,7 +156,7 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
                   ),
                   ButtonSegment(
                     value: _ViewMode.list,
-                    icon: const Icon(Icons.list, size: 16),
+                    icon: const Icon(Icons.star, size: 16),
                     label: Text(strings.listModeLabel),
                   ),
                 ],
@@ -153,24 +164,24 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
                 onSelectionChanged: (selection) => setState(() => _mode = selection.first),
               ),
             ),
-            if (_mode == _ViewMode.list)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                child: TextField(
-                  onChanged: (value) => setState(() => _query = value),
-                  style: TextStyle(color: colors.text, fontSize: 15),
-                  decoration: InputDecoration(
-                    hintText: strings.searchHint,
-                    prefixIcon: Icon(Icons.search, color: colors.muted, size: 20),
-                  ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: TextField(
+                onChanged: (value) => setState(() => _query = value),
+                style: TextStyle(color: colors.text, fontSize: 15),
+                decoration: InputDecoration(
+                  hintText: strings.searchHint,
+                  prefixIcon: Icon(Icons.search, color: colors.muted, size: 20),
                 ),
               ),
+            ),
             Expanded(
               child: _mode == _ViewMode.constellations
                   ? _ConstellationsList(
-                      projects: _projects,
+                      allProjects: _projects,
+                      filteredProjects: _filteredProjects,
                       areaName: areaName,
-                      winRepository: widget.winRepository,
+                      winsForProject: _winsForProject,
                       onTap: _openProject,
                     )
                   : _WinsList(
@@ -189,15 +200,17 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
 
 class _ConstellationsList extends StatelessWidget {
   const _ConstellationsList({
-    required this.projects,
+    required this.allProjects,
+    required this.filteredProjects,
     required this.areaName,
-    required this.winRepository,
+    required this.winsForProject,
     required this.onTap,
   });
 
-  final List<Project> projects;
+  final List<Project> allProjects;
+  final List<Project> filteredProjects;
   final String areaName;
-  final WinRepository winRepository;
+  final List<Win> Function(int projectId) winsForProject;
   final void Function(Project) onTap;
 
   @override
@@ -205,7 +218,7 @@ class _ConstellationsList extends StatelessWidget {
     final colors = context.colors;
     final strings = context.strings;
 
-    if (projects.isEmpty) {
+    if (allProjects.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
         child: Center(
@@ -217,15 +230,32 @@ class _ConstellationsList extends StatelessWidget {
         ),
       );
     }
+    if (filteredProjects.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Center(
+          child: Text(
+            strings.noSearchResults,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: colors.muted),
+          ),
+        ),
+      );
+    }
 
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 100),
-      itemCount: projects.length,
+      itemCount: filteredProjects.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
-        final project = projects[index];
-        final starCount = winRepository.getAllForProject(project.id).length;
-        return _ProjectCard(project: project, starCount: starCount, onTap: () => onTap(project));
+        final project = filteredProjects[index];
+        final wins = winsForProject(project.id);
+        return _ProjectCard(
+          project: project,
+          starCount: wins.length,
+          lastWinDate: wins.isEmpty ? null : wins.last.date,
+          onTap: () => onTap(project),
+        );
       },
     );
   }
@@ -290,39 +320,91 @@ class _WinsList extends StatelessWidget {
   }
 }
 
+/// A project ("constellation") card — sized and structured to match
+/// [WinCard] (big icon + name up top, a secondary detail row below)
+/// instead of the slim single-line row it used to be, so the two views
+/// this screen switches between feel like the same family of card.
 class _ProjectCard extends StatelessWidget {
-  const _ProjectCard({required this.project, required this.starCount, required this.onTap});
+  const _ProjectCard({
+    required this.project,
+    required this.starCount,
+    required this.lastWinDate,
+    required this.onTap,
+  });
 
   final Project project;
   final int starCount;
+  final DateTime? lastWinDate;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final strings = context.strings;
+    final borderRadius = BorderRadius.circular(12);
+
     return Material(
-      color: colors.nightPanel,
-      borderRadius: BorderRadius.circular(12),
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        borderRadius: borderRadius,
+        child: Ink(
           decoration: BoxDecoration(
+            color: colors.nightPanel,
             border: Border.all(color: colors.nightBorder),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: borderRadius,
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: ProjectTag(project: project, iconSize: 22, fontSize: 16, textColor: colors.text),
-              ),
-              Text(
-                context.strings.starsCount(starCount),
-                style: TextStyle(fontSize: 13, color: colors.muted),
-              ),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+            child: Row(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: colors.gold.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(iconForSlug(project.iconSlug), color: colors.gold, size: 26),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        project.name,
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: colors.text),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.star, size: 13, color: colors.gold),
+                          const SizedBox(width: 5),
+                          Text(
+                            strings.starsCount(starCount),
+                            style: TextStyle(fontSize: 13, color: colors.muted),
+                          ),
+                          if (lastWinDate != null) ...[
+                            Text(' · ', style: TextStyle(fontSize: 13, color: colors.muted)),
+                            Flexible(
+                              child: Text(
+                                formatDisplayDate(lastWinDate!, strings),
+                                style: TextStyle(fontSize: 13, color: colors.muted),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(Icons.chevron_right, color: colors.muted, size: 20),
+              ],
+            ),
           ),
         ),
       ),

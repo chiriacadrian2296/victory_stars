@@ -11,6 +11,7 @@ import '../utils/win_stats.dart';
 import '../widgets/star_heatmap.dart';
 import '../widgets/win_card.dart';
 import 'add_win_screen.dart';
+import 'admire_stars_screen.dart';
 import 'new_project_screen.dart';
 import 'win_reader_screen.dart';
 
@@ -57,6 +58,17 @@ class _HomeScreenState extends State<HomeScreen> {
       intensity: result.intensity,
     );
     setState(() {});
+  }
+
+  void _openAdmireStars() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AdmireStarsScreen(
+          winRepository: widget.winRepository,
+          projectRepository: widget.projectRepository,
+        ),
+      ),
+    );
   }
 
   Future<void> _openNewProjectScreen() async {
@@ -246,31 +258,49 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      floatingActionButton: GestureDetector(
-        // Hold for a choice between logging a star or starting a whole new
-        // constellation, instead of only ever landing on the single-star
-        // flow.
-        onLongPress: _showCreateMenu,
-        child: Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: colors.gold.withValues(alpha: 0.35),
-                blurRadius: 20,
-                offset: const Offset(0, 6),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Only on Home — not worth chasing down from every tab, and this
+          // is the natural landing screen anyway.
+          FloatingActionButton.small(
+            heroTag: 'admireStarsFab',
+            onPressed: _openAdmireStars,
+            backgroundColor: colors.nightPanel,
+            foregroundColor: colors.gold,
+            elevation: 2,
+            shape: CircleBorder(side: BorderSide(color: colors.goldDim)),
+            tooltip: strings.admireYourStars,
+            child: const Icon(Icons.auto_awesome),
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            // Hold for a choice between logging a star or starting a whole
+            // new constellation, instead of only ever landing on the
+            // single-star flow.
+            onLongPress: _showCreateMenu,
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: colors.gold.withValues(alpha: 0.35),
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
               ),
-            ],
+              child: FloatingActionButton(
+                heroTag: 'addWinFab',
+                onPressed: _openAddWinScreen,
+                backgroundColor: colors.gold,
+                elevation: 0,
+                shape: const CircleBorder(),
+                child: Icon(Icons.add, color: colors.onGold),
+              ),
+            ),
           ),
-          child: FloatingActionButton(
-            heroTag: 'addWinFab',
-            onPressed: _openAddWinScreen,
-            backgroundColor: colors.gold,
-            elevation: 0,
-            shape: const CircleBorder(),
-            child: Icon(Icons.add, color: colors.onGold),
-          ),
-        ),
+        ],
       ),
     );
   }

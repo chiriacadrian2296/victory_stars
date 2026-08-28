@@ -87,10 +87,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final bodies = strings.reminderNotificationBodies;
     final body = bodies[DateTime.now().millisecondsSinceEpoch % bodies.length];
 
+    // No in-app confirmation on top of the notification itself — the
+    // notification appearing already is the confirmation.
     await widget.reminderService.showNow(title: strings.reminderNotificationTitle, body: body);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(strings.testNotificationSent)));
-    }
   }
 
   Future<void> _seedSampleData() async {

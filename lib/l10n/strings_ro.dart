@@ -58,7 +58,7 @@ class StringsRo implements AppStrings {
   @override
   String get constellationsModeLabel => 'Constelații';
   @override
-  String get listModeLabel => 'Listă';
+  String get listModeLabel => 'Stele';
 
   @override
   String get dataSection => 'Date';
@@ -212,8 +212,6 @@ class StringsRo implements AppStrings {
   String get notificationPermissionDenied => 'Notificările sunt dezactivate pentru această aplicație în setările telefonului.';
   @override
   String get testNotificationButton => 'Trimite o notificare de test';
-  @override
-  String get testNotificationSent => 'Notificare de test trimisă.';
   @override
   String get reminderNotificationTitle => 'Notează o victorie';
 

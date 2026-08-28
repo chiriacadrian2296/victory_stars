@@ -28,8 +28,6 @@ class StringsRo implements AppStrings {
   @override
   String get navSky => 'Cer';
   @override
-  String get navStars => 'Stele';
-  @override
   String get navSettings => 'Setări';
 
   @override
@@ -52,17 +50,15 @@ class StringsRo implements AppStrings {
   String get dayDetailEmpty => 'Nicio stea aprinsă în această zi.';
 
   @override
-  String get starsEyebrow => 'STELELE TALE';
-  @override
-  String get starsTitle => 'Explorează-ți stelele';
-  @override
-  String get starsSubtitle => 'Alege o zonă, apoi caută în ea.';
-  @override
   String get searchHint => 'Caută după titlu sau descriere';
   @override
   String get noSearchResults => 'Nicio stea nu corespunde căutării.';
   @override
   String get areaWinsEmpty => 'Nicio stea aprinsă încă în această zonă.';
+  @override
+  String get constellationsModeLabel => 'Constelații';
+  @override
+  String get listModeLabel => 'Listă';
 
   @override
   String get dataSection => 'Date';

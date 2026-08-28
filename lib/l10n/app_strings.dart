@@ -21,7 +21,6 @@ abstract class AppStrings {
   // Bottom navigation
   String get navHome;
   String get navSky;
-  String get navStars;
   String get navSettings;
 
   // Home dashboard
@@ -35,10 +34,7 @@ abstract class AppStrings {
   String get activityLabel;
   String get dayDetailEmpty;
 
-  // Stars tab (browse by area + search)
-  String get starsEyebrow;
-  String get starsTitle;
-  String get starsSubtitle;
+  // Area detail (constellations / list view switch)
   String get searchHint;
   String get noSearchResults;
   String get areaWinsEmpty;
@@ -62,6 +58,8 @@ abstract class AppStrings {
   String starsCount(int count);
   String get newProjectTooltip;
   String areaEmptyProjects(String areaName);
+  String get constellationsModeLabel;
+  String get listModeLabel;
 
   // Constellation
   String get addWinTooltip;

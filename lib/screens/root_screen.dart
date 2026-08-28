@@ -10,12 +10,12 @@ import 'admire_stars_screen.dart';
 import 'home_screen.dart';
 import 'settings_screen.dart';
 import 'sky_screen.dart';
-import 'stars_screen.dart';
 
 /// The app's root scaffold: a bottom nav bar switching between the
-/// dashboard (Home), the life-areas hub (Sky), the searchable win browser
-/// (Stars), and app Settings. Repositories and the reminder service are
-/// owned by the app root (see `main.dart`) and just threaded through here.
+/// dashboard (Home), the life-areas hub (Sky — constellations and the flat
+/// searchable win list live together there now, switched per-area), and
+/// app Settings. Repositories and the reminder service are owned by the
+/// app root (see `main.dart`) and just threaded through here.
 class RootScreen extends StatefulWidget {
   const RootScreen({
     super.key,
@@ -59,7 +59,6 @@ class _RootScreenState extends State<RootScreen> {
         children: [
           HomeScreen(winRepository: widget.winRepository, projectRepository: widget.projectRepository),
           SkyScreen(projectRepository: widget.projectRepository, winRepository: widget.winRepository),
-          StarsScreen(projectRepository: widget.projectRepository, winRepository: widget.winRepository),
           SettingsScreen(
             settings: widget.settings,
             winRepository: widget.winRepository,
@@ -84,11 +83,6 @@ class _RootScreenState extends State<RootScreen> {
             icon: Icon(Icons.explore_outlined, color: colors.muted),
             selectedIcon: Icon(Icons.explore, color: colors.gold),
             label: strings.navSky,
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.star_border, color: colors.muted),
-            selectedIcon: Icon(Icons.star, color: colors.gold),
-            label: strings.navStars,
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined, color: colors.muted),

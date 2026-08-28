@@ -28,8 +28,6 @@ class StringsEn implements AppStrings {
   @override
   String get navSky => 'Sky';
   @override
-  String get navStars => 'Stars';
-  @override
   String get navSettings => 'Settings';
 
   @override
@@ -52,17 +50,15 @@ class StringsEn implements AppStrings {
   String get dayDetailEmpty => 'No stars lit this day.';
 
   @override
-  String get starsEyebrow => 'YOUR STARS';
-  @override
-  String get starsTitle => 'Browse your stars';
-  @override
-  String get starsSubtitle => 'Pick an area, then search within it.';
-  @override
   String get searchHint => 'Search by title or description';
   @override
   String get noSearchResults => 'No stars match your search.';
   @override
   String get areaWinsEmpty => 'No stars lit in this area yet.';
+  @override
+  String get constellationsModeLabel => 'Constellations';
+  @override
+  String get listModeLabel => 'List';
 
   @override
   String get dataSection => 'Data';

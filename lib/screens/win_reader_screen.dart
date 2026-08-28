@@ -62,12 +62,23 @@ class _WinReaderScreenState extends State<WinReaderScreen> {
   late List<Win> _wins = widget.initialWins;
   late int _index = widget.startIndex;
 
+  // Which way the next star should slide in from — set right before the
+  // index changes so the AnimatedSwitcher below knows which direction to
+  // animate, whether triggered by a swipe or a nav button.
+  bool _forward = true;
+
   void _showPrevious() {
-    setState(() => _index = (_index - 1 + _wins.length) % _wins.length);
+    setState(() {
+      _forward = false;
+      _index = (_index - 1 + _wins.length) % _wins.length;
+    });
   }
 
   void _showNext() {
-    setState(() => _index = (_index + 1) % _wins.length);
+    setState(() {
+      _forward = true;
+      _index = (_index + 1) % _wins.length;
+    });
   }
 
   Future<void> _editCurrent() async {
@@ -160,47 +171,59 @@ class _WinReaderScreenState extends State<WinReaderScreen> {
                     child: Center(
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.star, size: 30, color: colors.gold),
-                            const SizedBox(height: 20),
-                            Text(
-                              formatDisplayDateTime(win.date, strings),
-                              style: TextStyle(fontSize: 12, color: colors.crisisMuted),
-                            ),
-                            if (project != null) ...[
-                              const SizedBox(height: 12),
-                              AreaTag(area: project.area, iconSize: 18, fontSize: 17),
-                              const SizedBox(height: 6),
-                              ProjectTag(project: project, textColor: colors.crisisMuted),
-                            ],
-                            const SizedBox(height: 16),
-                            Text(
-                              win.title,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 26,
-                                fontWeight: FontWeight.w600,
-                                height: 1.35,
-                                color: colors.text,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 260),
+                          switchInCurve: Curves.easeOut,
+                          switchOutCurve: Curves.easeIn,
+                          transitionBuilder: (child, animation) {
+                            final offset = Tween<Offset>(
+                              begin: Offset(_forward ? 0.06 : -0.06, 0),
+                              end: Offset.zero,
+                            ).animate(animation);
+                            return FadeTransition(
+                              opacity: animation,
+                              child: SlideTransition(position: offset, child: child),
+                            );
+                          },
+                          child: Column(
+                            key: ValueKey(_index),
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.star, size: 30, color: colors.gold),
+                              const SizedBox(height: 20),
+                              Text(
+                                formatDisplayDateTime(win.date, strings),
+                                style: TextStyle(fontSize: 12, color: colors.crisisMuted),
                               ),
-                            ),
-                            if (win.description != null) ...[
+                              if (project != null) ...[
+                                const SizedBox(height: 12),
+                                AreaTag(area: project.area, iconSize: 18, fontSize: 17),
+                                const SizedBox(height: 6),
+                                ProjectTag(project: project, textColor: colors.crisisMuted),
+                              ],
                               const SizedBox(height: 16),
                               Text(
-                                win.description!,
+                                win.title,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  fontSize: 15,
-                                  height: 1.6,
-                                  color: colors.crisisMuted,
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.35,
+                                  color: colors.text,
                                 ),
                               ),
+                              if (win.description != null) ...[
+                                const SizedBox(height: 16),
+                                Text(
+                                  win.description!,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(fontSize: 15, height: 1.6, color: colors.crisisMuted),
+                                ),
+                              ],
+                              const SizedBox(height: 20),
+                              IntensityStars(intensity: win.intensity, size: 18),
                             ],
-                            const SizedBox(height: 20),
-                            IntensityStars(intensity: win.intensity, size: 18),
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -236,11 +259,7 @@ class _NavCircleButton extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         customBorder: const CircleBorder(),
-        child: SizedBox(
-          width: 48,
-          height: 48,
-          child: Icon(icon, color: context.colors.text),
-        ),
+        child: SizedBox(width: 48, height: 48, child: Icon(icon, color: context.colors.text)),
       ),
     );
   }

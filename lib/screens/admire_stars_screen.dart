@@ -74,14 +74,10 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
     List<Win> currentInShuffledOrder() {
       final projectsById = _projectsById();
       final byId = {for (final w in widget.winRepository.getAll()) w.id: w};
-      return shuffledIds
-          .map((id) => byId[id])
-          .whereType<Win>()
-          .where((w) {
-            final project = projectsById[w.projectId];
-            return project != null && selectionSnapshot.contains(project.area);
-          })
-          .toList();
+      return shuffledIds.map((id) => byId[id]).whereType<Win>().where((w) {
+        final project = projectsById[w.projectId];
+        return project != null && selectionSnapshot.contains(project.area);
+      }).toList();
     }
 
     await Navigator.of(context).push(
@@ -181,9 +177,7 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
                                   ],
                                 ],
                               ),
-                              Expanded(
-                                child: Center(child: _UpliftingQuoteCarousel()),
-                              ),
+                              Expanded(child: Center(child: _UpliftingQuoteCarousel())),
                             ],
                           ),
                         ),
@@ -337,10 +331,7 @@ class _AllAreasSwitch extends StatelessWidget {
                 child: Container(
                   width: 14,
                   height: 14,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: value ? colors.gold : colors.crisisMuted,
-                  ),
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: value ? colors.gold : colors.crisisMuted),
                 ),
               ),
             ),
@@ -388,7 +379,15 @@ class _UpliftingQuoteCarouselState extends State<_UpliftingQuoteCarousel> {
       constraints: const BoxConstraints(minHeight: 100),
       child: Center(
         child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 600),
+          duration: const Duration(milliseconds: 700),
+          switchInCurve: Curves.easeOut,
+          switchOutCurve: Curves.easeIn,
+          // A gentle upward drift alongside the fade — reads more clearly as
+          // motion than a plain crossfade, while staying just as understated.
+          transitionBuilder: (child, animation) {
+            final offset = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(animation);
+            return FadeTransition(opacity: animation, child: SlideTransition(position: offset, child: child));
+          },
           child: Text(
             quotes[_index],
             key: ValueKey(_index),

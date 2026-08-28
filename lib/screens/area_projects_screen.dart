@@ -247,12 +247,7 @@ class _ConstellationsList extends StatelessWidget {
 }
 
 class _WinsList extends StatelessWidget {
-  const _WinsList({
-    required this.allWins,
-    required this.filteredWins,
-    required this.projectsById,
-    required this.onTap,
-  });
+  const _WinsList({required this.allWins, required this.filteredWins, required this.projectsById, required this.onTap});
 
   final List<Win> allWins;
   final List<Win> filteredWins;
@@ -295,11 +290,7 @@ class _WinsList extends StatelessWidget {
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final win = filteredWins[index];
-        return WinCard(
-          win: win,
-          project: projectsById[win.projectId],
-          onTap: () => onTap(filteredWins, index),
-        );
+        return WinCard(win: win, project: projectsById[win.projectId], onTap: () => onTap(filteredWins, index));
       },
     );
   }
@@ -349,10 +340,7 @@ class _ProjectCard extends StatelessWidget {
                 Container(
                   width: 52,
                   height: 52,
-                  decoration: BoxDecoration(
-                    color: colors.gold.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
+                  decoration: BoxDecoration(color: colors.gold.withValues(alpha: 0.12), shape: BoxShape.circle),
                   child: Icon(iconForSlug(project.iconSlug), color: colors.gold, size: 26),
                 ),
                 const SizedBox(width: 16),
@@ -378,14 +366,7 @@ class _ProjectCard extends StatelessWidget {
                         spacing: 14,
                         runSpacing: 6,
                         children: [
-                          _StatChip(
-                            icon: Icons.star,
-                            text: strings.starsCount(starCount),
-                          ),
-                          _StatChip(
-                            icon: Icons.bolt,
-                            text: strings.combinedIntensityValueLabel(combinedIntensity),
-                          ),
+                          _StatChip(icon: Icons.star, text: strings.starsCount(starCount)),
                           _StatChip(
                             icon: Icons.auto_awesome_outlined,
                             text: strings.createdOnLabel(formatDisplayDate(project.createdAt, strings)),
@@ -397,6 +378,12 @@ class _ProjectCard extends StatelessWidget {
                             ),
                         ],
                       ),
+                      // Set apart from the plain icon+text facts above — it's
+                      // a rating of how hard-won this constellation's stars
+                      // were, not just another count, so it gets its own
+                      // gold-tinted pill instead of blending into the row.
+                      const SizedBox(height: 10),
+                      _IntensityBadge(value: combinedIntensity),
                     ],
                   ),
                 ),
@@ -409,9 +396,43 @@ class _ProjectCard extends StatelessWidget {
   }
 }
 
+/// A gold-tinted pill for a [_ProjectCard]'s combined intensity — visually
+/// distinct from (and set below) the plain [_StatChip] facts, since it's a
+/// rating rather than just another count.
+class _IntensityBadge extends StatelessWidget {
+  const _IntensityBadge({required this.value});
+
+  final int value;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final strings = context.strings;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: colors.gold.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.gold.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.bolt, size: 13, color: colors.gold),
+          const SizedBox(width: 5),
+          Text(
+            strings.combinedIntensityValueLabel(value),
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: colors.gold),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// One small icon+text fact in a [_ProjectCard]'s info [Wrap] — keeps the
-/// four stats (stars, intensity, created, last star) visually uniform
-/// regardless of how many end up on the same line.
+/// three plain stats (stars, created, last star) visually uniform regardless
+/// of how many end up on the same line.
 class _StatChip extends StatelessWidget {
   const _StatChip({required this.icon, required this.text});
 

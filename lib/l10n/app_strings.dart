@@ -69,13 +69,11 @@ abstract class AppStrings {
   String get skyTitle;
   String get skySubtitle;
   String starsCount(int count);
-  String get newProjectTooltip;
   String areaEmptyProjects(String areaName);
   String get constellationsModeLabel;
   String get listModeLabel;
 
   // Constellation
-  String get addWinTooltip;
   String get constellationShapeMissing;
 
   // New project

@@ -112,13 +112,9 @@ class StringsRo implements AppStrings {
   @override
   String starsCount(int count) => count == 1 ? '1 stea' : '$count stele';
   @override
-  String get newProjectTooltip => 'Proiect nou';
-  @override
   String areaEmptyProjects(String areaName) =>
       'Încă niciun proiect în $areaName. Începe unul pentru a aprinde primele stele aici.';
 
-  @override
-  String get addWinTooltip => 'Adaugă o victorie';
   @override
   String get constellationShapeMissing => 'Forma constelației acestui proiect nu a fost găsită.';
 

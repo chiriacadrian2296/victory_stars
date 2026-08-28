@@ -112,13 +112,9 @@ class StringsIt implements AppStrings {
   @override
   String starsCount(int count) => count == 1 ? '1 stella' : '$count stelle';
   @override
-  String get newProjectTooltip => 'Nuovo progetto';
-  @override
   String areaEmptyProjects(String areaName) =>
       'Ancora nessun progetto in $areaName. Iniziane uno per accendere le prime stelle qui.';
 
-  @override
-  String get addWinTooltip => 'Aggiungi una vittoria';
   @override
   String get constellationShapeMissing => 'La forma della costellazione di questo progetto non è stata trovata.';
 

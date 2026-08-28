@@ -11,16 +11,15 @@ import '../models/project.dart';
 import '../models/win.dart';
 import '../theme/app_colors.dart';
 import '../widgets/constellation_painter.dart';
-import 'add_win_screen.dart';
 import 'win_reader_screen.dart';
 
 /// A single project's constellation: a pannable/zoomable star field shaped
 /// like [Project.iconSlug]'s precomputed silhouette, one star per win,
 /// oldest first. Tapping a lit star opens [WinReaderScreen] (with editing
 /// enabled — including reassigning the win to a different project, which
-/// requires [projectRepository] here too); the header's add icon adds a
-/// win pre-scoped to this project (the FAB is reserved for Home's own
-/// "add a win" action).
+/// requires [projectRepository] here too). Adding a new win to this
+/// project happens through Home's own add-win flow (via the project
+/// picker) — this screen is read/browse only.
 class ConstellationScreen extends StatefulWidget {
   const ConstellationScreen({
     super.key,
@@ -131,21 +130,6 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
     });
   }
 
-  Future<void> _addWin() async {
-    final result = await Navigator.of(context).push<AddWinResult>(
-      MaterialPageRoute(builder: (_) => AddWinScreen(lockedProject: widget.project)),
-    );
-    if (result == null) return;
-    await widget.winRepository.add(
-      title: result.title,
-      description: result.description,
-      projectId: result.projectId,
-      intensity: result.intensity,
-      date: result.date,
-    );
-    _refresh();
-  }
-
   Future<void> _openStar(ConstellationStar star) async {
     final index = _wins.indexWhere((w) => w.id == star.winId);
     if (index == -1) return;
@@ -192,11 +176,6 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                IconButton(
-                  onPressed: shape == null ? null : _addWin,
-                  icon: Icon(Icons.add, color: colors.gold),
-                  tooltip: strings.addWinTooltip,
                 ),
               ],
             ),

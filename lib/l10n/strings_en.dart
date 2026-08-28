@@ -111,13 +111,9 @@ class StringsEn implements AppStrings {
   @override
   String starsCount(int count) => '$count star${count == 1 ? '' : 's'}';
   @override
-  String get newProjectTooltip => 'New project';
-  @override
   String areaEmptyProjects(String areaName) =>
       'No projects yet in $areaName. Start one to begin lighting stars here.';
 
-  @override
-  String get addWinTooltip => 'Add a win';
   @override
   String get constellationShapeMissing => "This project's constellation shape couldn't be found.";
 

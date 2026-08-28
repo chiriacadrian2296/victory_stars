@@ -11,7 +11,6 @@ import '../utils/date_format.dart';
 import '../utils/icon_for_slug.dart';
 import '../widgets/win_card.dart';
 import 'constellation_screen.dart';
-import 'new_project_screen.dart';
 import 'win_reader_screen.dart';
 
 enum _ViewMode { constellations, list }
@@ -73,15 +72,6 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
     }).toList();
   }
 
-  Future<void> _createProject() async {
-    await Navigator.of(context).push<Project>(
-      MaterialPageRoute(
-        builder: (_) => NewProjectScreen(projectRepository: widget.projectRepository, presetArea: widget.area),
-      ),
-    );
-    setState(() {});
-  }
-
   Future<void> _openProject(Project project) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -136,12 +126,6 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (_mode == _ViewMode.constellations)
-                  IconButton(
-                    onPressed: _createProject,
-                    icon: Icon(Icons.add, color: colors.gold),
-                    tooltip: strings.newProjectTooltip,
-                  ),
               ],
             ),
             Padding(

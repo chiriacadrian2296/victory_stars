@@ -13,6 +13,7 @@ import '../widgets/win_card.dart';
 import 'add_win_screen.dart';
 import 'admire_stars_screen.dart';
 import 'new_project_screen.dart';
+import 'stat_detail_screen.dart';
 import 'win_reader_screen.dart';
 
 /// The dashboard — one tab of [RootScreen]: a quick read on consistency
@@ -59,6 +60,29 @@ class _HomeScreenState extends State<HomeScreen> {
       date: result.date,
     );
     setState(() {});
+  }
+
+  void _openTotalStarsDetail() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TotalStarsDetailScreen(
+          winRepository: widget.winRepository,
+          projectRepository: widget.projectRepository,
+        ),
+      ),
+    );
+  }
+
+  void _openCurrentStreakDetail() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => CurrentStreakDetailScreen(winRepository: widget.winRepository)),
+    );
+  }
+
+  void _openLongestStreakDetail() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => LongestStreakDetailScreen(winRepository: widget.winRepository)),
+    );
   }
 
   void _openAdmireStars() {
@@ -229,15 +253,27 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               children: [
                 Expanded(
-                  child: _StatCard(label: strings.totalStarsLabel, value: '${wins.length}'),
+                  child: _StatCard(
+                    label: strings.totalStarsLabel,
+                    value: '${wins.length}',
+                    onTap: _openTotalStarsDetail,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: _StatCard(label: strings.currentStreakLabel, value: '${currentStreak(dayCounts)}'),
+                  child: _StatCard(
+                    label: strings.currentStreakLabel,
+                    value: '${currentStreak(dayCounts)}',
+                    onTap: _openCurrentStreakDetail,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: _StatCard(label: strings.longestStreakLabel, value: '${longestStreak(dayCounts)}'),
+                  child: _StatCard(
+                    label: strings.longestStreakLabel,
+                    value: '${longestStreak(dayCounts)}',
+                    onTap: _openLongestStreakDetail,
+                  ),
                 ),
               ],
             ),
@@ -313,31 +349,40 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _StatCard extends StatelessWidget {
-  const _StatCard({required this.label, required this.value});
+  const _StatCard({required this.label, required this.value, required this.onTap});
 
   final String label;
   final String value;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
-      decoration: BoxDecoration(
-        color: colors.nightPanel,
-        border: Border.all(color: colors.nightBorder),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: colors.gold)),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 11, color: colors.muted),
+    final borderRadius = BorderRadius.circular(12);
+    return Material(
+      color: colors.nightPanel,
+      borderRadius: borderRadius,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: borderRadius,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+          decoration: BoxDecoration(
+            border: Border.all(color: colors.nightBorder),
+            borderRadius: borderRadius,
           ),
-        ],
+          child: Column(
+            children: [
+              Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: colors.gold)),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 11, color: colors.muted),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

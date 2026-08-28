@@ -38,31 +38,68 @@ Map<DateTime, int> winIntensityByDay(List<Win> wins) {
   return totals;
 }
 
+/// A run of consecutive days with at least one win. [length] is 0 (with
+/// [start] and [end] both null) when there's nothing to report.
+class StreakRange {
+  const StreakRange({required this.length, this.start, this.end});
+
+  final int length;
+  final DateTime? start;
+  final DateTime? end;
+}
+
 /// Consecutive days with at least one win, counting back from [today]
-/// (defaults to now) until the first day with none. Zero if today has no
-/// win yet — a streak that isn't still "alive" doesn't count as current.
+/// (defaults to now) until the first day with none. Zero-length if today has
+/// no win yet — a streak that isn't still "alive" doesn't count as current.
 int currentStreak(Map<DateTime, int> countsByDay, {DateTime? today}) {
+  return currentStreakRange(countsByDay, today: today).length;
+}
+
+/// Same streak [currentStreak] measures, but with the date range it spans
+/// (ending on [today]) — used by the dashboard's streak detail screen.
+StreakRange currentStreakRange(Map<DateTime, int> countsByDay, {DateTime? today}) {
   final now = today ?? DateTime.now();
   var day = DateTime(now.year, now.month, now.day);
+  final end = day;
   var streak = 0;
   while ((countsByDay[day] ?? 0) > 0) {
     streak++;
     day = day.subtract(const Duration(days: 1));
   }
-  return streak;
+  if (streak == 0) return const StreakRange(length: 0);
+  return StreakRange(length: streak, start: end.subtract(Duration(days: streak - 1)), end: end);
 }
 
 /// The longest run of consecutive days with at least one win, anywhere in
 /// [countsByDay] — not necessarily ending today.
 int longestStreak(Map<DateTime, int> countsByDay) {
-  if (countsByDay.isEmpty) return 0;
+  return longestStreakRange(countsByDay).length;
+}
+
+/// Same streak [longestStreak] measures, but with the date range it spans —
+/// used by the dashboard's streak detail screen.
+StreakRange longestStreakRange(Map<DateTime, int> countsByDay) {
+  if (countsByDay.isEmpty) return const StreakRange(length: 0);
   final days = countsByDay.keys.toList()..sort();
+
   var longest = 1;
-  var current = 1;
+  var longestStart = days.first;
+  var longestEnd = days.first;
+  var currentLength = 1;
+  var currentStart = days.first;
   for (var i = 1; i < days.length; i++) {
     final gap = days[i].difference(days[i - 1]).inDays;
-    current = gap == 1 ? current + 1 : 1;
-    if (current > longest) longest = current;
+    if (gap == 1) {
+      currentLength++;
+    } else {
+      currentLength = 1;
+      currentStart = days[i];
+    }
+    if (currentLength > longest) {
+      longest = currentLength;
+      longestStart = currentStart;
+      longestEnd = days[i];
+    }
   }
-  return longest;
+  return StreakRange(length: longest, start: longestStart, end: longestEnd);
 }

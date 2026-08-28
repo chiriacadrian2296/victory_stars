@@ -50,6 +50,27 @@ class StringsRo implements AppStrings {
   String get dayDetailEmpty => 'Nicio stea aprinsă în această zi.';
 
   @override
+  String get firstStarLabel => 'Prima stea';
+  @override
+  String get mostRecentStarLabel => 'Cea mai recentă stea';
+  @override
+  String get combinedIntensityLabel => 'Intensitate combinată';
+  @override
+  String get starsByAreaLabel => 'Pe zone';
+  @override
+  String get streakFromLabel => 'De la';
+  @override
+  String get streakToLabel => 'Până la';
+  @override
+  String get todayLabel => 'Azi';
+  @override
+  String get starsLoggedLabel => 'Stele notate';
+  @override
+  String get streakStillGoingLabel => 'Încă în desfășurare';
+  @override
+  String get noCurrentStreakBody => 'Nicio serie activă acum. Aprinde o stea azi ca să începi una.';
+
+  @override
   String get searchHint => 'Caută după titlu sau descriere';
   @override
   String get noSearchResults => 'Nicio stea nu corespunde căutării.';

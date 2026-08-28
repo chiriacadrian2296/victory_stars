@@ -34,6 +34,19 @@ abstract class AppStrings {
   String get activityLabel;
   String get dayDetailEmpty;
 
+  // Stat detail screens (tapping Total Stars / Current Streak / Longest
+  // Streak on the dashboard)
+  String get firstStarLabel;
+  String get mostRecentStarLabel;
+  String get combinedIntensityLabel;
+  String get starsByAreaLabel;
+  String get streakFromLabel;
+  String get streakToLabel;
+  String get todayLabel;
+  String get starsLoggedLabel;
+  String get streakStillGoingLabel;
+  String get noCurrentStreakBody;
+
   // Area detail (constellations / list view switch)
   String get searchHint;
   String get noSearchResults;

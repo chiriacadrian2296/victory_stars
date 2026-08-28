@@ -50,6 +50,27 @@ class StringsIt implements AppStrings {
   String get dayDetailEmpty => 'Nessuna stella accesa in questo giorno.';
 
   @override
+  String get firstStarLabel => 'Prima stella';
+  @override
+  String get mostRecentStarLabel => 'Stella più recente';
+  @override
+  String get combinedIntensityLabel => 'Intensità complessiva';
+  @override
+  String get starsByAreaLabel => 'Per area';
+  @override
+  String get streakFromLabel => 'Da';
+  @override
+  String get streakToLabel => 'A';
+  @override
+  String get todayLabel => 'Oggi';
+  @override
+  String get starsLoggedLabel => 'Stelle registrate';
+  @override
+  String get streakStillGoingLabel => 'Ancora in corso';
+  @override
+  String get noCurrentStreakBody => 'Nessuna serie in corso al momento. Accendi una stella oggi per iniziarne una.';
+
+  @override
   String get searchHint => 'Cerca per titolo o descrizione';
   @override
   String get noSearchResults => 'Nessuna stella corrisponde alla ricerca.';

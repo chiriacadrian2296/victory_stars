@@ -50,6 +50,27 @@ class StringsEn implements AppStrings {
   String get dayDetailEmpty => 'No stars lit this day.';
 
   @override
+  String get firstStarLabel => 'First star';
+  @override
+  String get mostRecentStarLabel => 'Most recent star';
+  @override
+  String get combinedIntensityLabel => 'Combined intensity';
+  @override
+  String get starsByAreaLabel => 'By area';
+  @override
+  String get streakFromLabel => 'From';
+  @override
+  String get streakToLabel => 'To';
+  @override
+  String get todayLabel => 'Today';
+  @override
+  String get starsLoggedLabel => 'Stars logged';
+  @override
+  String get streakStillGoingLabel => 'Still going';
+  @override
+  String get noCurrentStreakBody => 'No streak going right now. Light a star today to start one.';
+
+  @override
   String get searchHint => 'Search by title or description';
   @override
   String get noSearchResults => 'No stars match your search.';

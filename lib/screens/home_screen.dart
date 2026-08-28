@@ -1,4 +1,5 @@
-import 'dart:math' show pi;
+import 'dart:async';
+import 'dart:math' show pi, sin;
 
 import 'package:flutter/material.dart';
 
@@ -506,10 +507,20 @@ class _TodayStarHeroState extends State<_TodayStarHero> with TickerProviderState
     ..repeat(reverse: true);
   late final _spinController = AnimationController(vsync: this, duration: const Duration(seconds: 18));
 
+  // A short, decaying wiggle on the unlit star, replayed on its own timer —
+  // just enough motion every so often to draw the eye back to this corner
+  // of the dashboard without being distracting the rest of the time.
+  late final _shakeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+  Timer? _shakeTimer;
+
   @override
   void initState() {
     super.initState();
-    if (widget.litToday) _spinController.repeat();
+    if (widget.litToday) {
+      _spinController.repeat();
+    } else {
+      _startShakeTimer();
+    }
   }
 
   @override
@@ -518,15 +529,26 @@ class _TodayStarHeroState extends State<_TodayStarHero> with TickerProviderState
     if (widget.litToday == oldWidget.litToday) return;
     if (widget.litToday) {
       _spinController.repeat();
+      _shakeTimer?.cancel();
+      _shakeTimer = null;
     } else {
       _spinController.stop();
+      _startShakeTimer();
     }
+  }
+
+  void _startShakeTimer() {
+    _shakeTimer ??= Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted) _shakeController.forward(from: 0);
+    });
   }
 
   @override
   void dispose() {
     _glowController.dispose();
     _spinController.dispose();
+    _shakeController.dispose();
+    _shakeTimer?.cancel();
     super.dispose();
   }
 
@@ -598,7 +620,15 @@ class _TodayStarHeroState extends State<_TodayStarHero> with TickerProviderState
 
     return Column(
       children: [
-        Icon(Icons.star, size: starSize, color: colors.muted),
+        AnimatedBuilder(
+          animation: _shakeController,
+          builder: (context, child) {
+            final t = _shakeController.value;
+            final dx = sin(t * pi * 6) * (1 - t) * 8;
+            return Transform.translate(offset: Offset(dx, 0), child: child);
+          },
+          child: Icon(Icons.star, size: starSize, color: colors.muted),
+        ),
         const SizedBox(height: 20),
         _highlightedText(
           text: strings.notLitTodayLabel,

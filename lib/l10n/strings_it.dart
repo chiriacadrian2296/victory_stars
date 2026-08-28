@@ -41,6 +41,10 @@ class StringsIt implements AppStrings {
   @override
   String get overviewLabel => 'Panoramica';
   @override
+  String get litTodayLabel => 'Hai acceso una stella oggi';
+  @override
+  String get notLitTodayLabel => 'Nessuna stella accesa oggi, per ora';
+  @override
   String get totalStarsLabel => 'Stelle totali';
   @override
   String get currentStreakLabel => 'Serie attuale';
@@ -68,7 +72,6 @@ class StringsIt implements AppStrings {
   @override
   String get starsLoggedLabel => 'Stelle registrate';
   @override
-  String get streakStillGoingLabel => 'Ancora in corso';
   @override
   String get noCurrentStreakBody => 'Nessuna serie in corso al momento. Accendi una stella oggi per iniziarne una.';
 

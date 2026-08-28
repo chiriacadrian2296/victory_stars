@@ -41,6 +41,10 @@ class StringsEn implements AppStrings {
   @override
   String get overviewLabel => 'Overview';
   @override
+  String get litTodayLabel => "You've lit a star today";
+  @override
+  String get notLitTodayLabel => 'No star lit today yet';
+  @override
   String get totalStarsLabel => 'Total stars';
   @override
   String get currentStreakLabel => 'Current streak';
@@ -68,7 +72,6 @@ class StringsEn implements AppStrings {
   @override
   String get starsLoggedLabel => 'Stars logged';
   @override
-  String get streakStillGoingLabel => 'Still going';
   @override
   String get noCurrentStreakBody => 'No streak going right now. Light a star today to start one.';
 

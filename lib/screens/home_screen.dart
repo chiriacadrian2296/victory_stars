@@ -232,6 +232,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final wins = widget.winRepository.getAll();
     final dayCounts = winCountsByDay(wins);
     final dayIntensities = winIntensityByDay(wins);
+    final now = DateTime.now();
+    final litToday = (dayCounts[DateTime(now.year, now.month, now.day)] ?? 0) > 0;
 
     return Scaffold(
       body: SafeArea(
@@ -282,6 +284,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 10),
+            _TodayStreakIndicator(litToday: litToday),
             const SizedBox(height: 24),
             Text(
               strings.activityLabel,
@@ -376,18 +380,75 @@ class _StatCard extends StatelessWidget {
             border: Border.all(color: colors.nightBorder),
             borderRadius: borderRadius,
           ),
-          child: Column(
+          child: Stack(
             children: [
-              Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: colors.gold)),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11, color: colors.muted),
+              Column(
+                children: [
+                  Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: colors.gold)),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 11, color: colors.muted),
+                  ),
+                ],
+              ),
+              // A small affordance hinting these cards open a detail
+              // screen, rather than being purely decorative stats.
+              Positioned(
+                top: -2,
+                right: -2,
+                child: Icon(Icons.chevron_right, size: 16, color: colors.muted.withValues(alpha: 0.6)),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// A slim banner just under the stat cards, answering the one question
+/// they don't at a glance: has a star been lit yet today? Separate from
+/// the tappable cards themselves so it reads as status, not another action.
+class _TodayStreakIndicator extends StatelessWidget {
+  const _TodayStreakIndicator({required this.litToday});
+
+  final bool litToday;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final strings = context.strings;
+    final borderRadius = BorderRadius.circular(10);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      decoration: BoxDecoration(
+        color: litToday ? colors.gold.withValues(alpha: 0.1) : colors.nightPanel,
+        border: Border.all(color: litToday ? colors.gold.withValues(alpha: 0.4) : colors.nightBorder),
+        borderRadius: borderRadius,
+      ),
+      child: Row(
+        children: [
+          Icon(
+            litToday ? Icons.star : Icons.star_border,
+            size: 16,
+            color: litToday ? colors.gold : colors.muted,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              litToday ? strings.litTodayLabel : strings.notLitTodayLabel,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: litToday ? FontWeight.w600 : FontWeight.w400,
+                color: litToday ? colors.gold : colors.muted,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

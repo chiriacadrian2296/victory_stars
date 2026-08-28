@@ -41,6 +41,10 @@ class StringsRo implements AppStrings {
   @override
   String get overviewLabel => 'Sumar';
   @override
+  String get litTodayLabel => 'Ai aprins o stea azi';
+  @override
+  String get notLitTodayLabel => 'Nicio stea aprinsă azi încă';
+  @override
   String get totalStarsLabel => 'Stele în total';
   @override
   String get currentStreakLabel => 'Serie curentă';
@@ -68,7 +72,6 @@ class StringsRo implements AppStrings {
   @override
   String get starsLoggedLabel => 'Stele notate';
   @override
-  String get streakStillGoingLabel => 'Încă în desfășurare';
   @override
   String get noCurrentStreakBody => 'Nicio serie activă acum. Aprinde o stea azi ca să începi una.';
 

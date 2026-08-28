@@ -147,7 +147,6 @@ class LongestStreakDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
     final strings = context.strings;
     final wins = winRepository.getAll();
     final dayCounts = winCountsByDay(wins);
@@ -177,21 +176,7 @@ class LongestStreakDetailScreen extends StatelessWidget {
             label: strings.streakToLabel,
             value: stillGoing ? strings.todayLabel : formatDisplayDate(range.end!, strings),
           ),
-          _DetailRow(label: strings.starsLoggedLabel, value: '${_starsWithinRange(wins, range)}', isLast: !stillGoing),
-          if (stillGoing)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Row(
-                children: [
-                  Icon(Icons.bolt, size: 16, color: colors.gold),
-                  const SizedBox(width: 8),
-                  Text(
-                    strings.streakStillGoingLabel,
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.gold),
-                  ),
-                ],
-              ),
-            ),
+          _DetailRow(label: strings.starsLoggedLabel, value: '${_starsWithinRange(wins, range)}', isLast: true),
         ],
       ),
     );

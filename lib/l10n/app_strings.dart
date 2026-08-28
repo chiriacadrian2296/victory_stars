@@ -29,6 +29,8 @@ abstract class AppStrings {
   String get homeSubtitle;
   String get admireYourStars;
   String get overviewLabel;
+  String get litTodayLabel;
+  String get notLitTodayLabel;
   String get totalStarsLabel;
   String get currentStreakLabel;
   String get longestStreakLabel;
@@ -45,7 +47,6 @@ abstract class AppStrings {
   String get streakToLabel;
   String get todayLabel;
   String get starsLoggedLabel;
-  String get streakStillGoingLabel;
   String get noCurrentStreakBody;
 
   // Area detail (constellations / list view switch)

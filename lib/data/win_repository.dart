@@ -95,11 +95,11 @@ class WinRepository {
     return win;
   }
 
-  /// Updates the title/description/project/intensity of the win identified
-  /// by [id], keeping its number and date unchanged. Throws a [StateError]
-  /// if no win with that id exists — callers always resolve it from a
-  /// currently-displayed [Win], so a missing id would mean the list changed
-  /// under them.
+  /// Updates the title/description/project/intensity/date of the win
+  /// identified by [id], keeping its number unchanged. Throws a
+  /// [StateError] if no win with that id exists — callers always resolve it
+  /// from a currently-displayed [Win], so a missing id would mean the list
+  /// changed under them.
   ///
   /// Reassigning [projectId] moves the win's star to the new project's
   /// constellation immediately (star slots are derived from
@@ -114,6 +114,7 @@ class WinRepository {
     String? description,
     required int projectId,
     required int intensity,
+    required DateTime date,
   }) async {
     final wins = getAll();
     final index = wins.indexWhere((w) => w.id == id);
@@ -128,7 +129,7 @@ class WinRepository {
       projectId: projectId,
       title: title.trim(),
       description: (trimmedDescription == null || trimmedDescription.isEmpty) ? null : trimmedDescription,
-      date: wins[index].date,
+      date: date,
       intensity: intensity,
     );
 

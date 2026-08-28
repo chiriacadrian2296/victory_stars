@@ -26,6 +26,18 @@ Map<DateTime, int> winCountsByDay(List<Win> wins) {
   return counts;
 }
 
+/// Groups [wins] by calendar day, summing each day's win intensities — the
+/// total "brightness" for that day, used to scale the dashboard calendar's
+/// per-star glow.
+Map<DateTime, int> winIntensityByDay(List<Win> wins) {
+  final totals = <DateTime, int>{};
+  for (final win in wins) {
+    final day = DateTime(win.date.year, win.date.month, win.date.day);
+    totals[day] = (totals[day] ?? 0) + win.intensity;
+  }
+  return totals;
+}
+
 /// Consecutive days with at least one win, counting back from [today]
 /// (defaults to now) until the first day with none. Zero if today has no
 /// win yet — a streak that isn't still "alive" doesn't count as current.

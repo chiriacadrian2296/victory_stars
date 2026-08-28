@@ -128,6 +128,8 @@ class StringsEn implements AppStrings {
   @override
   String get selectAProject => 'Select a project';
   @override
+  String get dateLabel => 'Date';
+  @override
   String get titleFieldLabel => 'In a few words';
   @override
   String get titleHint => 'E.g. I held on after a rejection and kept going';

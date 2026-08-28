@@ -141,6 +141,7 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
       description: result.description,
       projectId: result.projectId,
       intensity: result.intensity,
+      date: result.date,
     );
     _refresh();
   }

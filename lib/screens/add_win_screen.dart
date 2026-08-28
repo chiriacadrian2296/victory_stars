@@ -5,6 +5,7 @@ import '../l10n/strings_scope.dart';
 import '../models/project.dart';
 import '../models/win.dart';
 import '../theme/app_colors.dart';
+import '../utils/date_format.dart';
 import '../widgets/area_tag.dart';
 import '../widgets/intensity_stars.dart';
 import '../widgets/project_tag.dart';
@@ -20,12 +21,14 @@ class AddWinResult {
     this.description,
     required this.projectId,
     required this.intensity,
+    required this.date,
   });
 
   final String title;
   final String? description;
   final int projectId;
   final int intensity;
+  final DateTime date;
 }
 
 /// Also doubles as the edit screen: pass [existingWin] to pre-fill the
@@ -78,6 +81,7 @@ class _AddWinScreenState extends State<AddWinScreen> {
   late final _descriptionController = TextEditingController(text: widget.existingWin?.description ?? '');
   late Project? _selectedProject = widget.lockedProject ?? widget.contextProject;
   late int _intensity = widget.existingWin?.intensity ?? 3;
+  late DateTime _date = widget.existingWin?.date ?? DateTime.now();
 
   @override
   void dispose() {
@@ -97,8 +101,24 @@ class _AddWinScreenState extends State<AddWinScreen> {
         description: _descriptionController.text,
         projectId: project.id,
         intensity: _intensity,
+        date: _date,
       ),
     );
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date.isAfter(today) ? today : _date,
+      firstDate: DateTime(2000),
+      lastDate: today,
+    );
+    if (picked == null) return;
+    setState(() {
+      _date = DateTime(picked.year, picked.month, picked.day, _date.hour, _date.minute, _date.second, _date.millisecond);
+    });
   }
 
   Future<void> _openProjectPicker() async {
@@ -236,6 +256,38 @@ class _AddWinScreenState extends State<AddWinScreen> {
                 ),
                 const SizedBox(height: 20),
               ],
+              Text(
+                strings.dateLabel,
+                style: TextStyle(fontSize: 13, color: colors.muted),
+              ),
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: _pickDate,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: colors.nightPanel,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: colors.nightBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.calendar_today, size: 16, color: colors.muted),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          formatDisplayDate(_date, strings),
+                          style: TextStyle(color: colors.text, fontSize: 15),
+                        ),
+                      ),
+                      Icon(Icons.expand_more, color: colors.muted),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
               Text(
                 strings.titleFieldLabel,
                 style: TextStyle(fontSize: 13, color: colors.muted),

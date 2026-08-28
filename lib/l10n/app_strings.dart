@@ -81,6 +81,7 @@ abstract class AppStrings {
   String get addWinQuestion;
   String get projectLabel;
   String get selectAProject;
+  String get dateLabel;
   String get titleFieldLabel;
   String get titleHint;
   String get detailsLabel;

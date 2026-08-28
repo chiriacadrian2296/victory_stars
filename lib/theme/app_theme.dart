@@ -72,6 +72,27 @@ ThemeData buildAppTheme(Brightness brightness) {
       ),
       entryModeIconColor: palette.muted,
     ),
+    // Same reasoning as timePickerTheme above: keep the date picker (used
+    // when backdating a star) on-brand instead of Material 3's default teal.
+    datePickerTheme: DatePickerThemeData(
+      backgroundColor: palette.nightPanel,
+      headerBackgroundColor: palette.gold,
+      headerForegroundColor: palette.onGold,
+      todayForegroundColor: WidgetStateColor.resolveWith((states) => palette.gold),
+      todayBorder: BorderSide(color: palette.gold),
+      dayForegroundColor: WidgetStateColor.resolveWith(
+        (states) => states.contains(WidgetState.selected) ? palette.onGold : palette.text,
+      ),
+      dayBackgroundColor: WidgetStateColor.resolveWith(
+        (states) => states.contains(WidgetState.selected) ? palette.gold : Colors.transparent,
+      ),
+      yearForegroundColor: WidgetStateColor.resolveWith(
+        (states) => states.contains(WidgetState.selected) ? palette.onGold : palette.text,
+      ),
+      yearBackgroundColor: WidgetStateColor.resolveWith(
+        (states) => states.contains(WidgetState.selected) ? palette.gold : Colors.transparent,
+      ),
+    ),
     extensions: [palette],
   );
 }

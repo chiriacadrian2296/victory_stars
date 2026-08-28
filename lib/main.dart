@@ -75,6 +75,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
       description: result.description,
       projectId: result.projectId,
       intensity: result.intensity,
+      date: result.date,
     );
   }
 

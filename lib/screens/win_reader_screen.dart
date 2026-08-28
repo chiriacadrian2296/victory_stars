@@ -89,6 +89,7 @@ class _WinReaderScreenState extends State<WinReaderScreen> {
       description: result.description,
       projectId: result.projectId,
       intensity: result.intensity,
+      date: result.date,
     );
 
     final refreshedWins = widget.refreshWins!();

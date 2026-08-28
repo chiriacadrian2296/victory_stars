@@ -129,6 +129,8 @@ class StringsRo implements AppStrings {
   @override
   String get selectAProject => 'Selectează un proiect';
   @override
+  String get dateLabel => 'Dată';
+  @override
   String get titleFieldLabel => 'În câteva cuvinte';
   @override
   String get titleHint => 'Ex. Am rezistat după o respingere și am continuat';

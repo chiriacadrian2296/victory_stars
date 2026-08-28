@@ -56,6 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
       description: result.description,
       projectId: result.projectId,
       intensity: result.intensity,
+      date: result.date,
     );
     setState(() {});
   }
@@ -206,6 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final strings = context.strings;
     final wins = widget.winRepository.getAll();
     final dayCounts = winCountsByDay(wins);
+    final dayIntensities = winIntensityByDay(wins);
 
     return Scaffold(
       body: SafeArea(
@@ -253,7 +255,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 border: Border.all(color: colors.nightBorder),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: StarHeatmap(countsByDay: dayCounts, onDayTap: _openDayDetail),
+              child: StarHeatmap(
+                countsByDay: dayCounts,
+                intensityByDay: dayIntensities,
+                onDayTap: _openDayDetail,
+              ),
             ),
           ],
         ),

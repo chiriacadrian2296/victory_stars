@@ -6,11 +6,24 @@ import '../theme/app_colors.dart';
 /// A calendar for the current month — one star per day, brighter the more
 /// wins were logged that day (the app's own take on a GitHub-style
 /// contribution graph). Weekday headers on top, up to 6 week rows below;
-/// days outside the current month are blank.
+/// days outside the current month are blank. Days with wins also get a
+/// gold glow, scaled between the month's dimmest and brightest day by that
+/// day's total win intensity (see [intensityByDay]).
 class StarHeatmap extends StatelessWidget {
-  const StarHeatmap({super.key, required this.countsByDay, this.onDayTap});
+  const StarHeatmap({
+    super.key,
+    required this.countsByDay,
+    required this.intensityByDay,
+    this.onDayTap,
+  });
 
   final Map<DateTime, int> countsByDay;
+
+  /// Each day's total win intensity (sum of that day's wins' 1-5 intensity
+  /// values) — see [winIntensityByDay]. Drives the glow, independently of
+  /// [countsByDay], which only drives the star's fill opacity.
+  final Map<DateTime, int> intensityByDay;
+
   final void Function(DateTime day)? onDayTap;
 
   @override
@@ -24,6 +37,13 @@ class StarHeatmap extends StatelessWidget {
     final leadingBlanks = firstOfMonth.weekday - DateTime.monday;
     final totalCells = leadingBlanks + daysInMonth;
     final rows = (totalCells / 7).ceil();
+
+    // The min/max that calibrate glow intensity, taken only from days that
+    // actually have a star lit — an all-zero day never glows, so it
+    // shouldn't pull the low end of the scale down further.
+    final litIntensities = intensityByDay.values.where((v) => v > 0);
+    final minIntensity = litIntensities.isEmpty ? 0 : litIntensities.reduce((a, b) => a < b ? a : b);
+    final maxIntensity = litIntensities.isEmpty ? 0 : litIntensities.reduce((a, b) => a > b ? a : b);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -58,6 +78,9 @@ class StarHeatmap extends StatelessWidget {
                         month: todayDate,
                         today: todayDate,
                         countsByDay: countsByDay,
+                        intensityByDay: intensityByDay,
+                        minIntensity: minIntensity,
+                        maxIntensity: maxIntensity,
                         onTap: onDayTap,
                       ),
                     ),
@@ -77,6 +100,9 @@ class _DayCell extends StatelessWidget {
     required this.month,
     required this.today,
     required this.countsByDay,
+    required this.intensityByDay,
+    required this.minIntensity,
+    required this.maxIntensity,
     this.onTap,
   });
 
@@ -85,6 +111,9 @@ class _DayCell extends StatelessWidget {
   final DateTime month;
   final DateTime today;
   final Map<DateTime, int> countsByDay;
+  final Map<DateTime, int> intensityByDay;
+  final int minIntensity;
+  final int maxIntensity;
   final void Function(DateTime day)? onTap;
 
   @override
@@ -115,11 +144,30 @@ class _DayCell extends StatelessWidget {
       _ => 1.0,
     };
 
+    final dayIntensity = intensityByDay[day] ?? 0;
+    var glowStrength = 0.0;
+    if (dayIntensity > 0) {
+      glowStrength = maxIntensity == minIntensity
+          ? 1.0
+          : (dayIntensity - minIntensity) / (maxIntensity - minIntensity);
+    }
+
     return GestureDetector(
       onTap: onTap == null ? null : () => onTap!(day),
-      child: SizedBox(
+      child: Container(
         width: cellSize,
         height: cellSize,
+        decoration: glowStrength <= 0
+            ? null
+            : BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: colors.gold.withValues(alpha: 0.22 + 0.5 * glowStrength),
+                    blurRadius: 5 + 11 * glowStrength,
+                  ),
+                ],
+              ),
         child: Icon(
           count == 0 ? Icons.star_border : Icons.star,
           size: cellSize,

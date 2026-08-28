@@ -44,7 +44,7 @@ void main() {
     expect(reloaded.getAll().first.intensity, 4);
   });
 
-  test('update() changes title/description/intensity but keeps id, number, and date', () async {
+  test('update() changes title/description/intensity but keeps id and number', () async {
     final repo = await WinRepository.create();
     final original = await repo.add(
       title: 'Original',
@@ -59,6 +59,7 @@ void main() {
       description: '',
       projectId: 1,
       intensity: 5,
+      date: original.date,
     );
 
     expect(updated.id, original.id);
@@ -70,6 +71,22 @@ void main() {
     expect(repo.getAll().single.title, 'Updated');
   });
 
+  test('update() can change a win\'s date', () async {
+    final repo = await WinRepository.create();
+    final original = await repo.add(title: 'A win', projectId: 1, intensity: 3);
+    final newDate = DateTime(2024, 1, 5);
+
+    final updated = await repo.update(
+      id: original.id,
+      title: original.title,
+      projectId: original.projectId,
+      intensity: original.intensity,
+      date: newDate,
+    );
+
+    expect(updated.date, newDate);
+  });
+
   test('update() can reassign a win to a different project', () async {
     final repo = await WinRepository.create();
     final original = await repo.add(title: 'A win', projectId: 1, intensity: 3);
@@ -79,6 +96,7 @@ void main() {
       title: original.title,
       projectId: 2,
       intensity: original.intensity,
+      date: original.date,
     );
 
     expect(updated.projectId, 2);
@@ -90,7 +108,7 @@ void main() {
     final repo = await WinRepository.create();
 
     expect(
-      () => repo.update(id: 999, title: 'Nope', projectId: 1, intensity: 3),
+      () => repo.update(id: 999, title: 'Nope', projectId: 1, intensity: 3, date: DateTime.now()),
       throwsStateError,
     );
   });

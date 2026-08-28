@@ -129,6 +129,8 @@ class StringsIt implements AppStrings {
   @override
   String get selectAProject => 'Seleziona un progetto';
   @override
+  String get dateLabel => 'Data';
+  @override
   String get titleFieldLabel => 'In poche parole';
   @override
   String get titleHint => 'Es. Ho retto dopo un rifiuto e sono andato avanti';

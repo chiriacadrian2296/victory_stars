@@ -175,8 +175,6 @@ class StringsEn implements AppStrings {
   String get noStarsInSelection => "No stars lit yet in the areas you picked.";
   @override
   String get viewYourStars => 'View your stars';
-  @override
-  String get encouragementCta => 'Or just read something uplifting';
 
   @override
   String get addWinFabLabel => 'New star';

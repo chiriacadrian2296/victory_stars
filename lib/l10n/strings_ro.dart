@@ -176,8 +176,6 @@ class StringsRo implements AppStrings {
   String get noStarsInSelection => 'Nicio stea aprinsă încă în zonele alese.';
   @override
   String get viewYourStars => 'Privește-ți stelele';
-  @override
-  String get encouragementCta => 'Sau citește ceva încurajator';
 
   @override
   String get addWinFabLabel => 'Stea nouă';

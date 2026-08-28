@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../data/project_repository.dart';
@@ -7,7 +9,6 @@ import '../models/life_area.dart';
 import '../models/project.dart';
 import '../models/win.dart';
 import '../theme/app_colors.dart';
-import 'encouragement_screen.dart';
 import 'win_reader_screen.dart';
 
 /// Entry point for reflecting on saved wins — reachable from every tab
@@ -146,7 +147,7 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
                         value: _allSelected,
                         onChanged: (_) => _toggleAll(),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 28),
                       // Two equal-width columns rather than a Wrap, so every
                       // chip claims the same amount of space regardless of
                       // how long its label is, instead of packing tighter
@@ -166,6 +167,8 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
                           ],
                         ],
                       ),
+                      const SizedBox(height: 28),
+                      const _UpliftingQuoteCarousel(),
                     ],
                   ),
                 ),
@@ -191,24 +194,6 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
                           foregroundColor: colors.onGold,
                           disabledBackgroundColor: colors.crisisMuted.withValues(alpha: 0.15),
                           disabledForegroundColor: colors.crisisMuted,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const EncouragementScreen()),
-                        ),
-                        icon: const Icon(Icons.auto_stories_outlined, size: 17),
-                        label: Text(strings.encouragementCta),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: colors.crisisMuted,
-                          backgroundColor: Colors.white.withValues(alpha: 0.05),
-                          side: BorderSide(color: colors.crisisMuted.withValues(alpha: 0.3)),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                         ),
@@ -276,9 +261,12 @@ class _AreaChip extends StatelessWidget {
   }
 }
 
-/// A visually distinct stand-in for "select every area at once" — a real
-/// switch rather than another chip, even though toggling it does exactly
-/// what tapping every area chip at once would ([_AdmireStarsScreenState._toggleAll]).
+/// A visually distinct stand-in for "select every area at once" — a compact,
+/// centered switch rather than a full-width chip, even though toggling it
+/// does exactly what tapping every area chip at once would
+/// ([_AdmireStarsScreenState._toggleAll]). Hand-rolled instead of Flutter's
+/// own [Switch]/[SwitchListTile] because both insist on expanding to fill
+/// their row — there's no supported way to make them shrink to their content.
 class _AllAreasSwitch extends StatelessWidget {
   const _AllAreasSwitch({required this.label, required this.value, required this.onChanged});
 
@@ -289,33 +277,108 @@ class _AllAreasSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return ClipRRect(
+    return InkWell(
+      onTap: () => onChanged(!value),
       borderRadius: BorderRadius.circular(22),
       child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.05),
           border: Border.all(color: value ? colors.gold : colors.crisisMuted.withValues(alpha: 0.3)),
           borderRadius: BorderRadius.circular(22),
         ),
-        child: SwitchListTile(
-          value: value,
-          onChanged: onChanged,
-          activeThumbColor: colors.gold,
-          activeTrackColor: colors.gold.withValues(alpha: 0.25),
-          inactiveThumbColor: colors.crisisMuted,
-          inactiveTrackColor: colors.crisisMuted.withValues(alpha: 0.15),
-          trackOutlineColor: WidgetStateProperty.resolveWith(
-            (states) => states.contains(WidgetState.selected)
-                ? colors.gold.withValues(alpha: 0.5)
-                : colors.crisisMuted.withValues(alpha: 0.4),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 18),
-          title: Text(
-            label,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                color: colors.crisisMuted,
+                fontWeight: value ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+            const SizedBox(width: 10),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              width: 38,
+              height: 22,
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: value ? colors.gold.withValues(alpha: 0.3) : colors.crisisMuted.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(11),
+                border: Border.all(
+                  color: value ? colors.gold.withValues(alpha: 0.6) : colors.crisisMuted.withValues(alpha: 0.4),
+                ),
+              ),
+              child: AnimatedAlign(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+                child: Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: value ? colors.gold : colors.crisisMuted,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Cycles through [AppStrings.upliftingQuotes] on its own, one every 5
+/// seconds — replaces what used to be a button pushing [EncouragementScreen]
+/// with the quotes shown inline instead, right in the space below the area
+/// chips.
+class _UpliftingQuoteCarousel extends StatefulWidget {
+  const _UpliftingQuoteCarousel();
+
+  @override
+  State<_UpliftingQuoteCarousel> createState() => _UpliftingQuoteCarouselState();
+}
+
+class _UpliftingQuoteCarouselState extends State<_UpliftingQuoteCarousel> {
+  List<String>? _quotes;
+  int _index = 0;
+  Timer? _timer;
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Shuffled once, the first time build() runs with strings available —
+    // not in initState, since AppStrings needs an InheritedWidget lookup.
+    final quotes = _quotes ??= [...context.strings.upliftingQuotes]..shuffle();
+    _timer ??= Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted) return;
+      setState(() => _index = (_index + 1) % quotes.length);
+    });
+
+    final colors = context.colors;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 72),
+      child: Center(
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 600),
+          child: Text(
+            quotes[_index],
+            key: ValueKey(_index),
+            textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 15,
+              fontStyle: FontStyle.italic,
+              height: 1.5,
               color: colors.crisisMuted,
-              fontWeight: value ? FontWeight.w600 : FontWeight.w400,
             ),
           ),
         ),

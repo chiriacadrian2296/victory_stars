@@ -12,9 +12,8 @@ import '../widgets/area_tag.dart';
 
 /// The dashboard's three stat cards (Total Stars, Current Streak, Longest
 /// Streak) each open one of these — a closer look, in the same reflective,
-/// gradient-background style as [WinReaderScreen] and [EncouragementScreen],
-/// but built around one big number and a card of supporting facts rather
-/// than a browsable win or a quote.
+/// gradient-background style as [WinReaderScreen], but built around one big
+/// number and a card of supporting facts rather than a browsable win.
 class TotalStarsDetailScreen extends StatelessWidget {
   const TotalStarsDetailScreen({super.key, required this.winRepository, required this.projectRepository});
 

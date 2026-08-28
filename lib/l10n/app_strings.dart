@@ -109,15 +109,15 @@ abstract class AppStrings {
   String get pickAtLeastOneArea;
   String get noStarsInSelection;
   String get viewYourStars;
-  String get encouragementCta;
 
   // Home FAB + its long-press "create" menu
   String get addWinFabLabel;
   String get newConstellationOption;
 
-  /// A fixed set of short, hand-written uplifting phrases — shown one at a
-  /// time, shuffled, in [EncouragementScreen]. Not a translation of a
-  /// single canonical list; each language's phrasing is its own.
+  /// A fixed set of short, hand-written uplifting phrases — cycled through
+  /// automatically, one at a time, by the quote carousel below the area
+  /// chips in [AdmireStarsScreen]. Not a translation of a single canonical
+  /// list; each language's phrasing is its own.
   List<String> get upliftingQuotes;
 
   // Win reader

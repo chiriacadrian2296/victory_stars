@@ -176,8 +176,6 @@ class StringsIt implements AppStrings {
   String get noStarsInSelection => 'Nessuna stella ancora accesa nelle aree scelte.';
   @override
   String get viewYourStars => 'Guarda le tue stelle';
-  @override
-  String get encouragementCta => 'Oppure leggi qualcosa di incoraggiante';
 
   @override
   String get addWinFabLabel => 'Nuova stella';

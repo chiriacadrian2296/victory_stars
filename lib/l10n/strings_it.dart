@@ -150,6 +150,8 @@ class StringsIt implements AppStrings {
   @override
   String get dateLabel => 'Data';
   @override
+  String get selectADateHint => 'Seleziona una data';
+  @override
   String get titleFieldLabel => 'In poche parole';
   @override
   String get titleHint => 'Es. Ho retto dopo un rifiuto e sono andato avanti';
@@ -158,7 +160,7 @@ class StringsIt implements AppStrings {
   @override
   String get detailsHint => 'Cosa ha reso difficile questo momento e come l\'hai superato';
   @override
-  String get intensityLabel => 'Intensità — quanto ti è costato';
+  String get intensityLabel => 'Intensità';
   @override
   String get saveChanges => 'Salva modifiche';
   @override

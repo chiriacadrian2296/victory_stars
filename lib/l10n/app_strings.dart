@@ -94,6 +94,7 @@ abstract class AppStrings {
   String get projectLabel;
   String get selectAProject;
   String get dateLabel;
+  String get selectADateHint;
   String get titleFieldLabel;
   String get titleHint;
   String get detailsLabel;

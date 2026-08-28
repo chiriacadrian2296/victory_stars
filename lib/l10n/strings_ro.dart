@@ -150,6 +150,8 @@ class StringsRo implements AppStrings {
   @override
   String get dateLabel => 'Dată';
   @override
+  String get selectADateHint => 'Selectează o dată';
+  @override
   String get titleFieldLabel => 'În câteva cuvinte';
   @override
   String get titleHint => 'Ex. Am rezistat după o respingere și am continuat';
@@ -158,7 +160,7 @@ class StringsRo implements AppStrings {
   @override
   String get detailsHint => 'Ce a făcut acest moment dificil și cum ai trecut peste el';
   @override
-  String get intensityLabel => 'Intensitate — cât te-a costat';
+  String get intensityLabel => 'Intensitate';
   @override
   String get saveChanges => 'Salvează modificările';
   @override

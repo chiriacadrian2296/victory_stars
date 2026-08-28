@@ -81,7 +81,12 @@ class _AddWinScreenState extends State<AddWinScreen> {
   late final _descriptionController = TextEditingController(text: widget.existingWin?.description ?? '');
   late Project? _selectedProject = widget.lockedProject ?? widget.contextProject;
   late int _intensity = widget.existingWin?.intensity ?? 3;
-  late DateTime _date = widget.existingWin?.date ?? DateTime.now();
+
+  /// Null until the user actually picks a date (or when editing, seeded
+  /// from the win's real date) — the field shows a placeholder rather than
+  /// presupposing today, even though today is still what the date picker
+  /// itself opens to, and what gets saved if the user never touches this.
+  late DateTime? _date = widget.existingWin?.date;
 
   @override
   void dispose() {
@@ -101,7 +106,7 @@ class _AddWinScreenState extends State<AddWinScreen> {
         description: _descriptionController.text,
         projectId: project.id,
         intensity: _intensity,
-        date: _date,
+        date: _date ?? DateTime.now(),
       ),
     );
   }
@@ -109,15 +114,24 @@ class _AddWinScreenState extends State<AddWinScreen> {
   Future<void> _pickDate() async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    final current = _date;
     final picked = await showDatePicker(
       context: context,
-      initialDate: _date.isAfter(today) ? today : _date,
+      initialDate: current == null || current.isAfter(today) ? today : current,
       firstDate: DateTime(2000),
       lastDate: today,
     );
     if (picked == null) return;
     setState(() {
-      _date = DateTime(picked.year, picked.month, picked.day, _date.hour, _date.minute, _date.second, _date.millisecond);
+      _date = DateTime(
+        picked.year,
+        picked.month,
+        picked.day,
+        current?.hour ?? now.hour,
+        current?.minute ?? now.minute,
+        current?.second ?? now.second,
+        current?.millisecond ?? now.millisecond,
+      );
     });
   }
 
@@ -277,10 +291,15 @@ class _AddWinScreenState extends State<AddWinScreen> {
                       Icon(Icons.calendar_today, size: 16, color: colors.muted),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: Text(
-                          formatDisplayDate(_date, strings),
-                          style: TextStyle(color: colors.text, fontSize: 15),
-                        ),
+                        child: _date == null
+                            ? Text(
+                                strings.selectADateHint,
+                                style: TextStyle(color: colors.muted, fontSize: 15),
+                              )
+                            : Text(
+                                formatDisplayDate(_date!, strings),
+                                style: TextStyle(color: colors.text, fontSize: 15),
+                              ),
                       ),
                       Icon(Icons.expand_more, color: colors.muted),
                     ],
@@ -295,7 +314,6 @@ class _AddWinScreenState extends State<AddWinScreen> {
               const SizedBox(height: 6),
               TextField(
                 controller: _titleController,
-                autofocus: true,
                 textInputAction: TextInputAction.next,
                 style: TextStyle(color: colors.text, fontSize: 15),
                 decoration: InputDecoration(
@@ -318,15 +336,13 @@ class _AddWinScreenState extends State<AddWinScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    strings.intensityLabel,
-                    style: TextStyle(fontSize: 13, color: colors.muted),
-                  ),
-                  IntensityStars(intensity: _intensity, size: 16),
-                ],
+              Text(
+                strings.intensityLabel,
+                style: TextStyle(fontSize: 13, color: colors.muted),
+              ),
+              const SizedBox(height: 10),
+              Center(
+                child: IntensityStars(intensity: _intensity, size: 22, spacing: 6, emphasizeLast: true),
               ),
               SliderTheme(
                 data: SliderTheme.of(context).copyWith(

@@ -12,6 +12,7 @@ class IntensityStars extends StatelessWidget {
     this.size = 14,
     this.spacing = 2,
     this.color,
+    this.emphasizeLast = false,
   });
 
   final int intensity;
@@ -19,21 +20,42 @@ class IntensityStars extends StatelessWidget {
   final double spacing;
   final Color? color;
 
+  /// When true, the last lit star (at index [intensity]) renders a bit
+  /// bigger and with a soft glow instead of looking identical to the other
+  /// lit stars — used on the add/edit star form, where that star is the one
+  /// the slider is currently pointing at.
+  final bool emphasizeLast;
+
   @override
   Widget build(BuildContext context) {
     final resolvedColor = color ?? context.colors.gold;
     return Row(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         for (var i = 1; i <= 5; i++) ...[
           if (i > 1) SizedBox(width: spacing),
-          Icon(
-            i <= intensity ? Icons.star : Icons.star_border,
-            size: size,
-            color: i <= intensity ? resolvedColor : resolvedColor.withValues(alpha: 0.35),
-          ),
+          _star(i, resolvedColor),
         ],
       ],
+    );
+  }
+
+  Widget _star(int i, Color resolvedColor) {
+    final lit = i <= intensity;
+    final isEmphasized = emphasizeLast && lit && i == intensity;
+    final icon = Icon(
+      lit ? Icons.star : Icons.star_border,
+      size: isEmphasized ? size * 1.35 : size,
+      color: lit ? resolvedColor : resolvedColor.withValues(alpha: 0.35),
+    );
+    if (!isEmphasized) return icon;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [BoxShadow(color: resolvedColor.withValues(alpha: 0.6), blurRadius: 12)],
+      ),
+      child: icon,
     );
   }
 }

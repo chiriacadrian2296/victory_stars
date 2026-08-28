@@ -39,6 +39,8 @@ class StringsRo implements AppStrings {
   @override
   String get admireYourStars => 'Admiră-ți stelele';
   @override
+  String get overviewLabel => 'Sumar';
+  @override
   String get totalStarsLabel => 'Stele în total';
   @override
   String get currentStreakLabel => 'Serie curentă';

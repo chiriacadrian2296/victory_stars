@@ -39,6 +39,8 @@ class StringsEn implements AppStrings {
   @override
   String get admireYourStars => 'Admire Your Stars';
   @override
+  String get overviewLabel => 'Overview';
+  @override
   String get totalStarsLabel => 'Total stars';
   @override
   String get currentStreakLabel => 'Current streak';

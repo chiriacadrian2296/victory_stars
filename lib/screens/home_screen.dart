@@ -250,6 +250,11 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 6),
             Text(strings.homeSubtitle, style: TextStyle(fontSize: 14, color: colors.muted)),
             const SizedBox(height: 24),
+            Text(
+              strings.overviewLabel,
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.muted),
+            ),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(

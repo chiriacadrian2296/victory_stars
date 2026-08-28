@@ -28,6 +28,7 @@ abstract class AppStrings {
   String get homeTitle;
   String get homeSubtitle;
   String get admireYourStars;
+  String get overviewLabel;
   String get totalStarsLabel;
   String get currentStreakLabel;
   String get longestStreakLabel;

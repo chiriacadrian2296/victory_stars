@@ -135,21 +135,25 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Text(
-                                strings.admireYourStars,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 26,
-                                  fontStyle: FontStyle.italic,
-                                  fontWeight: FontWeight.w600,
-                                  color: colors.text,
+                              SizedBox(
+                                width: double.infinity,
+                                child: Text(
+                                  strings.admireYourStars,
+                                  style: TextStyle(
+                                    fontSize: 26,
+                                    fontStyle: FontStyle.italic,
+                                    fontWeight: FontWeight.w600,
+                                    color: colors.text,
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 12),
-                              Text(
-                                strings.admireTagline,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 15, height: 1.5, color: colors.crisisMuted),
+                              SizedBox(
+                                width: double.infinity,
+                                child: Text(
+                                  strings.admireTagline,
+                                  style: TextStyle(fontSize: 15, height: 1.5, color: colors.crisisMuted),
+                                ),
                               ),
                               const SizedBox(height: 32),
                               _AllAreasSwitch(

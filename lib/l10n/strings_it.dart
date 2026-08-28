@@ -39,6 +39,8 @@ class StringsIt implements AppStrings {
   @override
   String get admireYourStars => 'Ammira le tue stelle';
   @override
+  String get overviewLabel => 'Panoramica';
+  @override
   String get totalStarsLabel => 'Stelle totali';
   @override
   String get currentStreakLabel => 'Serie attuale';

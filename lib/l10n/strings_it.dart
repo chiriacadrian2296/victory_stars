@@ -216,6 +216,21 @@ class StringsIt implements AppStrings {
   String get notificationPermissionDenied =>
       'Le notifiche sono disattivate per questa app nelle impostazioni del telefono.';
   @override
+  String get testNotificationButton => 'Invia notifica di prova';
+  @override
+  String get testNotificationSent => 'Notifica di prova inviata.';
+  @override
+  String get reminderNotificationTitle => 'Registra una vittoria';
+
+  @override
+  List<String> get reminderNotificationBodies => const [
+        "Cosa ti ha aiutato a superare oggi, anche solo un po'?",
+        'Anche le piccole vittorie meritano una stella.',
+        "Un attimo — cos'è andato bene oggi?",
+        'Il tuo cielo aspetta la stella di stasera.',
+        'Hai superato qualcosa oggi? Scrivilo.',
+      ];
+  @override
   String get aboutSection => 'Informazioni';
   @override
   String aboutVersion(String version) => 'Versione $version';

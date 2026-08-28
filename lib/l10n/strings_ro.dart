@@ -215,6 +215,21 @@ class StringsRo implements AppStrings {
   @override
   String get notificationPermissionDenied => 'Notificările sunt dezactivate pentru această aplicație în setările telefonului.';
   @override
+  String get testNotificationButton => 'Trimite o notificare de test';
+  @override
+  String get testNotificationSent => 'Notificare de test trimisă.';
+  @override
+  String get reminderNotificationTitle => 'Notează o victorie';
+
+  @override
+  List<String> get reminderNotificationBodies => const [
+        'Ce te-a ajutat să treci peste ziua de azi, chiar și puțin?',
+        'Și victoriile mici merită o stea.',
+        'Un moment — ce a mers bine azi?',
+        'Cerul tău așteaptă steaua din seara asta.',
+        'Ai trecut peste ceva azi? Notează-l.',
+      ];
+  @override
   String get aboutSection => 'Despre';
   @override
   String aboutVersion(String version) => 'Versiunea $version';

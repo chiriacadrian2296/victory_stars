@@ -3,21 +3,41 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
-/// Schedules (or cancels) the single daily "log a win" reminder notification.
-/// One fixed notification id — there is only ever at most one reminder, so
-/// re-scheduling simply overwrites it.
+const _androidChannel = AndroidNotificationDetails(
+  'daily_reminder',
+  'Daily reminder',
+  importance: Importance.defaultImportance,
+  priority: Priority.defaultPriority,
+);
+
+/// Schedules (or cancels) the daily "log a win" reminder, and can fire an
+/// immediate test notification on demand. Tapping any of these notifications
+/// (cold start or while running) is reported via the `onNotificationTap`
+/// callback passed to [create] — the app wires that to opening the
+/// add-win screen.
 class ReminderService {
   ReminderService._(this._plugin);
 
-  static const _notificationId = 1001;
+  /// The next [_daysAhead] days are scheduled individually (not one
+  /// repeating alarm) so the body text can cycle through several phrases
+  /// instead of repeating the same one every day. IDs are base-relative,
+  /// one per day offset; [_testNotificationId] is deliberately outside that
+  /// range so a manual test never collides with or disturbs the real
+  /// schedule.
+  static const _notificationIdBase = 1001;
+  static const _daysAhead = 5;
+  static const _testNotificationId = 999;
   static bool _timezoneReady = false;
 
   final FlutterLocalNotificationsPlugin _plugin;
 
-  static Future<ReminderService> create() async {
+  static Future<ReminderService> create({void Function(NotificationResponse)? onNotificationTap}) async {
     final plugin = FlutterLocalNotificationsPlugin();
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    await plugin.initialize(settings: const InitializationSettings(android: androidSettings));
+    await plugin.initialize(
+      settings: const InitializationSettings(android: androidSettings),
+      onDidReceiveNotificationResponse: onNotificationTap,
+    );
 
     if (!_timezoneReady) {
       tz_data.initializeTimeZones();
@@ -39,38 +59,54 @@ class ReminderService {
     return granted ?? false;
   }
 
-  Future<void> scheduleDaily({
+  /// Whether the app process was cold-started by the user tapping a
+  /// notification — [onNotificationTap] alone can't see this, since it
+  /// isn't attached yet at that point. Check once, right after [create].
+  Future<bool> launchedFromNotification() async {
+    final details = await _plugin.getNotificationAppLaunchDetails();
+    return details?.didNotificationLaunchApp ?? false;
+  }
+
+  /// Schedules the next [_daysAhead] days at [hour]:[minute], one [bodies]
+  /// entry per day (cycling if there are fewer phrases than days). Replaces
+  /// whatever was scheduled before — call again (e.g. when the app is
+  /// reopened) to keep the window topped up, since exact-date alarms don't
+  /// refill themselves the way a single repeating one would.
+  Future<void> scheduleUpcoming({
     required int hour,
     required int minute,
     required String title,
-    required String body,
+    required List<String> bodies,
   }) async {
+    await _plugin.cancelAll();
     final now = tz.TZDateTime.now(tz.local);
-    var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
-    if (!scheduled.isAfter(now)) {
-      scheduled = scheduled.add(const Duration(days: 1));
-    }
+    for (var i = 0; i < _daysAhead; i++) {
+      var date = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+      if (!date.isAfter(now)) date = date.add(const Duration(days: 1));
+      date = date.add(Duration(days: i));
 
-    await _plugin.zonedSchedule(
-      id: _notificationId,
-      scheduledDate: scheduled,
-      title: title,
-      body: body,
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'daily_reminder',
-          'Daily reminder',
-          importance: Importance.defaultImportance,
-          priority: Priority.defaultPriority,
-        ),
-      ),
-      // Inexact scheduling avoids needing Android's separate "exact alarm"
-      // permission flow — a reminder landing within a few minutes of the
-      // chosen time is more than good enough for this use case.
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time,
-    );
+      await _plugin.zonedSchedule(
+        id: _notificationIdBase + i,
+        scheduledDate: date,
+        title: title,
+        body: bodies[i % bodies.length],
+        notificationDetails: const NotificationDetails(android: _androidChannel),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      );
+    }
   }
 
-  Future<void> cancel() => _plugin.cancel(id: _notificationId);
+  Future<void> cancel() => _plugin.cancelAll();
+
+  /// Fires right away — for the "send test notification" button in
+  /// Settings. Uses its own id, well outside the scheduled range, so it
+  /// never overwrites (or gets overwritten by) the real daily reminders.
+  Future<void> showNow({required String title, required String body}) {
+    return _plugin.show(
+      id: _testNotificationId,
+      title: title,
+      body: body,
+      notificationDetails: const NotificationDetails(android: _androidChannel),
+    );
+  }
 }

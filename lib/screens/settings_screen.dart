@@ -20,34 +20,24 @@ class SettingsScreen extends StatefulWidget {
     required this.settings,
     required this.winRepository,
     required this.projectRepository,
+    required this.reminderService,
   });
 
   final SettingsController settings;
   final WinRepository winRepository;
   final ProjectRepository projectRepository;
+  final ReminderService reminderService;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  ReminderService? _reminderService;
-
-  @override
-  void initState() {
-    super.initState();
-    ReminderService.create().then((service) {
-      if (mounted) setState(() => _reminderService = service);
-    });
-  }
-
   Future<void> _setReminderEnabled(bool enabled) async {
-    final service = _reminderService;
-    if (service == null) return;
     final strings = context.strings;
 
     if (enabled) {
-      final granted = await service.requestPermission();
+      final granted = await widget.reminderService.requestPermission();
       if (!granted) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -61,15 +51,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         hour: widget.settings.reminderHour,
         minute: widget.settings.reminderMinute,
       );
-      await service.scheduleDaily(
+      await widget.reminderService.scheduleUpcoming(
         hour: widget.settings.reminderHour,
         minute: widget.settings.reminderMinute,
-        title: strings.admireYourStars,
-        body: strings.homeSubtitle,
+        title: strings.reminderNotificationTitle,
+        bodies: strings.reminderNotificationBodies,
       );
     } else {
       await widget.settings.setReminder(enabled: false, hour: widget.settings.reminderHour, minute: widget.settings.reminderMinute);
-      await service.cancel();
+      await widget.reminderService.cancel();
     }
     if (mounted) setState(() {});
   }
@@ -83,16 +73,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (picked == null) return;
 
     await widget.settings.setReminder(enabled: true, hour: picked.hour, minute: picked.minute);
-    final service = _reminderService;
-    if (service != null) {
-      await service.scheduleDaily(
-        hour: picked.hour,
-        minute: picked.minute,
-        title: strings.admireYourStars,
-        body: strings.homeSubtitle,
-      );
-    }
+    await widget.reminderService.scheduleUpcoming(
+      hour: picked.hour,
+      minute: picked.minute,
+      title: strings.reminderNotificationTitle,
+      bodies: strings.reminderNotificationBodies,
+    );
     if (mounted) setState(() {});
+  }
+
+  Future<void> _sendTestNotification() async {
+    final strings = context.strings;
+    final bodies = strings.reminderNotificationBodies;
+    final body = bodies[DateTime.now().millisecondsSinceEpoch % bodies.length];
+
+    await widget.reminderService.showNow(title: strings.reminderNotificationTitle, body: body);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(strings.testNotificationSent)));
+    }
   }
 
   Future<void> _seedSampleData() async {
@@ -202,11 +200,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     SwitchListTile(
                       value: widget.settings.reminderEnabled,
-                      onChanged: _reminderService == null ? null : _setReminderEnabled,
+                      onChanged: _setReminderEnabled,
                       activeThumbColor: colors.gold,
                       title: Text(strings.reminderToggleLabel, style: TextStyle(color: colors.text, fontSize: 14)),
                     ),
-                    if (widget.settings.reminderEnabled)
+                    if (widget.settings.reminderEnabled) ...[
                       ListTile(
                         onTap: _pickReminderTime,
                         title: Text(strings.reminderTimeLabel, style: TextStyle(color: colors.muted, fontSize: 13)),
@@ -216,6 +214,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           style: TextStyle(color: colors.gold, fontWeight: FontWeight.w600, fontSize: 15),
                         ),
                       ),
+                      ListTile(
+                        onTap: _sendTestNotification,
+                        title: Text(strings.testNotificationButton, style: TextStyle(color: colors.gold, fontSize: 13)),
+                        leading: Icon(Icons.notifications_active_outlined, color: colors.gold, size: 20),
+                      ),
+                    ],
                   ],
                 ),
               ),

@@ -214,6 +214,21 @@ class StringsEn implements AppStrings {
   @override
   String get notificationPermissionDenied => 'Notifications are turned off for this app in your phone settings.';
   @override
+  String get testNotificationButton => 'Send test notification';
+  @override
+  String get testNotificationSent => 'Test notification sent.';
+  @override
+  String get reminderNotificationTitle => 'Log a win';
+
+  @override
+  List<String> get reminderNotificationBodies => const [
+        'What got you through today, even a little?',
+        'Even small wins deserve a star.',
+        'Take a moment — what went right today?',
+        'Your sky is waiting for tonight\'s star.',
+        'Did you get through something today? Write it down.',
+      ];
+  @override
   String get aboutSection => 'About';
   @override
   String aboutVersion(String version) => 'Version $version';

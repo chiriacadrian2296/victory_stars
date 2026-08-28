@@ -35,7 +35,7 @@ class StringsRo implements AppStrings {
   @override
   String get homeTitle => 'Panoul tău';
   @override
-  String get homeSubtitle => 'Fiecare victorie e o stea, aprinsă atunci când aveai nevoie de lumină.';
+  String get homeSubtitle => 'Fiecare stea e o victorie, aprinsă atunci când aveai nevoie de lumină.';
   @override
   String get admireYourStars => 'Admiră-ți stelele';
   @override
@@ -56,7 +56,7 @@ class StringsRo implements AppStrings {
   @override
   String get combinedIntensityLabel => 'Intensitate combinată';
   @override
-  String get starsByAreaLabel => 'Pe zone';
+  String get starsByAreaLabel => 'Pe supernove';
   @override
   String get streakFromLabel => 'De la';
   @override
@@ -75,7 +75,7 @@ class StringsRo implements AppStrings {
   @override
   String get noSearchResults => 'Nicio stea nu corespunde căutării.';
   @override
-  String get areaWinsEmpty => 'Nicio stea aprinsă încă în această zonă.';
+  String get areaWinsEmpty => 'Nicio stea aprinsă încă în această supernovă.';
   @override
   String get constellationsModeLabel => 'Constelații';
   @override
@@ -86,14 +86,14 @@ class StringsRo implements AppStrings {
   @override
   String get seedSampleData => 'Generează date de exemplu';
   @override
-  String seedSampleDataResult(int count) => 'S-au adăugat $count victorii la fiecare proiect de exemplu.';
+  String seedSampleDataResult(int count) => 'S-au adăugat $count stele la fiecare constelație de exemplu.';
   @override
   String get resetAllData => 'Resetează toate datele';
   @override
   String get resetAllDataConfirmTitle => 'Resetezi toate datele?';
   @override
   String get resetAllDataConfirmBody =>
-      'Această acțiune șterge definitiv fiecare victorie și proiect. Nu poate fi anulată.';
+      'Această acțiune șterge definitiv fiecare stea și constelație. Nu poate fi anulată.';
   @override
   String get cancel => 'Anulează';
   @override
@@ -108,22 +108,22 @@ class StringsRo implements AppStrings {
   @override
   String get skyTitle => 'Explorează-ți cerul';
   @override
-  String get skySubtitle => 'Fiecare zonă are propriile constelații.';
+  String get skySubtitle => 'Fiecare supernovă are propriile constelații.';
   @override
   String starsCount(int count) => count == 1 ? '1 stea' : '$count stele';
   @override
   String areaEmptyProjects(String areaName) =>
-      'Încă niciun proiect în $areaName. Începe unul pentru a aprinde primele stele aici.';
+      'Încă nicio constelație în $areaName. Începe una pentru a aprinde primele stele aici.';
 
   @override
-  String get constellationShapeMissing => 'Forma constelației acestui proiect nu a fost găsită.';
+  String get constellationShapeMissing => 'Forma acestei constelații nu a fost găsită.';
 
   @override
-  String get newProjectEyebrow => 'PROIECT NOU';
+  String get newProjectEyebrow => 'CONSTELAȚIE NOUĂ';
   @override
-  String get newProjectQuestion => 'Despre ce proiect e vorba?';
+  String get newProjectQuestion => 'Despre ce constelație e vorba?';
   @override
-  String get areaLabel => 'Zonă';
+  String get areaLabel => 'Supernovă';
   @override
   String get nameLabel => 'Nume';
   @override
@@ -131,9 +131,9 @@ class StringsRo implements AppStrings {
   @override
   String get iconLabel => 'Pictogramă';
   @override
-  String get createProject => 'Creează proiect';
+  String get createProject => 'Creează constelație';
   @override
-  String get newProject => 'Proiect nou';
+  String get newProject => 'Constelație nouă';
 
   @override
   String get newStarEyebrow => 'STEA NOUĂ';
@@ -142,9 +142,9 @@ class StringsRo implements AppStrings {
   @override
   String get addWinQuestion => 'Ce ai reușit să depășești?';
   @override
-  String get projectLabel => 'Proiect';
+  String get projectLabel => 'Constelație';
   @override
-  String get selectAProject => 'Selectează un proiect';
+  String get selectAProject => 'Selectează o constelație';
   @override
   String get dateLabel => 'Dată';
   @override
@@ -165,11 +165,11 @@ class StringsRo implements AppStrings {
   @override
   String get admireTagline => 'Pentru când ești în întuneric și ai nevoie de puțină lumină.';
   @override
-  String get allAreasLabel => 'Toate zonele';
+  String get allAreasLabel => 'Toate supernovele';
   @override
-  String get pickAtLeastOneArea => 'Alege cel puțin o zonă pentru a continua.';
+  String get pickAtLeastOneArea => 'Alege cel puțin o supernovă pentru a continua.';
   @override
-  String get noStarsInSelection => 'Nicio stea aprinsă încă în zonele alese.';
+  String get noStarsInSelection => 'Nicio stea aprinsă încă în supernovele alese.';
   @override
   String get viewYourStars => 'Privește-ți stelele';
 
@@ -188,7 +188,7 @@ class StringsRo implements AppStrings {
         'Acest sentiment e real, dar nu e permanent.',
         'Nu trebuie să ai totul clar ca să mergi mai departe.',
         'Progres, nu perfecțiune.',
-        'Unele zile, singura victorie e că ești încă aici. Și contează.',
+        'Unele zile, e suficient să fii încă aici. Și contează.',
         'Ai trecut prin 100% din cele mai grele zile ale tale, până acum.',
         'Fii răbdător cu tine. Nimic în natură nu înflorește tot anul.',
         'E în regulă să nu fii bine — doar nu rămâne acolo singur.',
@@ -222,7 +222,7 @@ class StringsRo implements AppStrings {
   @override
   String get reminderSection => 'Memento zilnic';
   @override
-  String get reminderToggleLabel => 'Amintește-mi să notez o victorie';
+  String get reminderToggleLabel => 'Amintește-mi să aprind o stea';
   @override
   String get reminderTimeLabel => 'Ora mementoului';
   @override
@@ -230,12 +230,12 @@ class StringsRo implements AppStrings {
   @override
   String get testNotificationButton => 'Trimite o notificare de test';
   @override
-  String get reminderNotificationTitle => 'Notează o victorie';
+  String get reminderNotificationTitle => 'Aprinde o stea';
 
   @override
   List<String> get reminderNotificationBodies => const [
         'Ce te-a ajutat să treci peste ziua de azi, chiar și puțin?',
-        'Și victoriile mici merită o stea.',
+        'Și cel mai mic pas aprinde o stea.',
         'Un moment — ce a mers bine azi?',
         'Cerul tău așteaptă steaua din seara asta.',
         'Ai trecut peste ceva azi? Notează-l.',

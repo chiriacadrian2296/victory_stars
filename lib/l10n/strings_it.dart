@@ -35,7 +35,7 @@ class StringsIt implements AppStrings {
   @override
   String get homeTitle => 'La tua dashboard';
   @override
-  String get homeSubtitle => 'Ogni vittoria è una stella, accesa quando ne avevi bisogno.';
+  String get homeSubtitle => 'Ogni stella è una vittoria, accesa quando ne avevi bisogno.';
   @override
   String get admireYourStars => 'Ammira le tue stelle';
   @override
@@ -56,7 +56,7 @@ class StringsIt implements AppStrings {
   @override
   String get combinedIntensityLabel => 'Intensità complessiva';
   @override
-  String get starsByAreaLabel => 'Per area';
+  String get starsByAreaLabel => 'Per supernova';
   @override
   String get streakFromLabel => 'Da';
   @override
@@ -75,7 +75,7 @@ class StringsIt implements AppStrings {
   @override
   String get noSearchResults => 'Nessuna stella corrisponde alla ricerca.';
   @override
-  String get areaWinsEmpty => 'Nessuna stella accesa in quest\'area, per ora.';
+  String get areaWinsEmpty => 'Nessuna stella accesa in questa supernova, per ora.';
   @override
   String get constellationsModeLabel => 'Costellazioni';
   @override
@@ -86,14 +86,14 @@ class StringsIt implements AppStrings {
   @override
   String get seedSampleData => 'Genera dati di esempio';
   @override
-  String seedSampleDataResult(int count) => 'Aggiunte $count vittorie a ogni progetto di esempio.';
+  String seedSampleDataResult(int count) => 'Aggiunte $count stelle a ogni costellazione di esempio.';
   @override
   String get resetAllData => 'Azzera tutti i dati';
   @override
   String get resetAllDataConfirmTitle => 'Azzerare tutti i dati?';
   @override
   String get resetAllDataConfirmBody =>
-      'Questa azione elimina definitivamente ogni vittoria e progetto. Non può essere annullata.';
+      'Questa azione elimina definitivamente ogni stella e costellazione. Non può essere annullata.';
   @override
   String get cancel => 'Annulla';
   @override
@@ -108,22 +108,22 @@ class StringsIt implements AppStrings {
   @override
   String get skyTitle => 'Esplora il tuo cielo';
   @override
-  String get skySubtitle => 'Ogni area ha le sue costellazioni.';
+  String get skySubtitle => 'Ogni supernova ha le sue costellazioni.';
   @override
   String starsCount(int count) => count == 1 ? '1 stella' : '$count stelle';
   @override
   String areaEmptyProjects(String areaName) =>
-      'Ancora nessun progetto in $areaName. Iniziane uno per accendere le prime stelle qui.';
+      'Ancora nessuna costellazione in $areaName. Iniziane una per accendere le prime stelle qui.';
 
   @override
-  String get constellationShapeMissing => 'La forma della costellazione di questo progetto non è stata trovata.';
+  String get constellationShapeMissing => 'La forma di questa costellazione non è stata trovata.';
 
   @override
-  String get newProjectEyebrow => 'NUOVO PROGETTO';
+  String get newProjectEyebrow => 'NUOVA COSTELLAZIONE';
   @override
-  String get newProjectQuestion => 'Di che progetto si tratta?';
+  String get newProjectQuestion => 'Di che costellazione si tratta?';
   @override
-  String get areaLabel => 'Area';
+  String get areaLabel => 'Supernova';
   @override
   String get nameLabel => 'Nome';
   @override
@@ -131,9 +131,9 @@ class StringsIt implements AppStrings {
   @override
   String get iconLabel => 'Icona';
   @override
-  String get createProject => 'Crea progetto';
+  String get createProject => 'Crea costellazione';
   @override
-  String get newProject => 'Nuovo progetto';
+  String get newProject => 'Nuova costellazione';
 
   @override
   String get newStarEyebrow => 'NUOVA STELLA';
@@ -142,9 +142,9 @@ class StringsIt implements AppStrings {
   @override
   String get addWinQuestion => 'Cosa hai superato?';
   @override
-  String get projectLabel => 'Progetto';
+  String get projectLabel => 'Costellazione';
   @override
-  String get selectAProject => 'Seleziona un progetto';
+  String get selectAProject => 'Seleziona una costellazione';
   @override
   String get dateLabel => 'Data';
   @override
@@ -165,11 +165,11 @@ class StringsIt implements AppStrings {
   @override
   String get admireTagline => 'Per quando sei nel buio e hai bisogno di un po\' di luce.';
   @override
-  String get allAreasLabel => 'Tutte le aree';
+  String get allAreasLabel => 'Tutte le supernove';
   @override
-  String get pickAtLeastOneArea => 'Scegli almeno un\'area per continuare.';
+  String get pickAtLeastOneArea => 'Scegli almeno una supernova per continuare.';
   @override
-  String get noStarsInSelection => 'Nessuna stella ancora accesa nelle aree scelte.';
+  String get noStarsInSelection => 'Nessuna stella ancora accesa nelle supernove scelte.';
   @override
   String get viewYourStars => 'Guarda le tue stelle';
 
@@ -188,7 +188,7 @@ class StringsIt implements AppStrings {
         'Questo sentimento è reale, ma non è per sempre.',
         'Non devi avere tutte le risposte per continuare ad andare avanti.',
         'Progresso, non perfezione.',
-        "Certi giorni l'unica vittoria è che sei ancora qui. E conta.",
+        "Certi giorni basta essere ancora qui. E conta.",
         'Hai superato il 100% dei tuoi giorni peggiori, finora.',
         'Sii paziente con te stesso. In natura nulla fiorisce tutto l\'anno.',
         'Va bene non stare bene — solo non restarci da solo.',
@@ -222,7 +222,7 @@ class StringsIt implements AppStrings {
   @override
   String get reminderSection => 'Promemoria giornaliero';
   @override
-  String get reminderToggleLabel => 'Ricordami di registrare una vittoria';
+  String get reminderToggleLabel => 'Ricordami di accendere una stella';
   @override
   String get reminderTimeLabel => 'Orario del promemoria';
   @override
@@ -231,12 +231,12 @@ class StringsIt implements AppStrings {
   @override
   String get testNotificationButton => 'Invia notifica di prova';
   @override
-  String get reminderNotificationTitle => 'Registra una vittoria';
+  String get reminderNotificationTitle => 'Accendi una stella';
 
   @override
   List<String> get reminderNotificationBodies => const [
         "Cosa ti ha aiutato a superare oggi, anche solo un po'?",
-        'Anche le piccole vittorie meritano una stella.',
+        'Anche il passo più piccolo accende una stella.',
         "Un attimo — cos'è andato bene oggi?",
         'Il tuo cielo aspetta la stella di stasera.',
         'Hai superato qualcosa oggi? Scrivilo.',

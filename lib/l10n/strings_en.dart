@@ -35,7 +35,7 @@ class StringsEn implements AppStrings {
   @override
   String get homeTitle => 'Your dashboard';
   @override
-  String get homeSubtitle => 'Every win is a star, lit when you needed the light.';
+  String get homeSubtitle => 'Every star is a win, lit when you needed the light.';
   @override
   String get admireYourStars => 'Admire Your Stars';
   @override
@@ -56,7 +56,7 @@ class StringsEn implements AppStrings {
   @override
   String get combinedIntensityLabel => 'Combined intensity';
   @override
-  String get starsByAreaLabel => 'By area';
+  String get starsByAreaLabel => 'By supernova';
   @override
   String get streakFromLabel => 'From';
   @override
@@ -75,7 +75,7 @@ class StringsEn implements AppStrings {
   @override
   String get noSearchResults => 'No stars match your search.';
   @override
-  String get areaWinsEmpty => 'No stars lit in this area yet.';
+  String get areaWinsEmpty => 'No stars lit in this supernova yet.';
   @override
   String get constellationsModeLabel => 'Constellations';
   @override
@@ -86,13 +86,14 @@ class StringsEn implements AppStrings {
   @override
   String get seedSampleData => 'Seed sample data';
   @override
-  String seedSampleDataResult(int count) => 'Added $count wins to each seed project.';
+  String seedSampleDataResult(int count) => 'Added $count stars to each seed constellation.';
   @override
   String get resetAllData => 'Reset all data';
   @override
   String get resetAllDataConfirmTitle => 'Reset all data?';
   @override
-  String get resetAllDataConfirmBody => 'This permanently deletes every win and project. This cannot be undone.';
+  String get resetAllDataConfirmBody =>
+      'This permanently deletes every star and constellation. This cannot be undone.';
   @override
   String get cancel => 'Cancel';
   @override
@@ -107,22 +108,22 @@ class StringsEn implements AppStrings {
   @override
   String get skyTitle => 'Explore your sky';
   @override
-  String get skySubtitle => 'Every area holds its own constellations.';
+  String get skySubtitle => 'Every supernova holds its own constellations.';
   @override
   String starsCount(int count) => '$count star${count == 1 ? '' : 's'}';
   @override
   String areaEmptyProjects(String areaName) =>
-      'No projects yet in $areaName. Start one to begin lighting stars here.';
+      'No constellations yet in $areaName. Start one to begin lighting stars here.';
 
   @override
-  String get constellationShapeMissing => "This project's constellation shape couldn't be found.";
+  String get constellationShapeMissing => "This constellation's shape couldn't be found.";
 
   @override
-  String get newProjectEyebrow => 'NEW PROJECT';
+  String get newProjectEyebrow => 'NEW CONSTELLATION';
   @override
-  String get newProjectQuestion => 'What project is this?';
+  String get newProjectQuestion => 'What constellation is this?';
   @override
-  String get areaLabel => 'Area';
+  String get areaLabel => 'Supernova';
   @override
   String get nameLabel => 'Name';
   @override
@@ -130,9 +131,9 @@ class StringsEn implements AppStrings {
   @override
   String get iconLabel => 'Icon';
   @override
-  String get createProject => 'Create project';
+  String get createProject => 'Create constellation';
   @override
-  String get newProject => 'New project';
+  String get newProject => 'New constellation';
 
   @override
   String get newStarEyebrow => 'NEW STAR';
@@ -141,9 +142,9 @@ class StringsEn implements AppStrings {
   @override
   String get addWinQuestion => 'What did you get through?';
   @override
-  String get projectLabel => 'Project';
+  String get projectLabel => 'Constellation';
   @override
-  String get selectAProject => 'Select a project';
+  String get selectAProject => 'Select a constellation';
   @override
   String get dateLabel => 'Date';
   @override
@@ -164,11 +165,11 @@ class StringsEn implements AppStrings {
   @override
   String get admireTagline => "For when you're in the dark and you need some light.";
   @override
-  String get allAreasLabel => 'All areas';
+  String get allAreasLabel => 'All supernovas';
   @override
-  String get pickAtLeastOneArea => 'Pick at least one area to continue.';
+  String get pickAtLeastOneArea => 'Pick at least one supernova to continue.';
   @override
-  String get noStarsInSelection => "No stars lit yet in the areas you picked.";
+  String get noStarsInSelection => "No stars lit yet in the supernovas you picked.";
   @override
   String get viewYourStars => 'View your stars';
 
@@ -187,7 +188,7 @@ class StringsEn implements AppStrings {
         'This feeling is real, but it is not permanent.',
         "You don't have to have it all figured out to keep going.",
         'Progress, not perfection.',
-        "Some days the only win is that you're still here. That counts.",
+        "Some days, just being here is enough. That counts.",
         "You've made it through 100% of your worst days so far.",
         'Be patient with yourself. Nothing in nature blooms all year.',
         "It's okay to not be okay — just don't stay there alone.",
@@ -221,7 +222,7 @@ class StringsEn implements AppStrings {
   @override
   String get reminderSection => 'Daily reminder';
   @override
-  String get reminderToggleLabel => 'Remind me to log a win';
+  String get reminderToggleLabel => 'Remind me to light a star';
   @override
   String get reminderTimeLabel => 'Reminder time';
   @override
@@ -229,12 +230,12 @@ class StringsEn implements AppStrings {
   @override
   String get testNotificationButton => 'Send test notification';
   @override
-  String get reminderNotificationTitle => 'Log a win';
+  String get reminderNotificationTitle => 'Light a star';
 
   @override
   List<String> get reminderNotificationBodies => const [
         'What got you through today, even a little?',
-        'Even small wins deserve a star.',
+        'Even the smallest step still lights a star.',
         'Take a moment — what went right today?',
         'Your sky is waiting for tonight\'s star.',
         'Did you get through something today? Write it down.',

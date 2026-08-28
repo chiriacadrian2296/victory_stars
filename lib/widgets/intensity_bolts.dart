@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 
-/// The standard way a win's 1-5 intensity is shown: five stars, filled up
-/// to [intensity], matching the app's own "lit star" language rather than
-/// a generic numeric rating.
-class IntensityStars extends StatelessWidget {
-  const IntensityStars({
+/// The standard way a win's 1-5 intensity is shown: five bolts, filled up to
+/// [intensity]. A bolt rather than a star — a star is what's *created* by a
+/// win, so representing its own intensity with more (smaller) stars didn't
+/// make much conceptual sense.
+class IntensityBolts extends StatelessWidget {
+  const IntensityBolts({
     super.key,
     required this.intensity,
     this.size = 14,
@@ -20,9 +21,9 @@ class IntensityStars extends StatelessWidget {
   final double spacing;
   final Color? color;
 
-  /// When true, the last lit star (at index [intensity]) renders a bit
+  /// When true, the last lit bolt (at index [intensity]) renders a bit
   /// bigger and with a soft glow instead of looking identical to the other
-  /// lit stars — used on the add/edit star form, where that star is the one
+  /// lit bolts — used on the add/edit star form, where that bolt is the one
   /// the slider is currently pointing at.
   final bool emphasizeLast;
 
@@ -35,17 +36,17 @@ class IntensityStars extends StatelessWidget {
       children: [
         for (var i = 1; i <= 5; i++) ...[
           if (i > 1) SizedBox(width: spacing),
-          _star(i, resolvedColor),
+          _bolt(i, resolvedColor),
         ],
       ],
     );
   }
 
-  Widget _star(int i, Color resolvedColor) {
+  Widget _bolt(int i, Color resolvedColor) {
     final lit = i <= intensity;
     final isEmphasized = emphasizeLast && lit && i == intensity;
     final icon = Icon(
-      lit ? Icons.star : Icons.star_border,
+      lit ? Icons.bolt : Icons.bolt_outlined,
       size: isEmphasized ? size * 1.35 : size,
       color: lit ? resolvedColor : resolvedColor.withValues(alpha: 0.35),
     );

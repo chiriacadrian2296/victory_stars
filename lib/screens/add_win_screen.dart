@@ -12,7 +12,7 @@ import '../models/win.dart';
 import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
 import '../widgets/area_tag.dart';
-import '../widgets/intensity_stars.dart';
+import '../widgets/intensity_bolts.dart';
 import '../widgets/project_tag.dart';
 import 'new_project_screen.dart';
 
@@ -57,11 +57,17 @@ class AddWinResult {
 ///   whenever [lockedProject] isn't given — including when editing, since
 ///   the picker is how a win's project gets reassigned.
 class AddWinScreen extends StatefulWidget {
-  const AddWinScreen({super.key, this.existingWin, this.lockedProject, this.projectRepository, this.contextProject})
-    : assert(
-        lockedProject != null || projectRepository != null,
-        'Provide lockedProject (pre-scoped, no picker) or projectRepository (picker, for add or edit).',
-      );
+  const AddWinScreen({
+    super.key,
+    this.existingWin,
+    this.lockedProject,
+    this.projectRepository,
+    this.contextProject,
+    this.initialDate,
+  }) : assert(
+         lockedProject != null || projectRepository != null,
+         'Provide lockedProject (pre-scoped, no picker) or projectRepository (picker, for add or edit).',
+       );
 
   final Win? existingWin;
   final Project? lockedProject;
@@ -70,6 +76,11 @@ class AddWinScreen extends StatefulWidget {
   /// The existing win's current project, resolved by the caller — seeds the
   /// picker's initial selection when editing.
   final Project? contextProject;
+
+  /// Pre-fills the date field when creating a new win (e.g. opened from a
+  /// specific day on the dashboard calendar) — ignored when [existingWin] is
+  /// set, since editing always seeds the date from the win's own.
+  final DateTime? initialDate;
 
   bool get isEditing => existingWin != null;
 
@@ -95,7 +106,7 @@ class _AddWinScreenState extends State<AddWinScreen> {
   /// from the win's real date) — the field shows a placeholder rather than
   /// presupposing today, even though today is still what the date picker
   /// itself opens to, and what gets saved if the user never touches this.
-  late DateTime? _date = widget.existingWin?.date;
+  late DateTime? _date = widget.existingWin?.date ?? widget.initialDate;
   late String? _photoPath = widget.existingWin?.photoPath;
 
   @override
@@ -397,7 +408,7 @@ class _AddWinScreenState extends State<AddWinScreen> {
               const SizedBox(height: 20),
               Text(strings.intensityLabel, style: TextStyle(fontSize: 13, color: colors.muted)),
               const SizedBox(height: 10),
-              Center(child: IntensityStars(intensity: _intensity, size: 22, spacing: 6, emphasizeLast: true)),
+              Center(child: IntensityBolts(intensity: _intensity, size: 22, spacing: 6, emphasizeLast: true)),
               SliderTheme(
                 data: SliderTheme.of(context).copyWith(
                   activeTrackColor: colors.gold,

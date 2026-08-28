@@ -50,9 +50,11 @@ class _HomeScreenState extends State<HomeScreen> {
     return {for (final project in widget.projectRepository.getAll()) project.id: project};
   }
 
-  Future<void> _openAddWinScreen() async {
+  Future<void> _openAddWinScreen({DateTime? initialDate}) async {
     final result = await Navigator.of(context).push<AddWinResult>(
-      MaterialPageRoute(builder: (_) => AddWinScreen(projectRepository: widget.projectRepository)),
+      MaterialPageRoute(
+        builder: (_) => AddWinScreen(projectRepository: widget.projectRepository, initialDate: initialDate),
+      ),
     );
     if (result == null) return;
 
@@ -171,60 +173,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _openDayDetail(DateTime day) async {
     final colors = context.colors;
-    final strings = context.strings;
     final projectsById = _projectsById();
     final dayWins = _winsOnDay(day);
-    // Empty days would otherwise pop up a tiny sheet (just the date + one
-    // line) that feels jarringly different in size from a day with wins —
-    // give it the same rough footprint instead.
-    final emptyStateHeight = MediaQuery.of(context).size.height * 0.3;
 
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: colors.nightPanel,
       isScrollControlled: true,
+      // Never grows past this, no matter how many wins land on one day.
+      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.85),
       builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  formatDisplayDate(day, strings),
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: colors.text),
-                ),
-                const SizedBox(height: 16),
-                if (dayWins.isEmpty)
-                  SizedBox(
-                    height: emptyStateHeight,
-                    child: Center(
-                      child: Text(strings.dayDetailEmpty, style: TextStyle(color: colors.muted, fontSize: 14)),
-                    ),
-                  )
-                else
-                  Flexible(
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: dayWins.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final win = dayWins[index];
-                        return WinCard(
-                          win: win,
-                          project: projectsById[win.projectId],
-                          onTap: () {
-                            Navigator.of(sheetContext).pop();
-                            _openWinReader(dayWins, index, day);
-                          },
-                        );
-                      },
-                    ),
-                  ),
-              ],
-            ),
-          ),
+        return _DayDetailSheet(
+          day: day,
+          wins: dayWins,
+          projectsById: projectsById,
+          onWinTap: (wins, index) {
+            Navigator.of(sheetContext).pop();
+            _openWinReader(wins, index, day);
+          },
+          onAddForDay: () {
+            Navigator.of(sheetContext).pop();
+            _openAddWinScreen(initialDate: day);
+          },
         );
       },
     );
@@ -603,14 +573,14 @@ class _TodayStarHeroState extends State<_TodayStarHero> with TickerProviderState
           text: strings.litTodayTitle,
           highlight: strings.litTodayTitleHighlight,
           highlightColor: colors.gold,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white, height: 1.25),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: colors.text, height: 1.25),
         ),
         const SizedBox(height: 6),
         _highlightedText(
           text: strings.litTodaySubtitle,
           highlight: strings.litTodaySubtitleHighlight,
           highlightColor: colors.gold,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white, height: 1.35),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colors.text, height: 1.35),
         ),
       ],
     );
@@ -700,4 +670,126 @@ Widget _highlightedText({
       ],
     ),
   );
+}
+
+/// The day-detail bottom sheet's content — a date heading, a search field
+/// (filtering [wins] by title/description like every other win list in the
+/// app), a button to log a new star already dated to [day], and either the
+/// matching wins or an empty-state message.
+class _DayDetailSheet extends StatefulWidget {
+  const _DayDetailSheet({
+    required this.day,
+    required this.wins,
+    required this.projectsById,
+    required this.onWinTap,
+    required this.onAddForDay,
+  });
+
+  final DateTime day;
+  final List<Win> wins;
+  final Map<int, Project> projectsById;
+  final void Function(List<Win> wins, int index) onWinTap;
+  final VoidCallback onAddForDay;
+
+  @override
+  State<_DayDetailSheet> createState() => _DayDetailSheetState();
+}
+
+class _DayDetailSheetState extends State<_DayDetailSheet> {
+  String _query = '';
+
+  List<Win> get _filtered {
+    final query = _query.trim().toLowerCase();
+    if (query.isEmpty) return widget.wins;
+    return widget.wins.where((w) {
+      return w.title.toLowerCase().contains(query) || (w.description?.toLowerCase().contains(query) ?? false);
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final strings = context.strings;
+    final filtered = _filtered;
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              formatDisplayDate(widget.day, strings),
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: colors.text),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              onChanged: (value) => setState(() => _query = value),
+              style: TextStyle(color: colors.text, fontSize: 15),
+              decoration: InputDecoration(
+                hintText: strings.searchHint,
+                prefixIcon: Icon(Icons.search, color: colors.muted, size: 20),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Experimental — seeing how it feels day-to-day before deciding
+            // whether it earns a permanent spot here.
+            InkWell(
+              onTap: widget.onAddForDay,
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: colors.gold.withValues(alpha: 0.12),
+                  border: Border.all(color: colors.gold),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add, color: colors.gold),
+                    const SizedBox(width: 8),
+                    Text(
+                      strings.addStarForDayLabel,
+                      style: TextStyle(color: colors.gold, fontWeight: FontWeight.w600, fontSize: 15),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (filtered.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: Text(
+                    widget.wins.isEmpty ? strings.dayDetailEmpty : strings.noSearchResults,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: colors.muted, fontSize: 14),
+                  ),
+                ),
+              )
+            else
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final win = filtered[index];
+                    return WinCard(
+                      win: win,
+                      project: widget.projectsById[win.projectId],
+                      onTap: () => widget.onWinTap(filtered, index),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }

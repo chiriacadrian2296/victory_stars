@@ -6,7 +6,7 @@ import '../models/win.dart';
 import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
 import 'area_tag.dart';
-import 'intensity_stars.dart';
+import 'intensity_bolts.dart';
 import 'project_tag.dart';
 
 class WinCard extends StatelessWidget {
@@ -53,7 +53,7 @@ class WinCard extends StatelessWidget {
                             style: TextStyle(fontSize: 12, color: colors.muted),
                           ),
                         ),
-                        IntensityStars(intensity: win.intensity, size: 10, spacing: 1),
+                        IntensityBolts(intensity: win.intensity, size: 10, spacing: 1),
                       ],
                     ),
                     if (project != null) ...[

@@ -66,6 +66,8 @@ class StringsRo implements AppStrings {
   String get activityLabel => 'Activitate';
   @override
   String get dayDetailEmpty => 'Nicio stea aprinsă în această zi.';
+  @override
+  String get addStarForDayLabel => 'Adaugă o stea pentru această zi';
 
   @override
   String get firstStarLabel => 'Prima stea';

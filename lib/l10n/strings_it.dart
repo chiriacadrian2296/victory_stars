@@ -66,6 +66,8 @@ class StringsIt implements AppStrings {
   String get activityLabel => 'Attività';
   @override
   String get dayDetailEmpty => 'Nessuna stella accesa in questo giorno.';
+  @override
+  String get addStarForDayLabel => 'Aggiungi una stella per questo giorno';
 
   @override
   String get firstStarLabel => 'Prima stella';

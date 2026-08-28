@@ -42,6 +42,7 @@ abstract class AppStrings {
   String get longestStreakLabel;
   String get activityLabel;
   String get dayDetailEmpty;
+  String get addStarForDayLabel;
 
   // Stat detail screens (tapping Total Stars / Current Streak / Longest
   // Streak on the dashboard)

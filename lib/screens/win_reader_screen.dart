@@ -10,7 +10,7 @@ import '../models/win.dart';
 import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
 import '../widgets/area_tag.dart';
-import '../widgets/intensity_stars.dart';
+import '../widgets/intensity_bolts.dart';
 import '../widgets/project_tag.dart';
 import 'add_win_screen.dart';
 
@@ -254,7 +254,7 @@ class _WinReaderScreenState extends State<WinReaderScreen> {
                                   ),
                                 ],
                                 const SizedBox(height: 20),
-                                IntensityStars(intensity: win.intensity, size: 18),
+                                IntensityBolts(intensity: win.intensity, size: 18),
                               ],
                             ),
                           ),

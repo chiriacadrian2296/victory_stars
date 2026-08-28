@@ -66,6 +66,8 @@ class StringsEn implements AppStrings {
   String get activityLabel => 'Activity';
   @override
   String get dayDetailEmpty => 'No stars lit this day.';
+  @override
+  String get addStarForDayLabel => 'Add a star for this day';
 
   @override
   String get firstStarLabel => 'First star';

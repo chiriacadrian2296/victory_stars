@@ -29,6 +29,12 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
   ProjectRepository? _projectRepository;
   ReminderService? _reminderService;
 
+  /// Set only if [_load] throws. A blank splash that silently never
+  /// finishes loading (see [build]) is indistinguishable from a hang — this
+  /// at least surfaces what broke, directly on screen, without needing a
+  /// debugger or logcat attached.
+  Object? _loadError;
+
   @override
   void initState() {
     super.initState();
@@ -36,40 +42,44 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
   }
 
   Future<void> _load() async {
-    final settings = await SettingsController.create();
-    settings.addListener(() => setState(() {}));
-    final winRepository = await WinRepository.create();
-    final projectRepository = await ProjectRepository.create();
-    // Wired here (not per-screen) since a second `initialize()` call from
-    // another ReminderService instance would silently steal this tap
-    // callback out from under the app-level navigation handler.
-    final reminderService = await ReminderService.create(
-      onNotificationTap: (_) => _openAddWinFromNotification(),
-    );
-
-    // scheduleUpcoming only ever arms the next few days (see its own doc
-    // comment) — without topping it up again here on every launch, a
-    // reminder that was enabled once would silently stop firing for anyone
-    // who doesn't happen to revisit the Settings screen.
-    if (settings.reminderEnabled) {
-      final strings = stringsForLocale(settings.locale);
-      await reminderService.scheduleUpcoming(
-        hour: settings.reminderHour,
-        minute: settings.reminderMinute,
-        title: strings.reminderNotificationTitle,
-        bodies: strings.reminderNotificationBodies,
+    try {
+      final settings = await SettingsController.create();
+      settings.addListener(() => setState(() {}));
+      final winRepository = await WinRepository.create();
+      final projectRepository = await ProjectRepository.create();
+      // Wired here (not per-screen) since a second `initialize()` call from
+      // another ReminderService instance would silently steal this tap
+      // callback out from under the app-level navigation handler.
+      final reminderService = await ReminderService.create(
+        onNotificationTap: (_) => _openAddWinFromNotification(),
       );
-    }
 
-    setState(() {
-      _settings = settings;
-      _winRepository = winRepository;
-      _projectRepository = projectRepository;
-      _reminderService = reminderService;
-    });
+      // scheduleUpcoming only ever arms the next few days (see its own doc
+      // comment) — without topping it up again here on every launch, a
+      // reminder that was enabled once would silently stop firing for
+      // anyone who doesn't happen to revisit the Settings screen.
+      if (settings.reminderEnabled) {
+        final strings = stringsForLocale(settings.locale);
+        await reminderService.scheduleUpcoming(
+          hour: settings.reminderHour,
+          minute: settings.reminderMinute,
+          title: strings.reminderNotificationTitle,
+          bodies: strings.reminderNotificationBodies,
+        );
+      }
 
-    if (await reminderService.launchedFromNotification()) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _openAddWinFromNotification());
+      setState(() {
+        _settings = settings;
+        _winRepository = winRepository;
+        _projectRepository = projectRepository;
+        _reminderService = reminderService;
+      });
+
+      if (await reminderService.launchedFromNotification()) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _openAddWinFromNotification());
+      }
+    } catch (error) {
+      setState(() => _loadError = error);
     }
   }
 
@@ -90,6 +100,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
       projectId: result.projectId,
       intensity: result.intensity,
       date: result.date,
+      photoPath: result.photoPath,
     );
   }
 
@@ -99,6 +110,26 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
     final winRepository = _winRepository;
     final projectRepository = _projectRepository;
     final reminderService = _reminderService;
+    final loadError = _loadError;
+    if (loadError != null) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: ColoredBox(
+          color: const Color(0xFF0D1220),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Center(
+                child: Text(
+                  '$loadError',
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     if (settings == null || winRepository == null || projectRepository == null || reminderService == null) {
       // Nothing is known yet — a neutral, static splash rather than
       // guessing defaults that might flash-swap once everything loads.

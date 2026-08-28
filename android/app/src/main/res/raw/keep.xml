@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Tells Android's release-build resource shrinker to never strip this
+  drawable. It's only ever referenced by a Dart string
+  ('@drawable/ic_stat_notification' in reminder_service.dart) passed to
+  flutter_local_notifications at runtime — nothing on the native Android
+  side references it statically, so the shrinker treats it as unused and
+  removes it from release APKs, which then crashes ReminderService.create()
+  with PlatformException(invalid_icon, ...) the moment the app starts,
+  since that call is awaited with no error handling in main.dart.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_stat_notification" />

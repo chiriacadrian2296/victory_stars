@@ -147,9 +147,11 @@ class _DayCell extends StatelessWidget {
     final dayIntensity = intensityByDay[day] ?? 0;
     var glowStrength = 0.0;
     if (dayIntensity > 0) {
-      // Even the month's dimmest lit day still gets a bit of glow instead of
-      // fading to nothing — only an unlit day (no stars at all) gets none.
-      const glowFloor = 0.18;
+      // Even the month's dimmest lit day still gets a faint trace of glow
+      // instead of fading to nothing — only an unlit day (no stars at all)
+      // gets none. Kept close to 0 (rather than a more noticeable floor) so
+      // there's more visible range between the dimmest and brightest days.
+      const glowFloor = 0.03;
       final normalized = maxIntensity == minIntensity
           ? 1.0
           : (dayIntensity - minIntensity) / (maxIntensity - minIntensity);
@@ -167,8 +169,8 @@ class _DayCell extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: colors.gold.withValues(alpha: 0.22 + 0.5 * glowStrength),
-                    blurRadius: 5 + 11 * glowStrength,
+                    color: colors.gold.withValues(alpha: 0.12 + 0.55 * glowStrength),
+                    blurRadius: 2 + 17 * glowStrength,
                   ),
                 ],
               ),

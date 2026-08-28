@@ -78,7 +78,12 @@ ThemeData buildAppTheme(Brightness brightness) {
       backgroundColor: palette.nightPanel,
       headerBackgroundColor: palette.gold,
       headerForegroundColor: palette.onGold,
-      todayForegroundColor: WidgetStateColor.resolveWith((states) => palette.gold),
+      // Selected wins over "is today" — otherwise the day number renders
+      // gold-on-gold (invisible) when today happens to be the selected day,
+      // since the circle fill already switches to gold once selected.
+      todayForegroundColor: WidgetStateColor.resolveWith(
+        (states) => states.contains(WidgetState.selected) ? palette.onGold : palette.gold,
+      ),
       todayBorder: BorderSide(color: palette.gold),
       dayForegroundColor: WidgetStateColor.resolveWith(
         (states) => states.contains(WidgetState.selected) ? palette.onGold : palette.text,

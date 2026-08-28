@@ -61,7 +61,7 @@ abstract class AppStrings {
   String get areaWinsEmpty;
 
   // Constellation card stats (Sky > area > Constellations view)
-  String combinedIntensityValueLabel(int value);
+  String intensityCount(int value);
   String createdOnLabel(String date);
   String lastStarLabel(String date);
 
@@ -112,6 +112,11 @@ abstract class AppStrings {
   String get detailsLabel;
   String get detailsHint;
   String get intensityLabel;
+  String get photoLabel;
+  String get addPhotoHint;
+  String get takePhotoOption;
+  String get choosePhotoOption;
+  String get photoPickError;
   String get saveChanges;
   String get lightThisStar;
 

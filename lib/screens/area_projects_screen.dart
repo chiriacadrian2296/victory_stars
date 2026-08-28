@@ -348,25 +348,16 @@ class _ProjectCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              project.name,
-                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: colors.text),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Icon(Icons.chevron_right, color: colors.muted, size: 20),
-                        ],
+                      Text(
+                        project.name,
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: colors.text),
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 10),
                       Wrap(
                         spacing: 14,
                         runSpacing: 6,
                         children: [
-                          _StatChip(icon: Icons.star, text: strings.starsCount(starCount)),
                           _StatChip(
                             icon: Icons.auto_awesome_outlined,
                             text: strings.createdOnLabel(formatDisplayDate(project.createdAt, strings)),
@@ -378,12 +369,18 @@ class _ProjectCard extends StatelessWidget {
                             ),
                         ],
                       ),
-                      // Set apart from the plain icon+text facts above — it's
-                      // a rating of how hard-won this constellation's stars
-                      // were, not just another count, so it gets its own
-                      // gold-tinted pill instead of blending into the row.
+                      // Set apart from the plain icon+text facts above —
+                      // stars and intensity are ratings, not just other
+                      // dates, so they get their own matching gold-tinted
+                      // pills instead of blending into the row above.
                       const SizedBox(height: 10),
-                      _IntensityBadge(value: combinedIntensity),
+                      Row(
+                        children: [
+                          _MetricBadge(icon: Icons.star, text: strings.starsCount(starCount)),
+                          const SizedBox(width: 8),
+                          _MetricBadge(icon: Icons.bolt, text: strings.intensityCount(combinedIntensity)),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -396,18 +393,18 @@ class _ProjectCard extends StatelessWidget {
   }
 }
 
-/// A gold-tinted pill for a [_ProjectCard]'s combined intensity — visually
-/// distinct from (and set below) the plain [_StatChip] facts, since it's a
-/// rating rather than just another count.
-class _IntensityBadge extends StatelessWidget {
-  const _IntensityBadge({required this.value});
+/// A gold-tinted pill for one of a [_ProjectCard]'s ratings (star count or
+/// combined intensity) — visually distinct from (and set below) the plain
+/// [_StatChip] facts, since these are ratings rather than just counts.
+class _MetricBadge extends StatelessWidget {
+  const _MetricBadge({required this.icon, required this.text});
 
-  final int value;
+  final IconData icon;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final strings = context.strings;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -418,12 +415,9 @@ class _IntensityBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.bolt, size: 13, color: colors.gold),
+          Icon(icon, size: 13, color: colors.gold),
           const SizedBox(width: 5),
-          Text(
-            strings.combinedIntensityValueLabel(value),
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: colors.gold),
-          ),
+          Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: colors.gold)),
         ],
       ),
     );

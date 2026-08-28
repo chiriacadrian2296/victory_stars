@@ -45,8 +45,20 @@ class ReminderService {
 
     if (!_timezoneReady) {
       tz_data.initializeTimeZones();
-      final localTimezone = await FlutterTimezone.getLocalTimezone();
-      tz.setLocalLocation(tz.getLocation(localTimezone.identifier));
+      // Some real devices (OEM skins especially) report a timezone
+      // identifier the bundled tz database doesn't recognize, unlike
+      // emulators — tz.getLocation then throws, and since this whole chain
+      // is awaited from main.dart's startup with no error handling, an
+      // uncaught throw here used to leave the entire app stuck on its
+      // splash screen forever. Falling back to UTC keeps startup unblocked;
+      // scheduled reminder times just won't be local-time-accurate on a
+      // device that hits this.
+      try {
+        final localTimezone = await FlutterTimezone.getLocalTimezone();
+        tz.setLocalLocation(tz.getLocation(localTimezone.identifier));
+      } catch (_) {
+        tz.setLocalLocation(tz.getLocation('UTC'));
+      }
       _timezoneReady = true;
     }
 

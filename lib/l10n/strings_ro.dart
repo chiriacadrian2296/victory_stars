@@ -94,7 +94,7 @@ class StringsRo implements AppStrings {
   @override
   String get areaWinsEmpty => 'Nicio stea aprinsă încă în această supernovă.';
   @override
-  String combinedIntensityValueLabel(int value) => 'Intensitate combinată $value';
+  String intensityCount(int value) => '$value intensitate';
   @override
   String createdOnLabel(String date) => 'Creată la $date';
   @override
@@ -182,6 +182,16 @@ class StringsRo implements AppStrings {
   String get detailsHint => 'Ce a făcut acest moment dificil și cum ai trecut peste el';
   @override
   String get intensityLabel => 'Intensitate';
+  @override
+  String get photoLabel => 'Fotografie (opțional)';
+  @override
+  String get addPhotoHint => 'Adaugă o fotografie';
+  @override
+  String get takePhotoOption => 'Fă o fotografie';
+  @override
+  String get choosePhotoOption => 'Alege din galerie';
+  @override
+  String get photoPickError => 'Nu am putut obține fotografia. Încerci din nou?';
   @override
   String get saveChanges => 'Salvează modificările';
   @override

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../data/project_repository.dart';
@@ -90,6 +92,7 @@ class _WinReaderScreenState extends State<WinReaderScreen> {
       projectId: result.projectId,
       intensity: result.intensity,
       date: result.date,
+      photoPath: result.photoPath,
     );
 
     final refreshedWins = widget.refreshWins!();
@@ -115,117 +118,162 @@ class _WinReaderScreenState extends State<WinReaderScreen> {
     final colors = context.colors;
     final strings = context.strings;
 
+    final photoPath = win.photoPath;
+
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(gradient: colors.crisisGradient),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 28),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: Icon(Icons.close, color: colors.crisisMuted),
-                    ),
-                    Text(
-                      strings.indexOfCount(_index + 1, _wins.length),
-                      style: TextStyle(fontSize: 12, color: colors.crisisMuted),
-                    ),
-                    if (widget.allowEdit)
-                      IconButton(
-                        onPressed: _editCurrent,
-                        icon: Icon(Icons.edit_outlined, color: colors.crisisMuted),
-                      )
-                    else
-                      const SizedBox(width: 48),
-                  ],
-                ),
-                Expanded(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    // Swipe left/right as an alternative to the prev/next
-                    // buttons below — velocity-based so a light flick still
-                    // registers, not just a full-width drag.
-                    onHorizontalDragEnd: (details) {
-                      final velocity = details.primaryVelocity ?? 0;
-                      if (velocity < -200) {
-                        _showNext();
-                      } else if (velocity > 200) {
-                        _showPrevious();
-                      }
-                    },
-                    child: Center(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 260),
-                          switchInCurve: Curves.easeOut,
-                          switchOutCurve: Curves.easeIn,
-                          transitionBuilder: (child, animation) {
-                            final scale = Tween<double>(begin: 0.94, end: 1.0).animate(animation);
-                            return FadeTransition(
-                              opacity: animation,
-                              child: ScaleTransition(scale: scale, child: child),
-                            );
-                          },
-                          child: Column(
-                            key: ValueKey(_index),
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.star, size: 30, color: colors.gold),
-                              const SizedBox(height: 20),
-                              Text(
-                                formatDisplayDateTime(win.date, strings),
-                                style: TextStyle(fontSize: 12, color: colors.crisisMuted),
-                              ),
-                              if (project != null) ...[
-                                const SizedBox(height: 12),
-                                AreaTag(area: project.area, iconSize: 18, fontSize: 17),
-                                const SizedBox(height: 6),
-                                ProjectTag(project: project, textColor: colors.crisisMuted),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // The win's own photo, full-bleed, with the usual gradient washed
+          // over it at reduced opacity instead of solid — background rather
+          // than a discrete element on the page. Wrapped in its own
+          // AnimatedSwitcher (same fade+scale as the foreground content) so
+          // swiping between stars crossfades the background too, instead of
+          // it snapping instantly while the text/star fade in gracefully.
+          Positioned.fill(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 260),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              transitionBuilder: (child, animation) {
+                final scale = Tween<double>(begin: 0.94, end: 1.0).animate(animation);
+                return FadeTransition(opacity: animation, child: ScaleTransition(scale: scale, child: child));
+              },
+              child: Stack(
+                key: ValueKey(_index),
+                fit: StackFit.expand,
+                children: [
+                  if (photoPath != null)
+                    Image.file(File(photoPath), fit: BoxFit.cover, alignment: Alignment.center),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: photoPath == null
+                          ? colors.crisisGradient
+                          : RadialGradient(
+                              center: const Alignment(0, -0.6),
+                              radius: 1.2,
+                              colors: [
+                                colors.crisisGradientCenter.withValues(alpha: 0.55),
+                                colors.crisisGradientMid.withValues(alpha: 0.75),
+                                colors.crisisGradientOuter.withValues(alpha: 0.9),
                               ],
-                              const SizedBox(height: 16),
-                              Text(
-                                win.title,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.35,
-                                  color: colors.text,
+                              stops: const [0.0, 0.55, 1.0],
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 28),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: Icon(Icons.close, color: colors.crisisMuted),
+                      ),
+                      Text(
+                        strings.indexOfCount(_index + 1, _wins.length),
+                        style: TextStyle(fontSize: 12, color: colors.crisisMuted),
+                      ),
+                      if (widget.allowEdit)
+                        IconButton(
+                          onPressed: _editCurrent,
+                          icon: Icon(Icons.edit_outlined, color: colors.crisisMuted),
+                        )
+                      else
+                        const SizedBox(width: 48),
+                    ],
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      // Swipe left/right as an alternative to the prev/next
+                      // buttons below — velocity-based so a light flick still
+                      // registers, not just a full-width drag.
+                      onHorizontalDragEnd: (details) {
+                        final velocity = details.primaryVelocity ?? 0;
+                        if (velocity < -200) {
+                          _showNext();
+                        } else if (velocity > 200) {
+                          _showPrevious();
+                        }
+                      },
+                      child: Center(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 260),
+                            switchInCurve: Curves.easeOut,
+                            switchOutCurve: Curves.easeIn,
+                            transitionBuilder: (child, animation) {
+                              final scale = Tween<double>(begin: 0.94, end: 1.0).animate(animation);
+                              return FadeTransition(
+                                opacity: animation,
+                                child: ScaleTransition(scale: scale, child: child),
+                              );
+                            },
+                            child: Column(
+                              key: ValueKey(_index),
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.star, size: 30, color: colors.gold),
+                                const SizedBox(height: 20),
+                                Text(
+                                  formatDisplayDateTime(win.date, strings),
+                                  style: TextStyle(fontSize: 12, color: colors.crisisMuted),
                                 ),
-                              ),
-                              if (win.description != null) ...[
+                                if (project != null) ...[
+                                  const SizedBox(height: 12),
+                                  AreaTag(area: project.area, iconSize: 18, fontSize: 17),
+                                  const SizedBox(height: 6),
+                                  ProjectTag(project: project, textColor: colors.crisisMuted),
+                                ],
                                 const SizedBox(height: 16),
                                 Text(
-                                  win.description!,
+                                  win.title,
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 15, height: 1.6, color: colors.crisisMuted),
+                                  style: TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.35,
+                                    color: colors.text,
+                                  ),
                                 ),
+                                if (win.description != null) ...[
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    win.description!,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(fontSize: 15, height: 1.6, color: colors.crisisMuted),
+                                  ),
+                                ],
+                                const SizedBox(height: 20),
+                                IntensityStars(intensity: win.intensity, size: 18),
                               ],
-                              const SizedBox(height: 20),
-                              IntensityStars(intensity: win.intensity, size: 18),
-                            ],
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _NavCircleButton(icon: Icons.chevron_left, onTap: _showPrevious),
-                    _NavCircleButton(icon: Icons.chevron_right, onTap: _showNext),
-                  ],
-                ),
-              ],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _NavCircleButton(icon: Icons.chevron_left, onTap: _showPrevious),
+                      _NavCircleButton(icon: Icons.chevron_right, onTap: _showNext),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

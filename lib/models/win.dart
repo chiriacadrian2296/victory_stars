@@ -12,6 +12,7 @@ class Win {
     this.description,
     required this.date,
     required this.intensity,
+    this.photoPath,
   }) : assert(intensity >= 1 && intensity <= 5, 'intensity must be 1-5, was $intensity');
 
   final int id;
@@ -25,6 +26,11 @@ class Win {
   /// to fit the app's star metaphor, like a star's own intensity.
   final int intensity;
 
+  /// Absolute path to an optional photo attached to this win, copied into
+  /// app-private storage by [PhotoStorage.save] at pick time (never a raw
+  /// picker/cache path, which isn't guaranteed to survive).
+  final String? photoPath;
+
   Win copyWith({
     int? id,
     int? number,
@@ -33,6 +39,7 @@ class Win {
     String? description,
     DateTime? date,
     int? intensity,
+    String? photoPath,
   }) {
     return Win(
       id: id ?? this.id,
@@ -42,6 +49,7 @@ class Win {
       description: description ?? this.description,
       date: date ?? this.date,
       intensity: intensity ?? this.intensity,
+      photoPath: photoPath ?? this.photoPath,
     );
   }
 
@@ -54,6 +62,9 @@ class Win {
       description: json['description'] as String?,
       date: DateTime.parse(json['date'] as String),
       intensity: json['intensity'] as int,
+      // Absent in every win saved before this field existed — treated as no
+      // photo rather than a migration, same as a missing 'description'.
+      photoPath: json['photoPath'] as String?,
     );
   }
 
@@ -66,6 +77,7 @@ class Win {
       'description': description,
       'date': date.toIso8601String(),
       'intensity': intensity,
+      'photoPath': photoPath,
     };
   }
 
@@ -78,9 +90,10 @@ class Win {
         other.title == title &&
         other.description == description &&
         other.date == date &&
-        other.intensity == intensity;
+        other.intensity == intensity &&
+        other.photoPath == photoPath;
   }
 
   @override
-  int get hashCode => Object.hash(id, number, projectId, title, description, date, intensity);
+  int get hashCode => Object.hash(id, number, projectId, title, description, date, intensity, photoPath);
 }

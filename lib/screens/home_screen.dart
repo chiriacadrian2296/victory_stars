@@ -62,6 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
       projectId: result.projectId,
       intensity: result.intensity,
       date: result.date,
+      photoPath: result.photoPath,
     );
     setState(() {});
   }

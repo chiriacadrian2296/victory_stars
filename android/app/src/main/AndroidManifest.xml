@@ -10,6 +10,12 @@
          device reboots, since ScheduledNotificationBootReceiver below would
          never run to re-arm them. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- For attaching a photo to a star: camera capture, plus gallery access
+         on Android 12L and below (Android 13+ uses the system photo picker,
+         which needs no permission declaration at all). -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application
         android:label="Victory Stars"
         android:name="${applicationName}"

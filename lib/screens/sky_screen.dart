@@ -75,35 +75,43 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final strings = context.strings;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            strings.skyEyebrow,
-            style: TextStyle(
-              fontSize: 12,
-              letterSpacing: 2,
-              fontWeight: FontWeight.w600,
-              color: colors.goldDim,
+    return SizedBox(
+      // Without this, the Column below shrinks to the width of its longest
+      // line of text and then gets centered by the outer Column's default
+      // crossAxisAlignment — the text inside reads as left-aligned relative
+      // to its own (too-narrow) box, but that box itself sits centered on
+      // the page instead of pinned to the left edge.
+      width: double.infinity,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              strings.skyEyebrow,
+              style: TextStyle(
+                fontSize: 12,
+                letterSpacing: 2,
+                fontWeight: FontWeight.w600,
+                color: colors.goldDim,
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            strings.skyTitle,
-            style: TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.w700,
-              color: colors.text,
+            const SizedBox(height: 6),
+            Text(
+              strings.skyTitle,
+              style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.w700,
+                color: colors.text,
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            strings.skySubtitle,
-            style: TextStyle(fontSize: 14, color: colors.muted),
-          ),
-        ],
+            const SizedBox(height: 6),
+            Text(
+              strings.skySubtitle,
+              style: TextStyle(fontSize: 14, color: colors.muted),
+            ),
+          ],
+        ),
       ),
     );
   }

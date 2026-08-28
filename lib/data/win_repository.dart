@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/win.dart';
+import 'photo_storage.dart';
 
 /// Reads and writes the user's wins as a single JSON-encoded list under one
 /// [SharedPreferences] key, newest first.
@@ -76,6 +77,7 @@ class WinRepository {
     required int projectId,
     required int intensity,
     DateTime? date,
+    String? photoPath,
   }) async {
     final wins = getAll();
     final nextNumber = wins.fold<int>(0, (max, w) => w.number > max ? w.number : max) + 1;
@@ -89,6 +91,7 @@ class WinRepository {
       description: (trimmedDescription == null || trimmedDescription.isEmpty) ? null : trimmedDescription,
       date: date ?? DateTime.now(),
       intensity: intensity,
+      photoPath: photoPath,
     );
 
     await _saveAll([win, ...wins]);
@@ -115,6 +118,7 @@ class WinRepository {
     required int projectId,
     required int intensity,
     required DateTime date,
+    String? photoPath,
   }) async {
     final wins = getAll();
     final index = wins.indexWhere((w) => w.id == id);
@@ -122,6 +126,7 @@ class WinRepository {
       throw StateError('No win found with id $id');
     }
 
+    final previousPhotoPath = wins[index].photoPath;
     final trimmedDescription = description?.trim();
     final updated = Win(
       id: wins[index].id,
@@ -131,10 +136,18 @@ class WinRepository {
       description: (trimmedDescription == null || trimmedDescription.isEmpty) ? null : trimmedDescription,
       date: date,
       intensity: intensity,
+      photoPath: photoPath,
     );
 
     final nextWins = [...wins]..[index] = updated;
     await _saveAll(nextWins);
+
+    // A replaced or removed photo leaves its old file behind otherwise —
+    // this is the one place that knows both the old and new path.
+    if (previousPhotoPath != null && previousPhotoPath != photoPath) {
+      await PhotoStorage.delete(previousPhotoPath);
+    }
+
     return updated;
   }
 

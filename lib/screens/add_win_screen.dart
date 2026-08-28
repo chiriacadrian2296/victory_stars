@@ -1,5 +1,9 @@
-import 'package:flutter/material.dart';
+import 'dart:io';
 
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../data/photo_storage.dart';
 import '../data/project_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../models/life_area.dart';
@@ -23,6 +27,7 @@ class AddWinResult {
     required this.projectId,
     required this.intensity,
     required this.date,
+    this.photoPath,
   });
 
   final String title;
@@ -30,6 +35,10 @@ class AddWinResult {
   final int projectId;
   final int intensity;
   final DateTime date;
+
+  /// Already-saved app-private path (see [PhotoStorage]), or null for no
+  /// photo — never a raw picker path.
+  final String? photoPath;
 }
 
 /// Also doubles as the edit screen: pass [existingWin] to pre-fill the
@@ -48,16 +57,11 @@ class AddWinResult {
 ///   whenever [lockedProject] isn't given — including when editing, since
 ///   the picker is how a win's project gets reassigned.
 class AddWinScreen extends StatefulWidget {
-  const AddWinScreen({
-    super.key,
-    this.existingWin,
-    this.lockedProject,
-    this.projectRepository,
-    this.contextProject,
-  }) : assert(
-         lockedProject != null || projectRepository != null,
-         'Provide lockedProject (pre-scoped, no picker) or projectRepository (picker, for add or edit).',
-       );
+  const AddWinScreen({super.key, this.existingWin, this.lockedProject, this.projectRepository, this.contextProject})
+    : assert(
+        lockedProject != null || projectRepository != null,
+        'Provide lockedProject (pre-scoped, no picker) or projectRepository (picker, for add or edit).',
+      );
 
   final Win? existingWin;
   final Project? lockedProject;
@@ -92,6 +96,7 @@ class _AddWinScreenState extends State<AddWinScreen> {
   /// presupposing today, even though today is still what the date picker
   /// itself opens to, and what gets saved if the user never touches this.
   late DateTime? _date = widget.existingWin?.date;
+  late String? _photoPath = widget.existingWin?.photoPath;
 
   @override
   void dispose() {
@@ -112,8 +117,62 @@ class _AddWinScreenState extends State<AddWinScreen> {
         projectId: project.id,
         intensity: _intensity,
         date: _date ?? DateTime.now(),
+        photoPath: _photoPath,
       ),
     );
+  }
+
+  /// Offers camera vs. gallery, then immediately copies whatever's picked
+  /// into app-private storage (see [PhotoStorage]) — the picker's own path
+  /// isn't guaranteed to still be valid once this screen is done with it.
+  Future<void> _pickPhoto() async {
+    final colors = context.colors;
+    final strings = context.strings;
+
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: colors.nightPanel,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.photo_camera_outlined, color: colors.gold),
+                title: Text(strings.takePhotoOption, style: TextStyle(color: colors.text)),
+                onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
+              ),
+              ListTile(
+                leading: Icon(Icons.photo_library_outlined, color: colors.gold),
+                title: Text(strings.choosePhotoOption, style: TextStyle(color: colors.text)),
+                onTap: () => Navigator.of(sheetContext).pop(ImageSource.gallery),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (source == null || !mounted) return;
+
+    // The picker/camera intent can fail for reasons outside our control
+    // (no camera on this device or emulator, permission denied, no gallery
+    // app installed) — surfaced here instead of failing silently, since a
+    // tap that visibly does nothing is indistinguishable from a bug.
+    try {
+      final picked = await ImagePicker().pickImage(source: source, maxWidth: 1600, imageQuality: 85);
+      if (picked == null || !mounted) return;
+
+      final savedPath = await PhotoStorage.save(picked);
+      if (!mounted) return;
+      setState(() => _photoPath = savedPath);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(strings.photoPickError)));
+    }
+  }
+
+  void _removePhoto() {
+    setState(() => _photoPath = null);
   }
 
   Future<void> _pickDate() async {
@@ -239,23 +298,14 @@ class _AddWinScreenState extends State<AddWinScreen> {
                   ),
                   Text(
                     widget.isEditing ? strings.editStarEyebrow : strings.newStarEyebrow,
-                    style: TextStyle(
-                      fontSize: 12,
-                      letterSpacing: 1.4,
-                      fontWeight: FontWeight.w600,
-                      color: colors.gold,
-                    ),
+                    style: TextStyle(fontSize: 12, letterSpacing: 1.4, fontWeight: FontWeight.w600, color: colors.gold),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
               Text(
                 strings.addWinQuestion,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 24,
-                  color: colors.text,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 24, color: colors.text),
               ),
               if (_selectedProject != null) ...[
                 const SizedBox(height: 14),
@@ -263,10 +313,7 @@ class _AddWinScreenState extends State<AddWinScreen> {
               ],
               const SizedBox(height: 24),
               if (widget.lockedProject == null) ...[
-                Text(
-                  strings.projectLabel,
-                  style: TextStyle(fontSize: 13, color: colors.muted),
-                ),
+                Text(strings.projectLabel, style: TextStyle(fontSize: 13, color: colors.muted)),
                 const SizedBox(height: 6),
                 InkWell(
                   onTap: _openProjectPicker,
@@ -289,10 +336,7 @@ class _AddWinScreenState extends State<AddWinScreen> {
                                   fontSize: 15,
                                   textColor: colors.text,
                                 )
-                              : Text(
-                                  strings.selectAProject,
-                                  style: TextStyle(color: colors.muted, fontSize: 15),
-                                ),
+                              : Text(strings.selectAProject, style: TextStyle(color: colors.muted, fontSize: 15)),
                         ),
                         Icon(Icons.expand_more, color: colors.muted),
                       ],
@@ -301,10 +345,7 @@ class _AddWinScreenState extends State<AddWinScreen> {
                 ),
                 const SizedBox(height: 20),
               ],
-              Text(
-                strings.dateLabel,
-                style: TextStyle(fontSize: 13, color: colors.muted),
-              ),
+              Text(strings.dateLabel, style: TextStyle(fontSize: 13, color: colors.muted)),
               const SizedBox(height: 6),
               InkWell(
                 onTap: _pickDate,
@@ -323,10 +364,7 @@ class _AddWinScreenState extends State<AddWinScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: _date == null
-                            ? Text(
-                                strings.selectADateHint,
-                                style: TextStyle(color: colors.muted, fontSize: 15),
-                              )
+                            ? Text(strings.selectADateHint, style: TextStyle(color: colors.muted, fontSize: 15))
                             : Text(
                                 formatDisplayDate(_date!, strings),
                                 style: TextStyle(color: colors.text, fontSize: 15),
@@ -338,62 +376,51 @@ class _AddWinScreenState extends State<AddWinScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              Text(
-                strings.titleFieldLabel,
-                style: TextStyle(fontSize: 13, color: colors.muted),
-              ),
+              Text(strings.titleFieldLabel, style: TextStyle(fontSize: 13, color: colors.muted)),
               const SizedBox(height: 6),
               TextField(
                 controller: _titleController,
                 textInputAction: TextInputAction.next,
                 style: TextStyle(color: colors.text, fontSize: 15),
-                decoration: InputDecoration(
-                  hintText: strings.titleHint,
-                ),
+                decoration: InputDecoration(hintText: strings.titleHint),
               ),
               const SizedBox(height: 20),
-              Text(
-                strings.detailsLabel,
-                style: TextStyle(fontSize: 13, color: colors.muted),
-              ),
+              Text(strings.detailsLabel, style: TextStyle(fontSize: 13, color: colors.muted)),
               const SizedBox(height: 6),
               TextField(
                 controller: _descriptionController,
                 minLines: 4,
                 maxLines: 6,
                 style: TextStyle(color: colors.text, fontSize: 15),
-                decoration: InputDecoration(
-                  hintText: strings.detailsHint,
-                ),
+                decoration: InputDecoration(hintText: strings.detailsHint),
               ),
               const SizedBox(height: 20),
-              Text(
-                strings.intensityLabel,
-                style: TextStyle(fontSize: 13, color: colors.muted),
-              ),
+              Text(strings.intensityLabel, style: TextStyle(fontSize: 13, color: colors.muted)),
               const SizedBox(height: 10),
-              Center(
-                child: IntensityStars(intensity: _intensity, size: 22, spacing: 6, emphasizeLast: true),
-              ),
+              Center(child: IntensityStars(intensity: _intensity, size: 22, spacing: 6, emphasizeLast: true)),
               SliderTheme(
                 data: SliderTheme.of(context).copyWith(
                   activeTrackColor: colors.gold,
                   inactiveTrackColor: colors.nightBorder,
                   thumbColor: colors.gold,
                   overlayColor: colors.gold.withValues(alpha: 0.2),
-                  valueIndicatorColor: colors.gold,
-                  valueIndicatorTextStyle: TextStyle(color: colors.onGold, fontWeight: FontWeight.w600),
                 ),
                 child: Slider(
                   value: _intensity.toDouble(),
                   min: 1,
                   max: 5,
                   divisions: 4,
-                  label: '$_intensity',
+                  // No label/value-indicator bubble — the star row above
+                  // already shows the value more clearly, and the bubble
+                  // ends up covering those stars while dragging.
                   onChanged: (value) => setState(() => _intensity = value.round()),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
+              Text(strings.photoLabel, style: TextStyle(fontSize: 13, color: colors.muted)),
+              const SizedBox(height: 6),
+              _PhotoPicker(photoPath: _photoPath, onPick: _pickPhoto, onRemove: _removePhoto),
+              const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
                 child: ValueListenableBuilder<TextEditingValue>(
@@ -408,9 +435,7 @@ class _AddWinScreenState extends State<AddWinScreen> {
                         disabledBackgroundColor: colors.nightBorder,
                         disabledForegroundColor: colors.muted,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                       child: Text(
                         widget.isEditing ? strings.saveChanges : strings.lightThisStar,
@@ -535,6 +560,84 @@ class _ProjectPickerSheetState extends State<_ProjectPickerSheet> {
                         );
                       },
                     ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Either an empty tappable placeholder (no photo yet) or a preview of the
+/// current photo, with a small remove button over its corner.
+class _PhotoPicker extends StatelessWidget {
+  const _PhotoPicker({required this.photoPath, required this.onPick, required this.onRemove});
+
+  final String? photoPath;
+  final VoidCallback onPick;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final strings = context.strings;
+    final path = photoPath;
+
+    if (path == null) {
+      return InkWell(
+        onTap: onPick,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          decoration: BoxDecoration(
+            color: colors.nightPanel,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: colors.nightBorder),
+          ),
+          child: Column(
+            children: [
+              Icon(Icons.add_a_photo_outlined, color: colors.muted, size: 22),
+              const SizedBox(height: 8),
+              Text(strings.addPhotoHint, style: TextStyle(color: colors.muted, fontSize: 14)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final borderRadius = BorderRadius.circular(10);
+    final previewSize = MediaQuery.sizeOf(context).width * 0.88;
+    return SizedBox(
+      width: double.infinity,
+      child: Center(
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            InkWell(
+              onTap: onPick,
+              borderRadius: borderRadius,
+              child: ClipRRect(
+                borderRadius: borderRadius,
+                child: Image.file(File(path), width: previewSize, height: previewSize, fit: BoxFit.cover),
+              ),
+            ),
+            Positioned(
+              top: -6,
+              right: -6,
+              child: InkWell(
+                onTap: onRemove,
+                customBorder: const CircleBorder(),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: colors.night,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: colors.nightBorder),
+                  ),
+                  child: Icon(Icons.close, size: 14, color: colors.muted),
+                ),
+              ),
             ),
           ],
         ),

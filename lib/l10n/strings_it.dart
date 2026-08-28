@@ -94,7 +94,7 @@ class StringsIt implements AppStrings {
   @override
   String get areaWinsEmpty => 'Nessuna stella accesa in questa supernova, per ora.';
   @override
-  String combinedIntensityValueLabel(int value) => 'Intensità combinata $value';
+  String intensityCount(int value) => '$value intensità';
   @override
   String createdOnLabel(String date) => 'Creata il $date';
   @override
@@ -182,6 +182,16 @@ class StringsIt implements AppStrings {
   String get detailsHint => 'Cosa ha reso difficile questo momento e come l\'hai superato';
   @override
   String get intensityLabel => 'Intensità';
+  @override
+  String get photoLabel => 'Foto (opzionale)';
+  @override
+  String get addPhotoHint => 'Aggiungi una foto';
+  @override
+  String get takePhotoOption => 'Scatta una foto';
+  @override
+  String get choosePhotoOption => 'Scegli dalla libreria';
+  @override
+  String get photoPickError => 'Non è stato possibile ottenere la foto. Riprova?';
   @override
   String get saveChanges => 'Salva modifiche';
   @override

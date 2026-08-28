@@ -59,6 +59,26 @@ class ReminderService {
     return granted ?? false;
   }
 
+  /// Android 12+ (API 31+) gates *exact*-time alarms behind this separate
+  /// "Alarms & reminders" permission — without it, [scheduleUpcoming] falls
+  /// back to an inexact alarm that Android is free to delay by a wide
+  /// margin, which is why the reminder used to fire late or not at all.
+  /// There's no in-app grant dialog for it (unlike [requestPermission]):
+  /// this sends the user to the system settings screen for it, best-effort
+  /// — the app has no way to know when/if they come back having granted it,
+  /// so [scheduleUpcoming] always re-checks [_canScheduleExactAlarms] fresh
+  /// rather than assuming this call succeeded.
+  Future<void> requestExactAlarmPermission() async {
+    final androidPlugin = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    await androidPlugin?.requestExactAlarmsPermission();
+  }
+
+  Future<bool> _canScheduleExactAlarms() async {
+    final androidPlugin = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlugin == null) return true;
+    return await androidPlugin.canScheduleExactNotifications() ?? false;
+  }
+
   /// Whether the app process was cold-started by the user tapping a
   /// notification — [onNotificationTap] alone can't see this, since it
   /// isn't attached yet at that point. Check once, right after [create].
@@ -79,6 +99,9 @@ class ReminderService {
     required List<String> bodies,
   }) async {
     await _plugin.cancelAll();
+    final scheduleMode = await _canScheduleExactAlarms()
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle;
     final now = tz.TZDateTime.now(tz.local);
     for (var i = 0; i < _daysAhead; i++) {
       var date = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
@@ -91,7 +114,7 @@ class ReminderService {
         title: title,
         body: bodies[i % bodies.length],
         notificationDetails: const NotificationDetails(android: _androidChannel),
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        androidScheduleMode: scheduleMode,
       );
     }
   }

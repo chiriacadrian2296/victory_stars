@@ -46,6 +46,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
         return;
       }
+      // Best-effort: sends the user to the system settings screen for the
+      // "Alarms & reminders" permission so the reminder can fire at the
+      // exact minute instead of an OS-batched approximation. There's no
+      // callback for whether they actually granted it — scheduleUpcoming
+      // below re-checks and adapts either way.
+      await widget.reminderService.requestExactAlarmPermission();
       await widget.settings.setReminder(
         enabled: true,
         hour: widget.settings.reminderHour,

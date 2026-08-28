@@ -2,6 +2,14 @@
     <!-- Android 13+ requires this to show the daily reminder notification;
          requested at runtime from the Settings screen, not just declared here. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Lets the daily reminder fire at the exact minute it's set for
+         (requested at runtime — see ReminderService.requestExactAlarmPermission)
+         instead of being silently batched/delayed by Doze. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <!-- Without this, every scheduled reminder alarm is wiped the moment the
+         device reboots, since ScheduledNotificationBootReceiver below would
+         never run to re-arm them. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <application
         android:label="Victory Stars"
         android:name="${applicationName}"
@@ -33,6 +41,20 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- flutter_local_notifications ships these classes but does not
+             merge their manifest entries automatically — without declaring
+             them here, the alarms ReminderService schedules have nowhere to
+             deliver to, so they silently never fire. -->
+        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />
+        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

@@ -47,6 +47,20 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
       onNotificationTap: (_) => _openAddWinFromNotification(),
     );
 
+    // scheduleUpcoming only ever arms the next few days (see its own doc
+    // comment) — without topping it up again here on every launch, a
+    // reminder that was enabled once would silently stop firing for anyone
+    // who doesn't happen to revisit the Settings screen.
+    if (settings.reminderEnabled) {
+      final strings = stringsForLocale(settings.locale);
+      await reminderService.scheduleUpcoming(
+        hour: settings.reminderHour,
+        minute: settings.reminderMinute,
+        title: strings.reminderNotificationTitle,
+        bodies: strings.reminderNotificationBodies,
+      );
+    }
+
     setState(() {
       _settings = settings;
       _winRepository = winRepository;

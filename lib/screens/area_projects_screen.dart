@@ -238,6 +238,7 @@ class _ConstellationsList extends StatelessWidget {
           project: project,
           starCount: wins.length,
           lastWinDate: wins.isEmpty ? null : wins.last.date,
+          combinedIntensity: wins.fold<int>(0, (sum, w) => sum + w.intensity),
           onTap: () => onTap(project),
         );
       },
@@ -313,12 +314,14 @@ class _ProjectCard extends StatelessWidget {
     required this.project,
     required this.starCount,
     required this.lastWinDate,
+    required this.combinedIntensity,
     required this.onTap,
   });
 
   final Project project;
   final int starCount;
   final DateTime? lastWinDate;
+  final int combinedIntensity;
   final VoidCallback onTap;
 
   @override
@@ -341,6 +344,7 @@ class _ProjectCard extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
                   width: 52,
@@ -356,42 +360,74 @@ class _ProjectCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        project.name,
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: colors.text),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 6),
                       Row(
                         children: [
-                          Icon(Icons.star, size: 13, color: colors.gold),
-                          const SizedBox(width: 5),
-                          Text(
-                            strings.starsCount(starCount),
-                            style: TextStyle(fontSize: 13, color: colors.muted),
-                          ),
-                          if (lastWinDate != null) ...[
-                            Text(' · ', style: TextStyle(fontSize: 13, color: colors.muted)),
-                            Flexible(
-                              child: Text(
-                                formatDisplayDate(lastWinDate!, strings),
-                                style: TextStyle(fontSize: 13, color: colors.muted),
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                          Expanded(
+                            child: Text(
+                              project.name,
+                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: colors.text),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(Icons.chevron_right, color: colors.muted, size: 20),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 14,
+                        runSpacing: 6,
+                        children: [
+                          _StatChip(
+                            icon: Icons.star,
+                            text: strings.starsCount(starCount),
+                          ),
+                          _StatChip(
+                            icon: Icons.bolt,
+                            text: strings.combinedIntensityValueLabel(combinedIntensity),
+                          ),
+                          _StatChip(
+                            icon: Icons.auto_awesome_outlined,
+                            text: strings.createdOnLabel(formatDisplayDate(project.createdAt, strings)),
+                          ),
+                          if (lastWinDate != null)
+                            _StatChip(
+                              icon: Icons.schedule,
+                              text: strings.lastStarLabel(formatDisplayDate(lastWinDate!, strings)),
+                            ),
                         ],
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                Icon(Icons.chevron_right, color: colors.muted, size: 20),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// One small icon+text fact in a [_ProjectCard]'s info [Wrap] — keeps the
+/// four stats (stars, intensity, created, last star) visually uniform
+/// regardless of how many end up on the same line.
+class _StatChip extends StatelessWidget {
+  const _StatChip({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: colors.goldDim),
+        const SizedBox(width: 5),
+        Text(text, style: TextStyle(fontSize: 12.5, color: colors.muted)),
+      ],
     );
   }
 }

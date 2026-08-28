@@ -144,50 +144,64 @@ class _WinReaderScreenState extends State<WinReaderScreen> {
                   ],
                 ),
                 Expanded(
-                  child: Center(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.star, size: 30, color: colors.gold),
-                          const SizedBox(height: 20),
-                          Text(
-                            formatDisplayDateTime(win.date, strings),
-                            style: TextStyle(fontSize: 12, color: colors.crisisMuted),
-                          ),
-                          if (project != null) ...[
-                            const SizedBox(height: 12),
-                            AreaTag(area: project.area, iconSize: 18, fontSize: 17),
-                            const SizedBox(height: 6),
-                            ProjectTag(project: project, textColor: colors.crisisMuted),
-                          ],
-                          const SizedBox(height: 16),
-                          Text(
-                            win.title,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w600,
-                              height: 1.35,
-                              color: colors.text,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    // Swipe left/right as an alternative to the prev/next
+                    // buttons below — velocity-based so a light flick still
+                    // registers, not just a full-width drag.
+                    onHorizontalDragEnd: (details) {
+                      final velocity = details.primaryVelocity ?? 0;
+                      if (velocity < -200) {
+                        _showNext();
+                      } else if (velocity > 200) {
+                        _showPrevious();
+                      }
+                    },
+                    child: Center(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.star, size: 30, color: colors.gold),
+                            const SizedBox(height: 20),
+                            Text(
+                              formatDisplayDateTime(win.date, strings),
+                              style: TextStyle(fontSize: 12, color: colors.crisisMuted),
                             ),
-                          ),
-                          if (win.description != null) ...[
+                            if (project != null) ...[
+                              const SizedBox(height: 12),
+                              AreaTag(area: project.area, iconSize: 18, fontSize: 17),
+                              const SizedBox(height: 6),
+                              ProjectTag(project: project, textColor: colors.crisisMuted),
+                            ],
                             const SizedBox(height: 16),
                             Text(
-                              win.description!,
+                              win.title,
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                fontSize: 15,
-                                height: 1.6,
-                                color: colors.crisisMuted,
+                                fontSize: 26,
+                                fontWeight: FontWeight.w600,
+                                height: 1.35,
+                                color: colors.text,
                               ),
                             ),
+                            if (win.description != null) ...[
+                              const SizedBox(height: 16),
+                              Text(
+                                win.description!,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  height: 1.6,
+                                  color: colors.crisisMuted,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 20),
+                            IntensityStars(intensity: win.intensity, size: 18),
                           ],
-                          const SizedBox(height: 20),
-                          IntensityStars(intensity: win.intensity, size: 18),
-                        ],
+                        ),
                       ),
                     ),
                   ),

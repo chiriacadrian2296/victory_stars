@@ -253,20 +253,19 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(strings.homeSubtitle, style: TextStyle(fontSize: 14, color: colors.muted)),
             const SizedBox(height: 24),
             Text(
-              strings.overviewLabel,
+              strings.totalStarsLabel,
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.muted),
+            ),
+            const SizedBox(height: 10),
+            _TotalStarsBanner(value: wins.length, onTap: _openTotalStarsDetail),
+            const SizedBox(height: 24),
+            Text(
+              strings.streaksSectionLabel,
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.muted),
             ),
             const SizedBox(height: 10),
             Row(
               children: [
-                Expanded(
-                  child: _StatCard(
-                    label: strings.totalStarsLabel,
-                    value: '${wins.length}',
-                    onTap: _openTotalStarsDetail,
-                  ),
-                ),
-                const SizedBox(width: 10),
                 Expanded(
                   child: _StatCard(
                     label: strings.currentStreakLabel,
@@ -394,11 +393,73 @@ class _StatCard extends StatelessWidget {
                 ],
               ),
               // A small affordance hinting these cards open a detail
-              // screen, rather than being purely decorative stats.
+              // screen, rather than being purely decorative stats. A plain
+              // info glyph rather than a chevron, since a chevron implies
+              // "more content this way" which reads oddly on a square card.
               Positioned(
                 top: -2,
                 right: -2,
-                child: Icon(Icons.chevron_right, size: 16, color: colors.muted.withValues(alpha: 0.6)),
+                child: Icon(Icons.info_outline, size: 14, color: colors.gold),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A wider, more eye-catching presentation for the total-star count — its
+/// own row above the streak cards, rather than squeezed into an equal-width
+/// slot alongside them, since it's the headline number on the dashboard.
+class _TotalStarsBanner extends StatelessWidget {
+  const _TotalStarsBanner({required this.value, required this.onTap});
+
+  final int value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final borderRadius = BorderRadius.circular(16);
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: borderRadius,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: borderRadius,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [colors.gold.withValues(alpha: 0.22), colors.gold.withValues(alpha: 0.05)],
+            ),
+            border: Border.all(color: colors.gold.withValues(alpha: 0.45)),
+            borderRadius: borderRadius,
+          ),
+          child: Stack(
+            children: [
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.star, size: 24, color: colors.gold),
+                    const SizedBox(height: 6),
+                    Text(
+                      '$value',
+                      style: TextStyle(fontSize: 38, fontWeight: FontWeight.w800, color: colors.text, height: 1),
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                top: -2,
+                right: -2,
+                child: Icon(Icons.info_outline, size: 16, color: colors.gold),
               ),
             ],
           ),

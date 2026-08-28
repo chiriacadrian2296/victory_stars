@@ -39,13 +39,13 @@ class StringsIt implements AppStrings {
   @override
   String get admireYourStars => 'Ammira le tue stelle';
   @override
-  String get overviewLabel => 'Panoramica';
-  @override
   String get litTodayLabel => 'Hai acceso una stella oggi';
   @override
   String get notLitTodayLabel => 'Nessuna stella accesa oggi, per ora';
   @override
   String get totalStarsLabel => 'Stelle totali';
+  @override
+  String get streaksSectionLabel => 'Serie';
   @override
   String get currentStreakLabel => 'Serie attuale';
   @override
@@ -81,6 +81,12 @@ class StringsIt implements AppStrings {
   String get noSearchResults => 'Nessuna stella corrisponde alla ricerca.';
   @override
   String get areaWinsEmpty => 'Nessuna stella accesa in questa supernova, per ora.';
+  @override
+  String combinedIntensityValueLabel(int value) => 'Intensità combinata $value';
+  @override
+  String createdOnLabel(String date) => 'Creata il $date';
+  @override
+  String lastStarLabel(String date) => 'Ultima stella $date';
   @override
   String get constellationsModeLabel => 'Costellazioni';
   @override

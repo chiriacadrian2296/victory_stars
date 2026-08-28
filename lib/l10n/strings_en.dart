@@ -39,13 +39,13 @@ class StringsEn implements AppStrings {
   @override
   String get admireYourStars => 'Admire Your Stars';
   @override
-  String get overviewLabel => 'Overview';
-  @override
   String get litTodayLabel => "You've lit a star today";
   @override
   String get notLitTodayLabel => 'No star lit today yet';
   @override
   String get totalStarsLabel => 'Total stars';
+  @override
+  String get streaksSectionLabel => 'Streaks';
   @override
   String get currentStreakLabel => 'Current streak';
   @override
@@ -81,6 +81,12 @@ class StringsEn implements AppStrings {
   String get noSearchResults => 'No stars match your search.';
   @override
   String get areaWinsEmpty => 'No stars lit in this supernova yet.';
+  @override
+  String combinedIntensityValueLabel(int value) => 'Combined intensity $value';
+  @override
+  String createdOnLabel(String date) => 'Created $date';
+  @override
+  String lastStarLabel(String date) => 'Last star $date';
   @override
   String get constellationsModeLabel => 'Constellations';
   @override

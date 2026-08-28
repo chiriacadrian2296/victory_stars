@@ -28,10 +28,10 @@ abstract class AppStrings {
   String get homeTitle;
   String get homeSubtitle;
   String get admireYourStars;
-  String get overviewLabel;
   String get litTodayLabel;
   String get notLitTodayLabel;
   String get totalStarsLabel;
+  String get streaksSectionLabel;
   String get currentStreakLabel;
   String get longestStreakLabel;
   String get activityLabel;
@@ -53,6 +53,11 @@ abstract class AppStrings {
   String get searchHint;
   String get noSearchResults;
   String get areaWinsEmpty;
+
+  // Constellation card stats (Sky > area > Constellations view)
+  String combinedIntensityValueLabel(int value);
+  String createdOnLabel(String date);
+  String lastStarLabel(String date);
 
   // Settings — data section (seed/reset, moved here from the old Home)
   String get dataSection;

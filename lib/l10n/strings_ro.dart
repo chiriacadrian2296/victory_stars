@@ -39,13 +39,13 @@ class StringsRo implements AppStrings {
   @override
   String get admireYourStars => 'Admiră-ți stelele';
   @override
-  String get overviewLabel => 'Sumar';
-  @override
   String get litTodayLabel => 'Ai aprins o stea azi';
   @override
   String get notLitTodayLabel => 'Nicio stea aprinsă azi încă';
   @override
   String get totalStarsLabel => 'Stele în total';
+  @override
+  String get streaksSectionLabel => 'Serii';
   @override
   String get currentStreakLabel => 'Serie curentă';
   @override
@@ -81,6 +81,12 @@ class StringsRo implements AppStrings {
   String get noSearchResults => 'Nicio stea nu corespunde căutării.';
   @override
   String get areaWinsEmpty => 'Nicio stea aprinsă încă în această supernovă.';
+  @override
+  String combinedIntensityValueLabel(int value) => 'Intensitate combinată $value';
+  @override
+  String createdOnLabel(String date) => 'Creată la $date';
+  @override
+  String lastStarLabel(String date) => 'Ultima stea $date';
   @override
   String get constellationsModeLabel => 'Constelații';
   @override

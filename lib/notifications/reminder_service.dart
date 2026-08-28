@@ -33,7 +33,11 @@ class ReminderService {
 
   static Future<ReminderService> create({void Function(NotificationResponse)? onNotificationTap}) async {
     final plugin = FlutterLocalNotificationsPlugin();
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    // Must be a plain white silhouette drawable, not the full-color launcher
+    // mipmap — Android's status bar only reads the alpha channel of a
+    // notification icon (API 21+), so the adaptive launcher icon used to
+    // render as blank/invisible there.
+    const androidSettings = AndroidInitializationSettings('@drawable/ic_stat_notification');
     await plugin.initialize(
       settings: const InitializationSettings(android: androidSettings),
       onDidReceiveNotificationResponse: onNotificationTap,

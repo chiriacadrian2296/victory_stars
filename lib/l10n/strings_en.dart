@@ -39,9 +39,21 @@ class StringsEn implements AppStrings {
   @override
   String get admireYourStars => 'Admire Your Stars';
   @override
-  String get litTodayLabel => "You've lit a star today";
+  String get todayStarSectionLabel => "Today's star";
+  @override
+  String get litTodayTitle => "Congrats, you've lit a star today!";
+  @override
+  String get litTodayTitleHighlight => 'star';
+  @override
+  String get litTodaySubtitle => "- you've brought new light to your life -";
+  @override
+  String get litTodaySubtitleHighlight => 'light';
   @override
   String get notLitTodayLabel => 'No star lit today yet';
+  @override
+  String get notLitTodayHighlight => 'star';
+  @override
+  String get lightStarCta => 'Light One';
   @override
   String get totalStarsLabel => 'Total stars';
   @override

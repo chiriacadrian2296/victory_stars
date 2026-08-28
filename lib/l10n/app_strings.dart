@@ -28,8 +28,14 @@ abstract class AppStrings {
   String get homeTitle;
   String get homeSubtitle;
   String get admireYourStars;
-  String get litTodayLabel;
+  String get todayStarSectionLabel;
+  String get litTodayTitle;
+  String get litTodayTitleHighlight;
+  String get litTodaySubtitle;
+  String get litTodaySubtitleHighlight;
   String get notLitTodayLabel;
+  String get notLitTodayHighlight;
+  String get lightStarCta;
   String get totalStarsLabel;
   String get streaksSectionLabel;
   String get currentStreakLabel;

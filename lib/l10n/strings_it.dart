@@ -39,9 +39,21 @@ class StringsIt implements AppStrings {
   @override
   String get admireYourStars => 'Ammira le tue stelle';
   @override
-  String get litTodayLabel => 'Hai acceso una stella oggi';
+  String get todayStarSectionLabel => 'Stella di oggi';
+  @override
+  String get litTodayTitle => 'Complimenti, hai acceso una stella oggi!';
+  @override
+  String get litTodayTitleHighlight => 'stella';
+  @override
+  String get litTodaySubtitle => '- hai portato nuova luce nella tua vita -';
+  @override
+  String get litTodaySubtitleHighlight => 'luce';
   @override
   String get notLitTodayLabel => 'Nessuna stella accesa oggi, per ora';
+  @override
+  String get notLitTodayHighlight => 'stella';
+  @override
+  String get lightStarCta => 'Accendine una';
   @override
   String get totalStarsLabel => 'Stelle totali';
   @override

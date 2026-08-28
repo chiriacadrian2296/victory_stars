@@ -1,7 +1,10 @@
+import 'dart:math' show pi;
+
 import 'package:flutter/material.dart';
 
 import '../data/project_repository.dart';
 import '../data/win_repository.dart';
+import '../l10n/app_strings.dart';
 import '../l10n/strings_scope.dart';
 import '../models/project.dart';
 import '../models/win.dart';
@@ -233,7 +236,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final dayCounts = winCountsByDay(wins);
     final dayIntensities = winIntensityByDay(wins);
     final now = DateTime.now();
-    final litToday = (dayCounts[DateTime(now.year, now.month, now.day)] ?? 0) > 0;
+    final today = DateTime(now.year, now.month, now.day);
+    final litToday = (dayCounts[today] ?? 0) > 0;
 
     return Scaffold(
       body: SafeArea(
@@ -251,6 +255,32 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 6),
             Text(strings.homeSubtitle, style: TextStyle(fontSize: 14, color: colors.muted)),
+            const SizedBox(height: 24),
+            // The dashboard's headline element — whether today's star is lit
+            // is the one thing worth knowing at a glance, so it leads, ahead
+            // of the calendar and the totals/streaks tiles below it.
+            Text(
+              strings.todayStarSectionLabel,
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.muted),
+            ),
+            const SizedBox(height: 10),
+            _TodayStarHero(litToday: litToday, onTap: litToday ? () => _openDayDetail(today) : _openAddWinScreen),
+            const SizedBox(height: 24),
+            Text(
+              strings.activityLabel,
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.muted),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: colors.nightPanel,
+                border: Border.all(color: colors.nightBorder),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: StarHeatmap(countsByDay: dayCounts, intensityByDay: dayIntensities, onDayTap: _openDayDetail),
+            ),
             const SizedBox(height: 24),
             Text(
               strings.totalStarsLabel,
@@ -282,28 +312,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 10),
-            _TodayStreakIndicator(litToday: litToday),
-            const SizedBox(height: 24),
-            Text(
-              strings.activityLabel,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.muted),
-            ),
-            const SizedBox(height: 10),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: colors.nightPanel,
-                border: Border.all(color: colors.nightBorder),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: StarHeatmap(
-                countsByDay: dayCounts,
-                intensityByDay: dayIntensities,
-                onDayTap: _openDayDetail,
-              ),
             ),
           ],
         ),
@@ -380,8 +388,10 @@ class _StatCard extends StatelessWidget {
             borderRadius: borderRadius,
           ),
           child: Stack(
+            alignment: Alignment.center,
             children: [
               Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: colors.gold)),
                   const SizedBox(height: 4),
@@ -469,48 +479,194 @@ class _TotalStarsBanner extends StatelessWidget {
   }
 }
 
-/// A slim banner just under the stat cards, answering the one question
-/// they don't at a glance: has a star been lit yet today? Separate from
-/// the tappable cards themselves so it reads as status, not another action.
-class _TodayStreakIndicator extends StatelessWidget {
-  const _TodayStreakIndicator({required this.litToday});
+/// The dashboard's headline element: whether today's star is lit.
+///
+/// Lit: a big gold star that spins slowly and forever, with a glow that
+/// breathes in and out, next to a two-line congratulatory message.
+///
+/// Unlit: the same star, cold and static, with a status caption below it,
+/// and below that a normal pill-shaped gold button sized to its own text
+/// (not a big disc) — same gold and drop shadow as the '+' FAB, plus a
+/// breathing glow instead of a static one. Tapping anywhere opens today's
+/// wins if there are any, or the add-win flow if not.
+class _TodayStarHero extends StatefulWidget {
+  const _TodayStarHero({required this.litToday, required this.onTap});
 
   final bool litToday;
+  final VoidCallback onTap;
+
+  @override
+  State<_TodayStarHero> createState() => _TodayStarHeroState();
+}
+
+class _TodayStarHeroState extends State<_TodayStarHero> with TickerProviderStateMixin {
+  // Breathes continuously in both states — it drives the star's glow when
+  // lit and the button's glow when unlit — while the spin is star-only.
+  late final _glowController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))
+    ..repeat(reverse: true);
+  late final _spinController = AnimationController(vsync: this, duration: const Duration(seconds: 18));
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.litToday) _spinController.repeat();
+  }
+
+  @override
+  void didUpdateWidget(_TodayStarHero oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.litToday == oldWidget.litToday) return;
+    if (widget.litToday) {
+      _spinController.repeat();
+    } else {
+      _spinController.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _glowController.dispose();
+    _spinController.dispose();
+    super.dispose();
+  }
+
+  List<BoxShadow> _glow(Color color, double size) {
+    final glowT = _glowController.value;
+    return [
+      BoxShadow(
+        color: color.withValues(alpha: 0.25 + 0.3 * glowT),
+        blurRadius: size * 0.19 + size * 0.16 * glowT,
+        spreadRadius: size * 0.015 + size * 0.05 * glowT,
+      ),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final strings = context.strings;
-    final borderRadius = BorderRadius.circular(10);
+    final width = MediaQuery.sizeOf(context).width;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-      decoration: BoxDecoration(
-        color: litToday ? colors.gold.withValues(alpha: 0.1) : colors.nightPanel,
-        border: Border.all(color: litToday ? colors.gold.withValues(alpha: 0.4) : colors.nightBorder),
-        borderRadius: borderRadius,
-      ),
-      child: Row(
-        children: [
-          Icon(
-            litToday ? Icons.star : Icons.star_border,
-            size: 16,
-            color: litToday ? colors.gold : colors.muted,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              litToday ? strings.litTodayLabel : strings.notLitTodayLabel,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: litToday ? FontWeight.w600 : FontWeight.w400,
-                color: litToday ? colors.gold : colors.muted,
-              ),
-            ),
-          ),
-        ],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: widget.litToday ? _buildLit(colors, strings, width) : _buildUnlit(colors, strings, width),
+        ),
       ),
     );
   }
+
+  Widget _buildLit(AppColors colors, AppStrings strings, double width) {
+    final starSize = (width / 3).clamp(90.0, 160.0);
+
+    return Column(
+      children: [
+        AnimatedBuilder(
+          animation: Listenable.merge([_glowController, _spinController]),
+          builder: (context, child) {
+            return Container(
+              decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: _glow(colors.gold, starSize)),
+              child: Transform.rotate(angle: _spinController.value * 2 * pi, child: child),
+            );
+          },
+          child: Icon(Icons.star, size: starSize, color: colors.gold),
+        ),
+        const SizedBox(height: 22),
+        _highlightedText(
+          text: strings.litTodayTitle,
+          highlight: strings.litTodayTitleHighlight,
+          highlightColor: colors.gold,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white, height: 1.25),
+        ),
+        const SizedBox(height: 6),
+        _highlightedText(
+          text: strings.litTodaySubtitle,
+          highlight: strings.litTodaySubtitleHighlight,
+          highlightColor: colors.gold,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white, height: 1.35),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUnlit(AppColors colors, AppStrings strings, double width) {
+    final starSize = (width / 3).clamp(90.0, 160.0);
+
+    return Column(
+      children: [
+        Icon(Icons.star, size: starSize, color: colors.muted),
+        const SizedBox(height: 20),
+        _highlightedText(
+          text: strings.notLitTodayLabel,
+          highlight: strings.notLitTodayHighlight,
+          highlightColor: colors.muted,
+          // Same size as the lit version's first line, so the two states
+          // don't jump around in scale when the star gets lit or unlit.
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: colors.text),
+        ),
+        const SizedBox(height: 18),
+        AnimatedBuilder(
+          animation: _glowController,
+          builder: (context, child) {
+            return Container(
+              decoration: BoxDecoration(
+                color: colors.gold,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  // The same static drop shadow the '+' FAB uses, plus the
+                  // breathing glow layered on top of it.
+                  BoxShadow(color: colors.gold.withValues(alpha: 0.35), blurRadius: 20, offset: const Offset(0, 6)),
+                  ..._glow(colors.gold, 44),
+                ],
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: child,
+            );
+          },
+          child: Text(
+            strings.lightStarCta,
+            textAlign: TextAlign.center,
+            // Same size as the lit version's second line, for the same
+            // reason as the caption above. Colored with the page's own
+            // background instead of white, so it reads as cut out of the
+            // gold pill rather than printed on it.
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: colors.night),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Renders [text] centered with [highlight] (its first occurrence) recolored
+/// to [highlightColor] — used to pick out one word (e.g. "star", "light")
+/// within an otherwise single-colored sentence, per language.
+Widget _highlightedText({
+  required String text,
+  required String highlight,
+  required Color highlightColor,
+  required TextStyle style,
+}) {
+  final index = text.indexOf(highlight);
+  if (index == -1) {
+    return Text(text, textAlign: TextAlign.center, style: style);
+  }
+  return RichText(
+    textAlign: TextAlign.center,
+    text: TextSpan(
+      style: style,
+      children: [
+        TextSpan(text: text.substring(0, index)),
+        TextSpan(
+          text: text.substring(index, index + highlight.length),
+          style: style.copyWith(color: highlightColor),
+        ),
+        TextSpan(text: text.substring(index + highlight.length)),
+      ],
+    ),
+  );
 }

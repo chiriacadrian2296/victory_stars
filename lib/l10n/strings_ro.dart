@@ -39,9 +39,21 @@ class StringsRo implements AppStrings {
   @override
   String get admireYourStars => 'Admiră-ți stelele';
   @override
-  String get litTodayLabel => 'Ai aprins o stea azi';
+  String get todayStarSectionLabel => 'Steaua zilei';
+  @override
+  String get litTodayTitle => 'Felicitări, ai aprins o stea azi!';
+  @override
+  String get litTodayTitleHighlight => 'stea';
+  @override
+  String get litTodaySubtitle => '- ai adus lumină nouă în viața ta -';
+  @override
+  String get litTodaySubtitleHighlight => 'lumină';
   @override
   String get notLitTodayLabel => 'Nicio stea aprinsă azi încă';
+  @override
+  String get notLitTodayHighlight => 'stea';
+  @override
+  String get lightStarCta => 'Aprinde una';
   @override
   String get totalStarsLabel => 'Stele în total';
   @override
@@ -239,7 +251,8 @@ class StringsRo implements AppStrings {
   @override
   String get reminderTimeLabel => 'Ora mementoului';
   @override
-  String get notificationPermissionDenied => 'Notificările sunt dezactivate pentru această aplicație în setările telefonului.';
+  String get notificationPermissionDenied =>
+      'Notificările sunt dezactivate pentru această aplicație în setările telefonului.';
   @override
   String get testNotificationButton => 'Trimite o notificare de test';
   @override

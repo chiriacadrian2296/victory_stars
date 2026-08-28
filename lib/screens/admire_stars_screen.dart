@@ -382,11 +382,11 @@ class _UpliftingQuoteCarouselState extends State<_UpliftingQuoteCarousel> {
           duration: const Duration(milliseconds: 700),
           switchInCurve: Curves.easeOut,
           switchOutCurve: Curves.easeIn,
-          // A gentle upward drift alongside the fade — reads more clearly as
+          // A soft scale-up alongside the fade — reads more clearly as
           // motion than a plain crossfade, while staying just as understated.
           transitionBuilder: (child, animation) {
-            final offset = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(animation);
-            return FadeTransition(opacity: animation, child: SlideTransition(position: offset, child: child));
+            final scale = Tween<double>(begin: 0.92, end: 1.0).animate(animation);
+            return FadeTransition(opacity: animation, child: ScaleTransition(scale: scale, child: child));
           },
           child: Text(
             quotes[_index],

@@ -62,23 +62,12 @@ class _WinReaderScreenState extends State<WinReaderScreen> {
   late List<Win> _wins = widget.initialWins;
   late int _index = widget.startIndex;
 
-  // Which way the next star should slide in from — set right before the
-  // index changes so the AnimatedSwitcher below knows which direction to
-  // animate, whether triggered by a swipe or a nav button.
-  bool _forward = true;
-
   void _showPrevious() {
-    setState(() {
-      _forward = false;
-      _index = (_index - 1 + _wins.length) % _wins.length;
-    });
+    setState(() => _index = (_index - 1 + _wins.length) % _wins.length);
   }
 
   void _showNext() {
-    setState(() {
-      _forward = true;
-      _index = (_index + 1) % _wins.length;
-    });
+    setState(() => _index = (_index + 1) % _wins.length);
   }
 
   Future<void> _editCurrent() async {
@@ -176,13 +165,10 @@ class _WinReaderScreenState extends State<WinReaderScreen> {
                           switchInCurve: Curves.easeOut,
                           switchOutCurve: Curves.easeIn,
                           transitionBuilder: (child, animation) {
-                            final offset = Tween<Offset>(
-                              begin: Offset(_forward ? 0.06 : -0.06, 0),
-                              end: Offset.zero,
-                            ).animate(animation);
+                            final scale = Tween<double>(begin: 0.94, end: 1.0).animate(animation);
                             return FadeTransition(
                               opacity: animation,
-                              child: SlideTransition(position: offset, child: child),
+                              child: ScaleTransition(scale: scale, child: child),
                             );
                           },
                           child: Column(

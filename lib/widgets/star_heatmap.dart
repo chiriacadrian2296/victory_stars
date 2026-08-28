@@ -147,9 +147,13 @@ class _DayCell extends StatelessWidget {
     final dayIntensity = intensityByDay[day] ?? 0;
     var glowStrength = 0.0;
     if (dayIntensity > 0) {
-      glowStrength = maxIntensity == minIntensity
+      // Even the month's dimmest lit day still gets a bit of glow instead of
+      // fading to nothing — only an unlit day (no stars at all) gets none.
+      const glowFloor = 0.18;
+      final normalized = maxIntensity == minIntensity
           ? 1.0
           : (dayIntensity - minIntensity) / (maxIntensity - minIntensity);
+      glowStrength = glowFloor + (1 - glowFloor) * normalized;
     }
 
     return GestureDetector(
@@ -157,7 +161,7 @@ class _DayCell extends StatelessWidget {
       child: Container(
         width: cellSize,
         height: cellSize,
-        decoration: glowStrength <= 0
+        decoration: dayIntensity <= 0
             ? null
             : BoxDecoration(
                 shape: BoxShape.circle,

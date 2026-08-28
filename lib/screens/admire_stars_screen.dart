@@ -40,6 +40,16 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
     });
   }
 
+  Widget _areaChip(BuildContext context, LifeArea area) {
+    final strings = context.strings;
+    return _AreaChip(
+      label: area.displayName(strings),
+      icon: area.icon,
+      selected: _selected.contains(area),
+      onTap: () => _toggleArea(area),
+    );
+  }
+
   Map<int, Project> _projectsById() {
     return {for (final project in widget.projectRepository.getAll()) project.id: project};
   }
@@ -131,27 +141,29 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
                         style: TextStyle(fontSize: 15, height: 1.5, color: colors.crisisMuted),
                       ),
                       const SizedBox(height: 32),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: _AreaChip(
-                          label: strings.allAreasLabel,
-                          selected: _allSelected,
-                          onTap: _toggleAll,
-                        ),
+                      _AllAreasSwitch(
+                        label: strings.allAreasLabel,
+                        value: _allSelected,
+                        onChanged: (_) => _toggleAll(),
                       ),
-                      const SizedBox(height: 14),
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        spacing: 12,
-                        runSpacing: 12,
+                      const SizedBox(height: 16),
+                      // Two equal-width columns rather than a Wrap, so every
+                      // chip claims the same amount of space regardless of
+                      // how long its label is, instead of packing tighter
+                      // around short labels.
+                      Column(
                         children: [
-                          for (final area in LifeArea.values)
-                            _AreaChip(
-                              label: area.displayName(strings),
-                              icon: area.icon,
-                              selected: _selected.contains(area),
-                              onTap: () => _toggleArea(area),
+                          for (var row = 0; row * 2 < LifeArea.values.length; row++) ...[
+                            if (row > 0) const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                for (var col = 0; col < 2; col++) ...[
+                                  if (col > 0) const SizedBox(width: 12),
+                                  Expanded(child: _areaChip(context, LifeArea.values[row * 2 + col])),
+                                ],
+                              ],
                             ),
+                          ],
                         ],
                       ),
                     ],
@@ -238,7 +250,7 @@ class _AreaChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(22),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               selected ? Icons.check_circle : (icon ?? Icons.circle_outlined),
@@ -246,15 +258,66 @@ class _AreaChip extends StatelessWidget {
               color: selected ? colors.gold : colors.crisisMuted,
             ),
             const SizedBox(width: 7),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                color: colors.crisisMuted,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: colors.crisisMuted,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A visually distinct stand-in for "select every area at once" — a real
+/// switch rather than another chip, even though toggling it does exactly
+/// what tapping every area chip at once would ([_AdmireStarsScreenState._toggleAll]).
+class _AllAreasSwitch extends StatelessWidget {
+  const _AllAreasSwitch({required this.label, required this.value, required this.onChanged});
+
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          border: Border.all(color: value ? colors.gold : colors.crisisMuted.withValues(alpha: 0.3)),
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: SwitchListTile(
+          value: value,
+          onChanged: onChanged,
+          activeThumbColor: colors.gold,
+          activeTrackColor: colors.gold.withValues(alpha: 0.25),
+          inactiveThumbColor: colors.crisisMuted,
+          inactiveTrackColor: colors.crisisMuted.withValues(alpha: 0.15),
+          trackOutlineColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? colors.gold.withValues(alpha: 0.5)
+                : colors.crisisMuted.withValues(alpha: 0.4),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 18),
+          title: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              color: colors.crisisMuted,
+              fontWeight: value ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
         ),
       ),
     );

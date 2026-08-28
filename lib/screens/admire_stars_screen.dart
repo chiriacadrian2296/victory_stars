@@ -120,57 +120,72 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
                 ],
               ),
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 28),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        strings.admireYourStars,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontStyle: FontStyle.italic,
-                          fontWeight: FontWeight.w600,
-                          color: colors.text,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 28),
+                      // minHeight + IntrinsicHeight lets the quote carousel
+                      // below sit in an Expanded slot — centered in whatever
+                      // room is actually left under the chips — while still
+                      // allowing the whole column to scroll normally if the
+                      // content above ever needs more room than the screen has.
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                        child: IntrinsicHeight(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Text(
+                                strings.admireYourStars,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 26,
+                                  fontStyle: FontStyle.italic,
+                                  fontWeight: FontWeight.w600,
+                                  color: colors.text,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                strings.admireTagline,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontSize: 15, height: 1.5, color: colors.crisisMuted),
+                              ),
+                              const SizedBox(height: 32),
+                              _AllAreasSwitch(
+                                label: strings.allAreasLabel,
+                                value: _allSelected,
+                                onChanged: (_) => _toggleAll(),
+                              ),
+                              const SizedBox(height: 28),
+                              // Two equal-width columns rather than a Wrap, so
+                              // every chip claims the same amount of space
+                              // regardless of how long its label is, instead
+                              // of packing tighter around short labels.
+                              Column(
+                                children: [
+                                  for (var row = 0; row * 2 < LifeArea.values.length; row++) ...[
+                                    if (row > 0) const SizedBox(height: 12),
+                                    Row(
+                                      children: [
+                                        for (var col = 0; col < 2; col++) ...[
+                                          if (col > 0) const SizedBox(width: 12),
+                                          Expanded(child: _areaChip(context, LifeArea.values[row * 2 + col])),
+                                        ],
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              Expanded(
+                                child: Center(child: _UpliftingQuoteCarousel()),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      Text(
-                        strings.admireTagline,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 15, height: 1.5, color: colors.crisisMuted),
-                      ),
-                      const SizedBox(height: 32),
-                      _AllAreasSwitch(
-                        label: strings.allAreasLabel,
-                        value: _allSelected,
-                        onChanged: (_) => _toggleAll(),
-                      ),
-                      const SizedBox(height: 28),
-                      // Two equal-width columns rather than a Wrap, so every
-                      // chip claims the same amount of space regardless of
-                      // how long its label is, instead of packing tighter
-                      // around short labels.
-                      Column(
-                        children: [
-                          for (var row = 0; row * 2 < LifeArea.values.length; row++) ...[
-                            if (row > 0) const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                for (var col = 0; col < 2; col++) ...[
-                                  if (col > 0) const SizedBox(width: 12),
-                                  Expanded(child: _areaChip(context, LifeArea.values[row * 2 + col])),
-                                ],
-                              ],
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 28),
-                      const _UpliftingQuoteCarousel(),
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ),
               Padding(
@@ -366,7 +381,7 @@ class _UpliftingQuoteCarouselState extends State<_UpliftingQuoteCarousel> {
 
     final colors = context.colors;
     return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 72),
+      constraints: const BoxConstraints(minHeight: 100),
       child: Center(
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 600),
@@ -375,8 +390,9 @@ class _UpliftingQuoteCarouselState extends State<_UpliftingQuoteCarousel> {
             key: ValueKey(_index),
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 15,
+              fontSize: 20,
               fontStyle: FontStyle.italic,
+              fontWeight: FontWeight.w500,
               height: 1.5,
               color: colors.crisisMuted,
             ),

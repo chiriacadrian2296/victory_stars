@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 import '../l10n/strings_scope.dart';
 import '../theme/app_colors.dart';
 
-/// A calendar for the current month — one star per day, brighter the more
-/// wins were logged that day (the app's own take on a GitHub-style
-/// contribution graph). Weekday headers on top, up to 6 week rows below;
-/// days outside the current month are blank. Days with wins also get a
-/// gold glow, scaled between the month's dimmest and brightest day by that
-/// day's total win intensity (see [intensityByDay]).
+/// A calendar for the current month — one star per day (the app's own take
+/// on a GitHub-style contribution graph). Weekday headers on top, up to 6
+/// week rows below; days outside the current month are blank. The star
+/// itself is always the same solid gold once lit — what actually varies
+/// between days is a gold glow around it, scaled in both opacity and size
+/// between the month's dimmest and brightest day by that day's total win
+/// intensity (see [intensityByDay]), not by how many wins it has.
 class StarHeatmap extends StatelessWidget {
   const StarHeatmap({
     super.key,
@@ -136,13 +137,7 @@ class _DayCell extends StatelessWidget {
 
     final count = countsByDay[day] ?? 0;
     final colors = context.colors;
-    final alpha = switch (count) {
-      0 => 0.16,
-      1 => 0.4,
-      2 || 3 => 0.65,
-      4 || 5 || 6 => 0.85,
-      _ => 1.0,
-    };
+    final isLit = count > 0;
 
     final dayIntensity = intensityByDay[day] ?? 0;
     var glowStrength = 0.0;
@@ -169,15 +164,21 @@ class _DayCell extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: colors.gold.withValues(alpha: 0.12 + 0.55 * glowStrength),
-                    blurRadius: 2 + 17 * glowStrength,
+                    color: colors.gold.withValues(alpha: 0.1 + 0.65 * glowStrength),
+                    blurRadius: 1 + 25 * glowStrength,
+                    spreadRadius: 4 * glowStrength,
                   ),
                 ],
               ),
+        // The star itself is always the same solid gold, lit or not —
+        // only the glow (above) carries how many/how intense that day's
+        // wins were. It used to also fade the star's own opacity down for
+        // low counts, which just made a light day look like a rendering
+        // glitch rather than a deliberate "less glow" day.
         child: Icon(
-          count == 0 ? Icons.star_border : Icons.star,
+          isLit ? Icons.star : Icons.star_border,
           size: cellSize,
-          color: colors.gold.withValues(alpha: alpha),
+          color: isLit ? colors.gold : colors.gold.withValues(alpha: 0.16),
         ),
       ),
     );

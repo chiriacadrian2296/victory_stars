@@ -1,6 +1,10 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../data/project_repository.dart';
 import '../data/win_repository.dart';
@@ -64,12 +68,43 @@ class _WinReaderScreenState extends State<WinReaderScreen> {
   late List<Win> _wins = widget.initialWins;
   late int _index = widget.startIndex;
 
+  /// Captures [_ShareableStarCard] — a duplicate of this screen's
+  /// background+content, minus the close/edit/share/prev/next chrome —
+  /// which sits directly behind the real one so it's never actually seen,
+  /// only ever captured as an image.
+  final _shareKey = GlobalKey();
+  bool _sharing = false;
+
   void _showPrevious() {
     setState(() => _index = (_index - 1 + _wins.length) % _wins.length);
   }
 
   void _showNext() {
     setState(() => _index = (_index + 1) % _wins.length);
+  }
+
+  Future<void> _shareCurrent() async {
+    if (_sharing) return;
+    setState(() => _sharing = true);
+    try {
+      final boundary = _shareKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      final image = await boundary.toImage(pixelRatio: MediaQuery.of(context).devicePixelRatio);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) throw StateError('toByteData returned null');
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/star_${DateTime.now().microsecondsSinceEpoch}.png');
+      await file.writeAsBytes(byteData.buffer.asUint8List());
+      if (!mounted) return;
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(file.path)], text: _wins[_index].title),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.strings.shareStarError)));
+      }
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
   }
 
   Future<void> _editCurrent() async {
@@ -124,6 +159,12 @@ class _WinReaderScreenState extends State<WinReaderScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
+          // Sits directly behind the real background+content below, so it's
+          // always fully covered and never actually seen — its only purpose
+          // is to give _shareCurrent something to capture that's identical
+          // to what's on screen, just without the close/edit/share/prev/next
+          // buttons.
+          RepaintBoundary(key: _shareKey, child: _ShareableStarCard(win: win, project: project)),
           // The win's own photo, full-bleed, with the usual gradient washed
           // over it at reduced opacity instead of solid — background rather
           // than a discrete element on the page. Wrapped in its own
@@ -262,6 +303,8 @@ class _WinReaderScreenState extends State<WinReaderScreen> {
                       ),
                     ),
                   ),
+                  _ShareButton(sharing: _sharing, onTap: _shareCurrent, label: strings.shareStarLabel),
+                  const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -275,6 +318,88 @@ class _WinReaderScreenState extends State<WinReaderScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// A static duplicate of [_WinReaderScreenState]'s background+content —
+/// same photo/gradient, same star icon/date/tags/title/description/bolts —
+/// with none of the close/edit/share/prev-next chrome. Exists only to be
+/// captured as an image by [_WinReaderScreenState._shareCurrent]; never
+/// meant to be visibly seen (it sits fully covered behind the real thing).
+class _ShareableStarCard extends StatelessWidget {
+  const _ShareableStarCard({required this.win, required this.project});
+
+  final Win win;
+  final Project? project;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final strings = context.strings;
+    final photoPath = win.photoPath;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (photoPath != null) Image.file(File(photoPath), fit: BoxFit.cover, alignment: Alignment.center),
+        Container(
+          decoration: BoxDecoration(
+            gradient: photoPath == null
+                ? colors.crisisGradient
+                : RadialGradient(
+                    center: const Alignment(0, -0.6),
+                    radius: 1.2,
+                    colors: [
+                      colors.crisisGradientCenter.withValues(alpha: 0.55),
+                      colors.crisisGradientMid.withValues(alpha: 0.75),
+                      colors.crisisGradientOuter.withValues(alpha: 0.9),
+                    ],
+                    stops: const [0.0, 0.55, 1.0],
+                  ),
+          ),
+        ),
+        SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.star, size: 30, color: colors.gold),
+                  const SizedBox(height: 20),
+                  Text(
+                    formatDisplayDateTime(win.date, strings),
+                    style: TextStyle(fontSize: 12, color: colors.crisisMuted),
+                  ),
+                  if (project != null) ...[
+                    const SizedBox(height: 12),
+                    AreaTag(area: project!.area, iconSize: 18, fontSize: 17),
+                    const SizedBox(height: 6),
+                    ProjectTag(project: project!, textColor: colors.crisisMuted),
+                  ],
+                  const SizedBox(height: 16),
+                  Text(
+                    win.title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.w600, height: 1.35, color: colors.text),
+                  ),
+                  if (win.description != null) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      win.description!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 15, height: 1.6, color: colors.crisisMuted),
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  IntensityBolts(intensity: win.intensity, size: 22, spacing: 4, emphasizeLast: true),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -295,6 +420,58 @@ class _NavCircleButton extends StatelessWidget {
         customBorder: const CircleBorder(),
         child: SizedBox(width: 48, height: 48, child: Icon(icon, color: context.colors.text)),
       ),
+    );
+  }
+}
+
+/// A round icon button with the same gold-with-a-glow treatment as the home
+/// dashboard's "+" FAB (a static shadow rather than that FAB's breathing
+/// animation — this one doesn't need to keep drawing the eye the way an
+/// always-visible dashboard action does), with its label as a separate
+/// caption below rather than inside the button itself.
+class _ShareButton extends StatelessWidget {
+  const _ShareButton({required this.sharing, required this.onTap, required this.label});
+
+  final bool sharing;
+  final VoidCallback onTap;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [BoxShadow(color: colors.gold.withValues(alpha: 0.35), blurRadius: 20, offset: const Offset(0, 6))],
+          ),
+          child: Material(
+            color: colors.gold,
+            shape: const CircleBorder(),
+            child: InkWell(
+              onTap: sharing ? null : onTap,
+              customBorder: const CircleBorder(),
+              child: SizedBox(
+                width: 52,
+                height: 52,
+                child: Center(
+                  child: sharing
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: colors.onGold),
+                        )
+                      : Icon(Icons.share_outlined, color: colors.onGold),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(label, style: TextStyle(fontSize: 12, color: colors.crisisMuted)),
+      ],
     );
   }
 }

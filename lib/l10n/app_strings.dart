@@ -145,6 +145,8 @@ abstract class AppStrings {
 
   // Win reader
   String indexOfCount(int index, int total);
+  String get shareStarLabel;
+  String get shareStarError;
 
   // Settings
   String get settingsEyebrow;

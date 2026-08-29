@@ -247,6 +247,10 @@ class StringsEn implements AppStrings {
 
   @override
   String indexOfCount(int index, int total) => '$index of $total';
+  @override
+  String get shareStarLabel => 'Share this star';
+  @override
+  String get shareStarError => "Couldn't share that star. Try again?";
 
   @override
   String get settingsEyebrow => 'SETTINGS';

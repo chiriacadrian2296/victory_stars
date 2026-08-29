@@ -247,6 +247,10 @@ class StringsIt implements AppStrings {
 
   @override
   String indexOfCount(int index, int total) => '$index di $total';
+  @override
+  String get shareStarLabel => 'Condividi questa stella';
+  @override
+  String get shareStarError => 'Non è stato possibile condividere questa stella. Riprova?';
 
   @override
   String get settingsEyebrow => 'IMPOSTAZIONI';

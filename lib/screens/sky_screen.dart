@@ -45,20 +45,28 @@ class _SkyScreenState extends State<SkyScreen> {
         child: Column(
           children: [
             const _Header(),
+            // Every area's card gets an equal share of whatever height is
+            // left, rather than each sizing to its own content in a
+            // scrollable list — the 8 areas are a fixed, known set (not a
+            // growing list like wins/projects), so it reads better to show
+            // all of them on screen at once than to make the page scroll.
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-                itemCount: LifeArea.values.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final area = LifeArea.values[index];
-                  final starCount = starsInArea(area, widget.projectRepository, widget.winRepository);
-                  return _AreaCard(
-                    area: area,
-                    starCount: starCount,
-                    onTap: () => _openArea(area),
-                  );
-                },
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+                child: Column(
+                  children: [
+                    for (var i = 0; i < LifeArea.values.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 10),
+                      Expanded(
+                        child: _AreaCard(
+                          area: LifeArea.values[i],
+                          starCount: starsInArea(LifeArea.values[i], widget.projectRepository, widget.winRepository),
+                          onTap: () => _openArea(LifeArea.values[i]),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -135,7 +143,8 @@ class _AreaCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
             border: Border.all(color: colors.nightBorder),
             borderRadius: BorderRadius.circular(12),

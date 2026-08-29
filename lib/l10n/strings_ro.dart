@@ -248,7 +248,7 @@ class StringsRo implements AppStrings {
   @override
   String indexOfCount(int index, int total) => '$index din $total';
   @override
-  String get shareStarLabel => 'Distribuie această stea';
+  String get shareStarLabel => 'Distribuie această Stea';
   @override
   String get shareStarError => 'Nu am putut distribui această stea. Încerci din nou?';
 

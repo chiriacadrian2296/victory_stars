@@ -424,11 +424,11 @@ class _NavCircleButton extends StatelessWidget {
   }
 }
 
-/// A round icon button with the same gold-with-a-glow treatment as the home
-/// dashboard's "+" FAB (a static shadow rather than that FAB's breathing
-/// animation — this one doesn't need to keep drawing the eye the way an
-/// always-visible dashboard action does), with its label as a separate
-/// caption below rather than inside the button itself.
+/// Just the gold icon itself with a soft glow behind it — no disc/circle
+/// fill like the home dashboard's "+" FAB, since this one should read as
+/// lightweight next to all the star content above it rather than as a
+/// second, competing call-to-action. Its label sits as a separate caption
+/// below rather than inside the tappable icon.
 class _ShareButton extends StatelessWidget {
   const _ShareButton({required this.sharing, required this.onTap, required this.label});
 
@@ -442,35 +442,35 @@ class _ShareButton extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            boxShadow: [BoxShadow(color: colors.gold.withValues(alpha: 0.35), blurRadius: 20, offset: const Offset(0, 6))],
-          ),
-          child: Material(
-            color: colors.gold,
-            shape: const CircleBorder(),
-            child: InkWell(
-              onTap: sharing ? null : onTap,
-              customBorder: const CircleBorder(),
-              child: SizedBox(
-                width: 52,
-                height: 52,
+        InkWell(
+          onTap: sharing ? null : onTap,
+          customBorder: const CircleBorder(),
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: Center(
+              child: Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: colors.gold.withValues(alpha: 0.6), blurRadius: 16)],
+                ),
                 child: Center(
                   child: sharing
                       ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: colors.onGold),
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: colors.gold),
                         )
-                      : Icon(Icons.share_outlined, color: colors.onGold),
+                      : Icon(Icons.share_outlined, color: colors.gold, size: 26),
                 ),
               ),
             ),
           ),
         ),
         const SizedBox(height: 8),
-        Text(label, style: TextStyle(fontSize: 12, color: colors.crisisMuted)),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.white)),
       ],
     );
   }

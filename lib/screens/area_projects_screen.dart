@@ -378,7 +378,7 @@ class _ProjectCard extends StatelessWidget {
                         children: [
                           _MetricBadge(icon: Icons.star, text: strings.starsCount(starCount)),
                           const SizedBox(width: 8),
-                          _MetricBadge(icon: Icons.bolt, text: strings.intensityCount(combinedIntensity)),
+                          _MetricBadge(icon: Icons.offline_bolt, text: strings.intensityCount(combinedIntensity)),
                         ],
                       ),
                     ],

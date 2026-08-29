@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
@@ -14,6 +16,7 @@ class IntensityBolts extends StatelessWidget {
     this.spacing = 2,
     this.color,
     this.emphasizeLast = false,
+    this.emphasizedScale = 1.35,
   });
 
   final int intensity;
@@ -26,6 +29,11 @@ class IntensityBolts extends StatelessWidget {
   /// lit bolts — used on the add/edit star form, where that bolt is the one
   /// the slider is currently pointing at.
   final bool emphasizeLast;
+
+  /// How much bigger than [size] that emphasized bolt gets. Overridable per
+  /// call site rather than a single fixed multiplier — the add/edit star
+  /// form wants it more prominent than the star card or reader do.
+  final double emphasizedScale;
 
   @override
   Widget build(BuildContext context) {
@@ -45,18 +53,29 @@ class IntensityBolts extends StatelessWidget {
   Widget _bolt(int i, Color resolvedColor) {
     final lit = i <= intensity;
     final isEmphasized = emphasizeLast && lit && i == intensity;
-    final icon = Icon(
-      lit ? Icons.bolt : Icons.bolt_outlined,
-      size: isEmphasized ? size * 1.35 : size,
-      color: lit ? resolvedColor : resolvedColor.withValues(alpha: 0.35),
-    );
+    final iconData = lit ? Icons.offline_bolt : Icons.offline_bolt_outlined;
+    final iconSize = isEmphasized ? size * emphasizedScale : size;
+    final icon = Icon(iconData, size: iconSize, color: lit ? resolvedColor : resolvedColor.withValues(alpha: 0.35));
     if (!isEmphasized) return icon;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: [BoxShadow(color: resolvedColor.withValues(alpha: 0.6), blurRadius: 12)],
-      ),
-      child: icon,
+    // A blurred copy of the same glyph, behind the sharp one — its glow
+    // follows the bolt's actual silhouette, hollow center included, instead
+    // of a plain circular BoxShadow, which would glow right through that
+    // hollow center as if the icon were a solid disc. The blur has to scale
+    // with the icon's own size rather than use one fixed radius: a radius
+    // that reads as a thin edge-glow on a big emphasized bolt (like the
+    // add/edit form's) is big enough, relative to a small one (like the
+    // star card's), to blur straight across its much smaller hollow center
+    // and refill it — reintroducing the exact thing this is meant to avoid.
+    final sigma = iconSize * 0.12;
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        ImageFiltered(
+          imageFilter: ui.ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+          child: Icon(iconData, size: iconSize * 1.15, color: resolvedColor.withValues(alpha: 0.45)),
+        ),
+        icon,
+      ],
     );
   }
 }

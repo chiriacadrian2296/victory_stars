@@ -496,23 +496,38 @@ class _AddWinScreenState extends State<AddWinScreen> {
               const SizedBox(height: 20),
               Text(strings.intensityLabel, style: TextStyle(fontSize: 13, color: colors.muted)),
               const SizedBox(height: 10),
-              Center(child: IntensityBolts(intensity: _intensity, size: 26, spacing: 6, emphasizeLast: true)),
-              SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: colors.gold,
-                  inactiveTrackColor: colors.nightBorder,
-                  thumbColor: colors.gold,
-                  overlayColor: colors.gold.withValues(alpha: 0.2),
+              Center(
+                child: IntensityBolts(
+                  intensity: _intensity,
+                  size: 26,
+                  spacing: 6,
+                  emphasizeLast: true,
+                  emphasizedScale: 1.6,
                 ),
-                child: Slider(
-                  value: _intensity.toDouble(),
-                  min: 1,
-                  max: 5,
-                  divisions: 4,
-                  // No label/value-indicator bubble — the star row above
-                  // already shows the value more clearly, and the bubble
-                  // ends up covering those stars while dragging.
-                  onChanged: (value) => setState(() => _intensity = value.round()),
+              ),
+              const SizedBox(height: 14),
+              Center(
+                child: FractionallySizedBox(
+                  widthFactor: 0.7,
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: colors.gold,
+                      inactiveTrackColor: colors.nightBorder,
+                      thumbColor: colors.gold,
+                      overlayColor: Colors.transparent,
+                      overlayShape: SliderComponentShape.noOverlay,
+                    ),
+                    child: Slider(
+                      value: _intensity.toDouble(),
+                      min: 1,
+                      max: 5,
+                      divisions: 4,
+                      // No label/value-indicator bubble — the star row above
+                      // already shows the value more clearly, and the bubble
+                      // ends up covering those stars while dragging.
+                      onChanged: (value) => setState(() => _intensity = value.round()),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),

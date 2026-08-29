@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -39,6 +38,9 @@ class ConstellationPainter extends CustomPainter {
     required this.revision,
     required this.starColor,
     required this.coreColor,
+    this.chainStarCount = 0,
+    this.chainClosed = false,
+    this.linkThreshold = 0,
   });
 
   final List<ConstellationStar> stars;
@@ -50,19 +52,55 @@ class ConstellationPainter extends CustomPainter {
   final Color starColor;
   final Color coreColor;
 
+  /// How many leading entries of [stars] belong to the shape's connected
+  /// chain (built by `buildConstellationPositions`, in outline order) —
+  /// any stars beyond this are unconnected overflow scatter, and never get
+  /// a line drawn to or from them.
+  final int chainStarCount;
+
+  /// Whether the chain's last point links back to its first, completing a
+  /// closed silhouette instead of an open path.
+  final bool chainClosed;
+
+  /// The chain isn't connected with lines at all until it reaches this many
+  /// stars — a project's constellation shows loose, unlinked stars until
+  /// its full base pictogram (the shape's primary keypoints) is lit.
+  final int linkThreshold;
+
   /// Bumped by the caller whenever [stars] actually changes (a win was
   /// added/edited or the screen reloaded) — deliberately NOT a deep list
   /// comparison, so pan/zoom gesture frames never trigger a repaint.
   final int revision;
 
-  static const _starCoreRadius = 3.0;
+  static const _sparkleRadius = 5.5;
 
   @override
   void paint(Canvas canvas, Size size) {
     final sprite = glowSprite;
     if (sprite == null || stars.isEmpty) return;
 
-    final srcRect = Rect.fromLTWH(0, 0, sprite.width.toDouble(), sprite.height.toDouble());
+    if (chainStarCount >= linkThreshold && linkThreshold > 0) {
+      final linePaint = Paint()
+        ..color = starColor.withValues(alpha: 0.35)
+        ..strokeWidth = 1.2
+        ..style = PaintingStyle.stroke;
+      final path = Path();
+      final first = _toCanvas(stars[0].position, size);
+      path.moveTo(first.dx, first.dy);
+      for (var i = 1; i < chainStarCount; i++) {
+        final p = _toCanvas(stars[i].position, size);
+        path.lineTo(p.dx, p.dy);
+      }
+      if (chainClosed) path.close();
+      canvas.drawPath(path, linePaint);
+    }
+
+    final srcRect = Rect.fromLTWH(
+      0,
+      0,
+      sprite.width.toDouble(),
+      sprite.height.toDouble(),
+    );
     final transforms = <RSTransform>[];
     final srcRects = <Rect>[];
     final colors = <Color>[];
@@ -83,11 +121,24 @@ class ConstellationPainter extends CustomPainter {
       colors.add(starColor);
     }
 
-    canvas.drawAtlas(sprite, transforms, srcRects, colors, BlendMode.modulate, null, Paint());
+    canvas.drawAtlas(
+      sprite,
+      transforms,
+      srcRects,
+      colors,
+      BlendMode.modulate,
+      null,
+      Paint(),
+    );
 
+    final sparkle = _sparklePath(_sparkleRadius);
     final corePaint = Paint()..color = coreColor;
     for (final star in stars) {
-      canvas.drawCircle(_toCanvas(star.position, size), _starCoreRadius, corePaint);
+      final center = _toCanvas(star.position, size);
+      canvas.save();
+      canvas.translate(center.dx, center.dy);
+      canvas.drawPath(sparkle, corePaint);
+      canvas.restore();
     }
   }
 
@@ -96,8 +147,23 @@ class ConstellationPainter extends CustomPainter {
     return revision != oldDelegate.revision ||
         glowSprite != oldDelegate.glowSprite ||
         starColor != oldDelegate.starColor ||
-        coreColor != oldDelegate.coreColor;
+        coreColor != oldDelegate.coreColor ||
+        chainStarCount != oldDelegate.chainStarCount;
   }
+}
+
+/// A small four-pointed "twinkle" sparkle (like ✦), pinched to a narrow
+/// waist at the center — reads clearly at star size, unlike a filled
+/// diamond or a rounder shape which just blurs into a dot.
+Path _sparklePath(double radius) {
+  final waist = radius * 0.28;
+  return Path()
+    ..moveTo(0, -radius)
+    ..quadraticBezierTo(waist, -waist, radius, 0)
+    ..quadraticBezierTo(waist, waist, 0, radius)
+    ..quadraticBezierTo(-waist, waist, -radius, 0)
+    ..quadraticBezierTo(-waist, -waist, 0, -radius)
+    ..close();
 }
 
 Offset _toCanvas(Offset normalized, Size size) {
@@ -116,7 +182,8 @@ ConstellationStar? hitTestStar(
   ConstellationStar? closest;
   var closestDistanceSq = hitRadius * hitRadius;
   for (final star in stars) {
-    final distanceSq = (_toCanvas(star.position, canvasSize) - localPosition).distanceSquared;
+    final distanceSq =
+        (_toCanvas(star.position, canvasSize) - localPosition).distanceSquared;
     if (distanceSq < closestDistanceSq) {
       closestDistanceSq = distanceSq;
       closest = star;
@@ -137,16 +204,4 @@ Rect boundingBoxOf(List<Offset> points) {
     if (p.dy > maxY) maxY = p.dy;
   }
   return Rect.fromLTRB(minX, minY, maxX, maxY);
-}
-
-/// Deterministic placement for a win that has exhausted both a shape's
-/// primary and secondary slot lists — vanishingly rare given how densely
-/// populated the secondary lists are, but must never crash or lose a win.
-/// Seeded by the win's own immutable id (never by its position in the
-/// list), so a star's position can't shift if the list is ever reordered.
-Offset seededOverflowPosition(int seed) {
-  final random = math.Random(seed);
-  final angle = random.nextDouble() * 2 * math.pi;
-  final radius = 0.55 + random.nextDouble() * 0.45;
-  return Offset(0.5 + radius * math.cos(angle), 0.5 + radius * math.sin(angle));
 }

@@ -2,7 +2,7 @@ import 'life_area.dart';
 
 /// A user-created project within a [LifeArea] (e.g. "Build this app" under
 /// Professional). Its [iconSlug] selects which precomputed constellation
-/// shape (see constellation_shapes.dart) its wins light up stars in.
+/// shape (see constellation_shapes_v2.dart) its wins light up stars in.
 class Project {
   const Project({
     required this.id,

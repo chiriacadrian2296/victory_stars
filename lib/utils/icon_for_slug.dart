@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Maps every icon slug in `constellation_shapes.dart` to Flutter's
+/// Maps every icon slug in `constellation_shapes_v2.dart` to Flutter's
 /// built-in [Icons] constant of the same name — verified against the
 /// Flutter SDK's Icons class, so every current slug has an exact match.
 /// [iconForSlug] falls back to a generic star for any slug added later

@@ -68,7 +68,7 @@ extension LifeAreaX on LifeArea {
   }
 
   /// The slug equivalent of [icon]. Most of these also happen to be keys in
-  /// `constellation_shapes.dart` (same icon, same name) — this getter is
+  /// `constellation_shapes_v2.dart` (same icon, same name) — this getter is
   /// what lets the project icon picker filter them out, reserving them for
   /// areas only. `self_improvement` isn't in that shape library at all, so
   /// it was never selectable as a project icon regardless.
@@ -93,7 +93,7 @@ extension LifeAreaX on LifeArea {
     }
   }
 
-  /// Key into `suggestedIconsByArea` (constellation_shapes.dart). Kept
+  /// Key into `suggestedIconsByArea` (constellation_shapes_v2.dart). Kept
   /// separate from [name] because that map spells this area
   /// "philanthropical", not "philanthropic".
   String get suggestedIconsKey {

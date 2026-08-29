@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../data/constellation_shapes.dart';
+import '../data/constellation_shapes_v2.dart';
 import '../data/project_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../models/life_area.dart';
@@ -9,7 +9,7 @@ import '../theme/app_colors.dart';
 import '../utils/icon_for_slug.dart';
 
 /// Creates a project: a name, a [LifeArea], and an icon whose slug must be
-/// one of the keys in `constellation_shapes.dart` — that's a hard
+/// one of the keys in `constellation_shapes_v2.dart` — that's a hard
 /// requirement, not a style choice, since [Project.iconSlug] is looked up
 /// there to render the project's constellation.
 ///
@@ -17,7 +17,11 @@ import '../utils/icon_for_slug.dart';
 /// when omitted (e.g. opened inline while adding a win), the user picks an
 /// area here first.
 class NewProjectScreen extends StatefulWidget {
-  const NewProjectScreen({super.key, required this.projectRepository, this.presetArea});
+  const NewProjectScreen({
+    super.key,
+    required this.projectRepository,
+    this.presetArea,
+  });
 
   final ProjectRepository projectRepository;
   final LifeArea? presetArea;
@@ -43,10 +47,15 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
   static final _areaOnlySlugs = LifeArea.values.map((a) => a.iconSlug).toSet();
 
   List<String> _orderedIconSlugs(LifeArea? area) {
-    final all = constellationShapes.keys.where((slug) => !_areaOnlySlugs.contains(slug)).toList()..sort();
+    final all =
+        constellationShapes.keys
+            .where((slug) => !_areaOnlySlugs.contains(slug))
+            .toList()
+          ..sort();
     if (area == null) return all;
-    final suggested = (suggestedIconsByArea[area.suggestedIconsKey] ?? const <String>[])
-        .where((slug) => !_areaOnlySlugs.contains(slug));
+    final suggested =
+        (suggestedIconsByArea[area.suggestedIconsKey] ?? const <String>[])
+            .where((slug) => !_areaOnlySlugs.contains(slug));
     final rest = all.where((slug) => !suggested.contains(slug)).toList();
     return [...suggested, ...rest];
   }
@@ -56,9 +65,16 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
     final area = _selectedArea;
     final iconSlug = _selectedIconSlug;
     if (name.isEmpty || area == null || iconSlug == null) return;
-    assert(!_areaOnlySlugs.contains(iconSlug), 'Area icons are reserved and should never reach a project.');
+    assert(
+      !_areaOnlySlugs.contains(iconSlug),
+      'Area icons are reserved and should never reach a project.',
+    );
 
-    final project = await widget.projectRepository.add(name: name, area: area, iconSlug: iconSlug);
+    final project = await widget.projectRepository.add(
+      name: name,
+      area: area,
+      iconSlug: iconSlug,
+    );
     if (mounted) Navigator.of(context).pop(project);
   }
 
@@ -94,11 +110,18 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
               const SizedBox(height: 16),
               Text(
                 strings.newProjectQuestion,
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 24, color: colors.text),
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 24,
+                  color: colors.text,
+                ),
               ),
               const SizedBox(height: 24),
               if (widget.presetArea == null) ...[
-                Text(strings.areaLabel, style: TextStyle(fontSize: 13, color: colors.muted)),
+                Text(
+                  strings.areaLabel,
+                  style: TextStyle(fontSize: 13, color: colors.muted),
+                ),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -114,16 +137,24 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
                 ),
                 const SizedBox(height: 20),
               ],
-              Text(strings.nameLabel, style: TextStyle(fontSize: 13, color: colors.muted)),
+              Text(
+                strings.nameLabel,
+                style: TextStyle(fontSize: 13, color: colors.muted),
+              ),
               const SizedBox(height: 6),
               TextField(
                 controller: _nameController,
                 autofocus: widget.presetArea != null,
                 style: TextStyle(color: colors.text, fontSize: 15),
-                decoration: InputDecoration(hintText: strings.newProjectNameHint),
+                decoration: InputDecoration(
+                  hintText: strings.newProjectNameHint,
+                ),
               ),
               const SizedBox(height: 20),
-              Text(strings.iconLabel, style: TextStyle(fontSize: 13, color: colors.muted)),
+              Text(
+                strings.iconLabel,
+                style: TextStyle(fontSize: 13, color: colors.muted),
+              ),
               const SizedBox(height: 8),
               GridView.count(
                 crossAxisCount: 6,
@@ -147,7 +178,9 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
                   valueListenable: _nameController,
                   builder: (context, value, child) {
                     final canSave =
-                        value.text.trim().isNotEmpty && _selectedArea != null && _selectedIconSlug != null;
+                        value.text.trim().isNotEmpty &&
+                        _selectedArea != null &&
+                        _selectedIconSlug != null;
                     return ElevatedButton(
                       onPressed: canSave ? _save : null,
                       style: ElevatedButton.styleFrom(
@@ -156,11 +189,16 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
                         disabledBackgroundColor: colors.nightBorder,
                         disabledForegroundColor: colors.muted,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                       child: Text(
                         strings.createProject,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
                       ),
                     );
                   },
@@ -175,7 +213,11 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
 }
 
 class _AreaChip extends StatelessWidget {
-  const _AreaChip({required this.area, required this.selected, required this.onTap});
+  const _AreaChip({
+    required this.area,
+    required this.selected,
+    required this.onTap,
+  });
 
   final LifeArea area;
   final bool selected;
@@ -190,14 +232,22 @@ class _AreaChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? colors.gold.withValues(alpha: 0.15) : colors.nightPanel,
-          border: Border.all(color: selected ? colors.gold : colors.nightBorder),
+          color: selected
+              ? colors.gold.withValues(alpha: 0.15)
+              : colors.nightPanel,
+          border: Border.all(
+            color: selected ? colors.gold : colors.nightBorder,
+          ),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(area.icon, size: 15, color: selected ? colors.gold : colors.muted),
+            Icon(
+              area.icon,
+              size: 15,
+              color: selected ? colors.gold : colors.muted,
+            ),
             const SizedBox(width: 6),
             Text(
               area.displayName(context.strings),
@@ -215,7 +265,11 @@ class _AreaChip extends StatelessWidget {
 }
 
 class _IconOption extends StatelessWidget {
-  const _IconOption({required this.slug, required this.selected, required this.onTap});
+  const _IconOption({
+    required this.slug,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String slug;
   final bool selected;
@@ -229,8 +283,12 @@ class _IconOption extends StatelessWidget {
       borderRadius: BorderRadius.circular(10),
       child: Container(
         decoration: BoxDecoration(
-          color: selected ? colors.gold.withValues(alpha: 0.15) : colors.nightPanel,
-          border: Border.all(color: selected ? colors.gold : colors.nightBorder),
+          color: selected
+              ? colors.gold.withValues(alpha: 0.15)
+              : colors.nightPanel,
+          border: Border.all(
+            color: selected ? colors.gold : colors.nightBorder,
+          ),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(

@@ -3,7 +3,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-import '../data/constellation_shapes.dart';
+import '../data/constellation_layout.dart';
+import '../data/constellation_shapes_v2.dart';
 import '../data/project_repository.dart';
 import '../data/win_repository.dart';
 import '../l10n/strings_scope.dart';
@@ -39,8 +40,11 @@ class ConstellationScreen extends StatefulWidget {
 class _ConstellationScreenState extends State<ConstellationScreen> {
   static const _canvasSize = Size(1000, 1000);
 
-  late final ConstellationShape? _shape = constellationShapes[widget.project.iconSlug];
-  late final Rect _shapeBounds = _shape == null ? Rect.zero : boundingBoxOf(_shape.primary);
+  late final ConstellationShape? _shape =
+      constellationShapes[widget.project.iconSlug];
+  late final Rect _shapeBounds = _shape == null
+      ? Rect.zero
+      : boundingBoxOf(_shape.points);
 
   late List<Win> _wins;
   late List<ConstellationStar> _stars;
@@ -76,21 +80,21 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
   List<ConstellationStar> _buildStars(List<Win> winsOldestFirst) {
     final shape = _shape;
     if (shape == null) return const [];
+    final chain = buildConstellationPositions(shape, winsOldestFirst.length);
     final stars = <ConstellationStar>[];
     for (var i = 0; i < winsOldestFirst.length; i++) {
       final win = winsOldestFirst[i];
-      final Offset position;
-      if (i < shape.primary.length) {
-        position = shape.primary[i];
-      } else if (i - shape.primary.length < shape.secondary.length) {
-        position = shape.secondary[i - shape.primary.length];
-      } else {
-        position = seededOverflowPosition(win.id);
-      }
+      final position = i < chain.length
+          ? chain[i]
+          : seededOverflowPosition(win.id);
       stars.add(ConstellationStar(winId: win.id, position: position));
     }
     return stars;
   }
+
+  /// How many leading [_stars] are chained (connected by lines) rather than
+  /// scattered overflow — see [maxChainedStars].
+  int get _chainStarCount => math.min(_stars.length, maxChainedStars);
 
   Rect _boundsPixels() {
     return Rect.fromLTRB(
@@ -106,7 +110,12 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
     final boundsPixels = _boundsPixels();
     final shapeWidth = boundsPixels.width == 0 ? 1.0 : boundsPixels.width;
     final shapeHeight = boundsPixels.height == 0 ? 1.0 : boundsPixels.height;
-    final scale = math.min(viewportSize.width / shapeWidth, viewportSize.height / shapeHeight) * 0.8;
+    final scale =
+        math.min(
+          viewportSize.width / shapeWidth,
+          viewportSize.height / shapeHeight,
+        ) *
+        0.8;
     return scale <= 0 ? 0.1 : scale;
   }
 
@@ -142,7 +151,8 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
           allowEdit: true,
           projectsById: {widget.project.id: widget.project},
           projectRepository: widget.projectRepository,
-          refreshWins: () => widget.winRepository.getAllForProject(widget.project.id),
+          refreshWins: () =>
+              widget.winRepository.getAllForProject(widget.project.id),
         ),
       ),
     );
@@ -194,7 +204,9 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
                   : LayoutBuilder(
                       builder: (context, constraints) {
                         final viewportSize = constraints.biggest;
-                        WidgetsBinding.instance.addPostFrameCallback((_) => _frameShape(viewportSize));
+                        WidgetsBinding.instance.addPostFrameCallback(
+                          (_) => _frameShape(viewportSize),
+                        );
                         final minScale = _fitScaleFor(viewportSize);
 
                         return InteractiveViewer(
@@ -208,7 +220,11 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
                             child: GestureDetector(
                               behavior: HitTestBehavior.opaque,
                               onTapUp: (details) {
-                                final star = hitTestStar(details.localPosition, _canvasSize, _stars);
+                                final star = hitTestStar(
+                                  details.localPosition,
+                                  _canvasSize,
+                                  _stars,
+                                );
                                 if (star != null) _openStar(star);
                               },
                               child: CustomPaint(
@@ -219,6 +235,9 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
                                   revision: _revision,
                                   starColor: colors.gold,
                                   coreColor: colors.text,
+                                  chainStarCount: _chainStarCount,
+                                  chainClosed: shape.closed,
+                                  linkThreshold: shape.points.length,
                                 ),
                               ),
                             ),

@@ -208,6 +208,19 @@ class StringsIt implements AppStrings {
   String get saveChanges => 'Salva modifiche';
   @override
   String get lightThisStar => 'Accendi questa stella';
+  @override
+  String get deleteStarConfirmTitle => 'Eliminare questa stella?';
+  @override
+  String get deleteStarConfirmBody =>
+      'Questo rimuove definitivamente la stella e tutto ciò che hai scritto. Non si può annullare.';
+  @override
+  String get deleteStarAction => 'Elimina';
+  @override
+  String get discardChangesConfirmTitle => 'Scartare le modifiche?';
+  @override
+  String get discardChangesConfirmBody => 'Perderai le modifiche fatte a questa stella.';
+  @override
+  String get discardChangesAction => 'Scarta modifiche';
 
   @override
   String get admireTagline => 'Per quando sei nel buio e hai bisogno di un po\' di luce.';

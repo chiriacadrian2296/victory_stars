@@ -128,6 +128,27 @@ void main() {
     expect(repo.getAllForProject(3), isEmpty);
   });
 
+  test('delete() removes the win and persists across a reload', () async {
+    final repo = await WinRepository.create();
+    final keep = await repo.add(title: 'Keep me', projectId: 1, intensity: 3);
+    final remove = await repo.add(title: 'Remove me', projectId: 1, intensity: 3);
+
+    await repo.delete(remove.id);
+
+    expect(repo.getAll().map((w) => w.id), [keep.id]);
+    final reloaded = await WinRepository.create();
+    expect(reloaded.getAll().map((w) => w.id), [keep.id]);
+  });
+
+  test('delete() for an id that does not exist is a harmless no-op', () async {
+    final repo = await WinRepository.create();
+    await repo.add(title: 'A win', projectId: 1, intensity: 3);
+
+    await repo.delete(999);
+
+    expect(repo.getAll(), hasLength(1));
+  });
+
   test('clear() deletes every win, including from a repository reloaded afterward', () async {
     final repo = await WinRepository.create();
     await repo.add(title: 'A win', projectId: 1, intensity: 3);

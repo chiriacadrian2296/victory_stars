@@ -125,6 +125,12 @@ abstract class AppStrings {
   String get cropPhotoHint;
   String get saveChanges;
   String get lightThisStar;
+  String get deleteStarConfirmTitle;
+  String get deleteStarConfirmBody;
+  String get deleteStarAction;
+  String get discardChangesConfirmTitle;
+  String get discardChangesConfirmBody;
+  String get discardChangesAction;
 
   // Admire Your Stars (random reflection, filterable by area)
   String get admireTagline;

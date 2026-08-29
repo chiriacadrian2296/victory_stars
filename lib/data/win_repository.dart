@@ -57,10 +57,10 @@ class WinRepository {
   /// rather than being re-derived (and risking a reversed order) at each
   /// call site.
   ///
-  /// Assumes wins are append-only for a project: a win's position in this
-  /// list is used as its permanent star-slot index, so deleting a win would
-  /// silently shift every star after it. There is no delete anywhere in this
-  /// repository today; revisit this assumption if that ever changes.
+  /// A win's position in this list is its star-slot index — nothing stores
+  /// that index directly, so [delete]ing a win shifts every later win in
+  /// the same project up one slot, moving their stars along with it. Same
+  /// idea as reordering photos in a gallery grid: expected, not a bug.
   List<Win> getAllForProject(int projectId) {
     return getAll().where((w) => w.projectId == projectId).toList().reversed.toList();
   }
@@ -108,9 +108,8 @@ class WinRepository {
   /// constellation immediately (star slots are derived from
   /// [getAllForProject], never stored) — but since every other win in the
   /// *old* project shifts up one slot to fill the gap, their star positions
-  /// can visibly move too. Same underlying assumption as
-  /// [getAllForProject]: fine today because there's no delete to compound
-  /// it with, but worth knowing if this ever needs to feel more stable.
+  /// can visibly move too. Same underlying assumption as [getAllForProject]
+  /// applies here — see its doc comment.
   Future<Win> update({
     required int id,
     required String title,
@@ -149,6 +148,23 @@ class WinRepository {
     }
 
     return updated;
+  }
+
+  /// Permanently deletes the win identified by [id], and its photo file if
+  /// it had one. Silently does nothing if no win with that id exists —
+  /// deleting something already gone isn't an error worth surfacing.
+  Future<void> delete(int id) async {
+    final wins = getAll();
+    final index = wins.indexWhere((w) => w.id == id);
+    if (index == -1) return;
+
+    final photoPath = wins[index].photoPath;
+    final nextWins = [...wins]..removeAt(index);
+    await _saveAll(nextWins);
+
+    if (photoPath != null) {
+      await PhotoStorage.delete(photoPath);
+    }
   }
 
   /// Permanently deletes every win. Used by the "reset all data" action —

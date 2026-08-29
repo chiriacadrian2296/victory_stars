@@ -208,6 +208,19 @@ class StringsRo implements AppStrings {
   String get saveChanges => 'Salvează modificările';
   @override
   String get lightThisStar => 'Aprinde această stea';
+  @override
+  String get deleteStarConfirmTitle => 'Ștergi această stea?';
+  @override
+  String get deleteStarConfirmBody =>
+      'Aceasta elimină definitiv steaua și tot ce ai scris pentru ea. Nu poate fi anulat.';
+  @override
+  String get deleteStarAction => 'Șterge';
+  @override
+  String get discardChangesConfirmTitle => 'Renunți la modificări?';
+  @override
+  String get discardChangesConfirmBody => 'Vei pierde modificările făcute acestei stele.';
+  @override
+  String get discardChangesAction => 'Renunță la modificări';
 
   @override
   String get admireTagline => 'Pentru când ești în întuneric și ai nevoie de puțină lumină.';

@@ -109,7 +109,7 @@ class _WinReaderScreenState extends State<WinReaderScreen> {
 
   Future<void> _editCurrent() async {
     final current = _wins[_index];
-    final result = await Navigator.of(context).push<AddWinResult>(
+    final result = await Navigator.of(context).push<Object>(
       MaterialPageRoute(
         builder: (_) => AddWinScreen(
           existingWin: current,
@@ -120,14 +120,31 @@ class _WinReaderScreenState extends State<WinReaderScreen> {
     );
     if (result == null) return;
 
+    if (result is AddWinDeleteRequested) {
+      await widget.repository.delete(current.id);
+      final refreshedWins = widget.refreshWins!();
+      if (refreshedWins.isEmpty) {
+        // Nothing left in this scope to show — back out to wherever it's
+        // browsed from, which will reflect the deletion on its own.
+        if (mounted) Navigator.of(context).pop();
+        return;
+      }
+      setState(() {
+        _wins = refreshedWins;
+        _index = _index.clamp(0, _wins.length - 1);
+      });
+      return;
+    }
+
+    final addResult = result as AddWinResult;
     final updated = await widget.repository.update(
       id: current.id,
-      title: result.title,
-      description: result.description,
-      projectId: result.projectId,
-      intensity: result.intensity,
-      date: result.date,
-      photoPath: result.photoPath,
+      title: addResult.title,
+      description: addResult.description,
+      projectId: addResult.projectId,
+      intensity: addResult.intensity,
+      date: addResult.date,
+      photoPath: addResult.photoPath,
     );
 
     final refreshedWins = widget.refreshWins!();
@@ -303,12 +320,11 @@ class _WinReaderScreenState extends State<WinReaderScreen> {
                       ),
                     ),
                   ),
-                  _ShareButton(sharing: _sharing, onTap: _shareCurrent, label: strings.shareStarLabel),
-                  const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _NavCircleButton(icon: Icons.chevron_left, onTap: _showPrevious),
+                      _ShareButton(sharing: _sharing, onTap: _shareCurrent, label: strings.shareStarLabel),
                       _NavCircleButton(icon: Icons.chevron_right, onTap: _showNext),
                     ],
                   ),
@@ -413,7 +429,10 @@ class _NavCircleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white.withValues(alpha: 0.08),
+      // Tinted with the same light blue as the close/edit icons up top
+      // (colors.crisisMuted), instead of a plain neutral white, so the
+      // whole page reads as one consistent palette.
+      color: context.colors.crisisMuted.withValues(alpha: 0.15),
       shape: const CircleBorder(),
       child: InkWell(
         onTap: onTap,
@@ -424,11 +443,9 @@ class _NavCircleButton extends StatelessWidget {
   }
 }
 
-/// Just the gold icon itself with a soft glow behind it — no disc/circle
-/// fill like the home dashboard's "+" FAB, since this one should read as
-/// lightweight next to all the star content above it rather than as a
-/// second, competing call-to-action. Its label sits as a separate caption
-/// below rather than inside the tappable icon.
+/// Same translucent-disc treatment as [_NavCircleButton] (which it now
+/// sits between, in the same row) — just a bit bigger, and with a caption
+/// underneath since "share" isn't as self-explanatory as an arrow.
 class _ShareButton extends StatelessWidget {
   const _ShareButton({required this.sharing, required this.onTap, required this.label});
 
@@ -442,35 +459,29 @@ class _ShareButton extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        InkWell(
-          onTap: sharing ? null : onTap,
-          customBorder: const CircleBorder(),
-          child: SizedBox(
-            width: 48,
-            height: 48,
-            child: Center(
-              child: Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: colors.gold.withValues(alpha: 0.6), blurRadius: 16)],
-                ),
-                child: Center(
-                  child: sharing
-                      ? SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: colors.gold),
-                        )
-                      : Icon(Icons.share_outlined, color: colors.gold, size: 26),
-                ),
+        Material(
+          color: colors.crisisMuted.withValues(alpha: 0.15),
+          shape: const CircleBorder(),
+          child: InkWell(
+            onTap: sharing ? null : onTap,
+            customBorder: const CircleBorder(),
+            child: SizedBox(
+              width: 56,
+              height: 56,
+              child: Center(
+                child: sharing
+                    ? SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: colors.text),
+                      )
+                    : Icon(Icons.share_outlined, color: colors.text, size: 28),
               ),
             ),
           ),
         ),
         const SizedBox(height: 8),
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.white)),
+        Text(label, style: const TextStyle(fontSize: 15, color: Colors.white)),
       ],
     );
   }

@@ -208,6 +208,19 @@ class StringsEn implements AppStrings {
   String get saveChanges => 'Save changes';
   @override
   String get lightThisStar => 'Light this star';
+  @override
+  String get deleteStarConfirmTitle => 'Delete this star?';
+  @override
+  String get deleteStarConfirmBody =>
+      'This permanently removes the star and everything you wrote for it. This cannot be undone.';
+  @override
+  String get deleteStarAction => 'Delete';
+  @override
+  String get discardChangesConfirmTitle => 'Discard changes?';
+  @override
+  String get discardChangesConfirmBody => "You'll lose the changes you made to this star.";
+  @override
+  String get discardChangesAction => 'Discard';
 
   @override
   String get admireTagline => "For when you're in the dark and you need some light.";

@@ -43,6 +43,14 @@ class AddWinResult {
   final String? photoPath;
 }
 
+/// Popped instead of [AddWinResult] when editing and the user deleted the
+/// win instead of saving changes to it. Kept as its own type (rather than a
+/// flag on [AddWinResult]) since a delete has none of that class's other,
+/// required fields to fill in.
+class AddWinDeleteRequested {
+  const AddWinDeleteRequested();
+}
+
 /// Also doubles as the edit screen: pass [existingWin] to pre-fill the
 /// fields with a win's current title/description/intensity. The caller
 /// decides whether the returned [AddWinResult] should create a new win or
@@ -111,11 +119,90 @@ class _AddWinScreenState extends State<AddWinScreen> {
   late DateTime? _date = widget.existingWin?.date ?? widget.initialDate;
   late String? _photoPath = widget.existingWin?.photoPath;
 
+  // What the form above started out as — captured once, alongside it, so
+  // _hasUnsavedChanges has something to compare against regardless of
+  // whether this is a blank new-star form or one seeded from an existing
+  // win. Deliberately mirrors each field's own initializer.
+  late final String _initialTitle = widget.existingWin?.title ?? '';
+  late final String _initialDescription = widget.existingWin?.description ?? '';
+  late final int? _initialProjectId = (widget.lockedProject ?? widget.contextProject)?.id;
+  late final int _initialIntensity = widget.existingWin?.intensity ?? 3;
+  late final DateTime? _initialDate = widget.existingWin?.date ?? widget.initialDate;
+  late final String? _initialPhotoPath = widget.existingWin?.photoPath;
+
   @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  /// Whether the form has drifted from how it started — true for a new
+  /// star as soon as the user's typed or picked anything, not just when
+  /// editing one that already existed. Drives whether leaving the page
+  /// needs a confirmation first.
+  bool get _hasUnsavedChanges {
+    final trimmedDescription = _descriptionController.text.trim();
+    final normalizedDescription = trimmedDescription.isEmpty ? null : trimmedDescription;
+    final normalizedInitialDescription = _initialDescription.isEmpty ? null : _initialDescription;
+    return _titleController.text.trim() != _initialTitle ||
+        normalizedDescription != normalizedInitialDescription ||
+        _selectedProject?.id != _initialProjectId ||
+        _intensity != _initialIntensity ||
+        _date != _initialDate ||
+        _photoPath != _initialPhotoPath;
+  }
+
+  /// Shared by the back button and the system back gesture: leaving with
+  /// unsaved changes needs confirmation first, everything else pops right
+  /// away.
+  Future<void> _handleBack() async {
+    if (!_hasUnsavedChanges) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final discard = await _confirm(
+      title: context.strings.discardChangesConfirmTitle,
+      body: context.strings.discardChangesConfirmBody,
+      confirmLabel: context.strings.discardChangesAction,
+    );
+    if (discard && mounted) Navigator.of(context).pop();
+  }
+
+  Future<void> _confirmAndDelete() async {
+    final confirmed = await _confirm(
+      title: context.strings.deleteStarConfirmTitle,
+      body: context.strings.deleteStarConfirmBody,
+      confirmLabel: context.strings.deleteStarAction,
+    );
+    if (confirmed && mounted) Navigator.of(context).pop(const AddWinDeleteRequested());
+  }
+
+  /// A yes/no dialog styled like the rest of the app's destructive
+  /// confirmations (see [SettingsScreen]'s reset-all-data prompt) — a
+  /// muted cancel next to a [danger]-colored confirm action.
+  Future<bool> _confirm({required String title, required String body, required String confirmLabel}) async {
+    final colors = context.colors;
+    final strings = context.strings;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: colors.nightPanel,
+        title: Text(title, style: TextStyle(color: colors.text)),
+        content: Text(body, style: TextStyle(color: colors.muted)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(strings.cancel, style: TextStyle(color: colors.muted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(confirmLabel, style: TextStyle(color: colors.danger)),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
   }
 
   void _save() {
@@ -324,7 +411,7 @@ class _AddWinScreenState extends State<AddWinScreen> {
     final colors = context.colors;
     final strings = context.strings;
 
-    return Scaffold(
+    final scaffold = Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
@@ -334,7 +421,7 @@ class _AddWinScreenState extends State<AddWinScreen> {
               Row(
                 children: [
                   IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: _handleBack,
                     icon: Icon(Icons.arrow_back, color: colors.muted),
                   ),
                   Text(
@@ -482,6 +569,11 @@ class _AddWinScreenState extends State<AddWinScreen> {
                 textInputAction: TextInputAction.next,
                 style: TextStyle(color: colors.text, fontSize: 15),
                 decoration: InputDecoration(hintText: strings.titleHint),
+                // Typing here alone doesn't otherwise rebuild this widget,
+                // which would leave _hasUnsavedChanges (and so the discard-
+                // changes prompt) stuck reflecting whatever it was before
+                // this keystroke.
+                onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 20),
               Text(strings.detailsLabel, style: TextStyle(fontSize: 13, color: colors.muted)),
@@ -492,6 +584,7 @@ class _AddWinScreenState extends State<AddWinScreen> {
                 maxLines: 6,
                 style: TextStyle(color: colors.text, fontSize: 15),
                 decoration: InputDecoration(hintText: strings.detailsHint),
+                onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 20),
               Text(strings.intensityLabel, style: TextStyle(fontSize: 13, color: colors.muted)),
@@ -535,34 +628,87 @@ class _AddWinScreenState extends State<AddWinScreen> {
               const SizedBox(height: 6),
               _PhotoPicker(photoPath: _photoPath, onPick: _pickPhoto, onRemove: _removePhoto),
               const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: _titleController,
-                  builder: (context, value, child) {
-                    final canSave = value.text.trim().isNotEmpty && _selectedProject != null;
-                    return ElevatedButton(
-                      onPressed: canSave ? _save : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.gold,
-                        foregroundColor: colors.onGold,
-                        disabledBackgroundColor: colors.nightBorder,
-                        disabledForegroundColor: colors.muted,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (widget.isEditing) ...[
+                      // Solid danger-red disc with the app's own background
+                      // color cut through for the icon, rather than a dark
+                      // disc with a red icon — same treatment the save
+                      // button below uses for its own accent color.
+                      FloatingActionButton(
+                        heroTag: 'deleteWinFab',
+                        onPressed: _confirmAndDelete,
+                        backgroundColor: colors.danger,
+                        elevation: 0,
+                        shape: const CircleBorder(),
+                        tooltip: strings.deleteStarAction,
+                        child: Icon(Icons.delete_outline, color: colors.night),
                       ),
-                      child: Text(
-                        widget.isEditing ? strings.saveChanges : strings.lightThisStar,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                      ),
-                    );
-                  },
+                      const SizedBox(width: 20),
+                    ],
+                    // Same look (gold, circular, glowing) as the home
+                    // dashboard's own FAB — just without its long-press
+                    // menu, since there's nothing here to choose between.
+                    // Always the same check icon; only the disc's own color
+                    // (and the glow) says whether the form is ready to save.
+                    ValueListenableBuilder<TextEditingValue>(
+                      valueListenable: _titleController,
+                      builder: (context, value, child) {
+                        // Editing also requires an actual change — a form
+                        // that already validly describes the win it was
+                        // opened from has nothing new worth saving yet.
+                        final canSave =
+                            value.text.trim().isNotEmpty &&
+                            _selectedProject != null &&
+                            (!widget.isEditing || _hasUnsavedChanges);
+                        return Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: canSave
+                                ? [
+                                    BoxShadow(
+                                      color: colors.gold.withValues(alpha: 0.35),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: FloatingActionButton(
+                            heroTag: 'saveWinFab',
+                            onPressed: canSave ? _save : null,
+                            backgroundColor: canSave ? colors.gold : colors.muted,
+                            elevation: 0,
+                            shape: const CircleBorder(),
+                            tooltip: widget.isEditing ? strings.saveChanges : strings.lightThisStar,
+                            child: Icon(Icons.check, color: colors.night),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
       ),
+    );
+
+    // Unsaved changes — whether that's an edit gone unsaved or a new star
+    // half filled-in — need a confirmation before the system back gesture/
+    // button is allowed to actually leave the page — the app bar's own back
+    // button routes through the same _handleBack instead of popping
+    // directly.
+    return PopScope(
+      canPop: !_hasUnsavedChanges,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        await _handleBack();
+      },
+      child: scaffold,
     );
   }
 }
@@ -747,13 +893,13 @@ class _PhotoPicker extends StatelessWidget {
                 onTap: onRemove,
                 customBorder: const CircleBorder(),
                 child: Container(
-                  padding: const EdgeInsets.all(4),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: colors.night,
                     shape: BoxShape.circle,
-                    border: Border.all(color: colors.nightBorder),
+                    border: Border.all(color: colors.gold),
                   ),
-                  child: Icon(Icons.close, size: 14, color: colors.muted),
+                  child: Icon(Icons.close, size: 22, color: colors.gold),
                 ),
               ),
             ),

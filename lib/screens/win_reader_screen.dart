@@ -254,7 +254,7 @@ class _WinReaderScreenState extends State<WinReaderScreen> {
                                   ),
                                 ],
                                 const SizedBox(height: 20),
-                                IntensityBolts(intensity: win.intensity, size: 18),
+                                IntensityBolts(intensity: win.intensity, size: 22, spacing: 4, emphasizeLast: true),
                               ],
                             ),
                           ),

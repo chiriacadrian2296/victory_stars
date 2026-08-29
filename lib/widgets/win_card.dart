@@ -53,7 +53,7 @@ class WinCard extends StatelessWidget {
                             style: TextStyle(fontSize: 12, color: colors.muted),
                           ),
                         ),
-                        IntensityBolts(intensity: win.intensity, size: 10, spacing: 1),
+                        IntensityBolts(intensity: win.intensity, size: 13, spacing: 2, emphasizeLast: true),
                       ],
                     ),
                     if (project != null) ...[

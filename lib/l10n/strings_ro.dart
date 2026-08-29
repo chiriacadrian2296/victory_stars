@@ -175,6 +175,10 @@ class StringsRo implements AppStrings {
   @override
   String get selectADateHint => 'Selectează o dată';
   @override
+  String get timeLabel => 'Ora';
+  @override
+  String get selectATimeHint => 'Selectează o oră';
+  @override
   String get titleFieldLabel => 'În câteva cuvinte';
   @override
   String get titleHint => 'Ex. Am rezistat după o respingere și am continuat';
@@ -194,6 +198,12 @@ class StringsRo implements AppStrings {
   String get choosePhotoOption => 'Alege din galerie';
   @override
   String get photoPickError => 'Nu am putut obține fotografia. Încerci din nou?';
+  @override
+  String get cropPhotoTitle => 'Ajustează fotografia';
+  @override
+  String get cropPhotoConfirm => 'Gata';
+  @override
+  String get cropPhotoHint => 'Ciupește și trage pentru a încadra fotografia în cadru';
   @override
   String get saveChanges => 'Salvează modificările';
   @override

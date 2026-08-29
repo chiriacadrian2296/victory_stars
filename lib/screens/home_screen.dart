@@ -175,13 +175,21 @@ class _HomeScreenState extends State<HomeScreen> {
     final colors = context.colors;
     final projectsById = _projectsById();
     final dayWins = _winsOnDay(day);
+    final sheetMaxHeight = MediaQuery.sizeOf(context).height * 0.85;
 
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: colors.nightPanel,
       isScrollControlled: true,
-      // Never grows past this, no matter how many wins land on one day.
-      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.85),
+      // A day with any stars always opens the sheet at this exact height,
+      // never smaller — otherwise, narrowing the search down to one or two
+      // results would shrink the whole sheet along with the list, and it'd
+      // end up dipping behind the still-open keyboard. Only a genuinely
+      // empty day (nothing to ever filter down to) is left free to size
+      // itself to its own minimal content.
+      constraints: dayWins.isEmpty
+          ? BoxConstraints(maxHeight: sheetMaxHeight)
+          : BoxConstraints.tightFor(height: sheetMaxHeight),
       builder: (sheetContext) {
         return _DayDetailSheet(
           day: day,
@@ -698,6 +706,14 @@ class _DayDetailSheet extends StatefulWidget {
 class _DayDetailSheetState extends State<_DayDetailSheet> {
   String _query = '';
 
+  Text _emptyStateText(AppStrings strings, AppColors colors) {
+    return Text(
+      widget.wins.isEmpty ? strings.dayDetailEmpty : strings.noSearchResults,
+      textAlign: TextAlign.center,
+      style: TextStyle(color: colors.muted, fontSize: 14),
+    );
+  }
+
   List<Win> get _filtered {
     final query = _query.trim().toLowerCase();
     if (query.isEmpty) return widget.wins;
@@ -711,12 +727,16 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
     final colors = context.colors;
     final strings = context.strings;
     final filtered = _filtered;
+    // Whether the day has any stars at all — not whether the current search
+    // still matches any, which is what decides the sheet's own height (see
+    // the constraints picked in _openDayDetail).
+    final hasWinsForDay = widget.wins.isNotEmpty;
 
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: hasWinsForDay ? MainAxisSize.max : MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -761,20 +781,15 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
             ),
             const SizedBox(height: 16),
             if (filtered.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Center(
-                  child: Text(
-                    widget.wins.isEmpty ? strings.dayDetailEmpty : strings.noSearchResults,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: colors.muted, fontSize: 14),
-                  ),
-                ),
-              )
+              hasWinsForDay
+                  ? Expanded(child: Center(child: _emptyStateText(strings, colors)))
+                  : Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Center(child: _emptyStateText(strings, colors)),
+                    )
             else
-              Flexible(
+              Expanded(
                 child: ListView.separated(
-                  shrinkWrap: true,
                   itemCount: filtered.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {

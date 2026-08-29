@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -15,6 +16,7 @@ import '../widgets/area_tag.dart';
 import '../widgets/intensity_bolts.dart';
 import '../widgets/project_tag.dart';
 import 'new_project_screen.dart';
+import 'photo_crop_screen.dart';
 
 /// What the user entered, handed back to whoever pushed this screen.
 /// Trimming and blank-to-null normalization for [description] happen in
@@ -133,9 +135,15 @@ class _AddWinScreenState extends State<AddWinScreen> {
     );
   }
 
-  /// Offers camera vs. gallery, then immediately copies whatever's picked
-  /// into app-private storage (see [PhotoStorage]) — the picker's own path
-  /// isn't guaranteed to still be valid once this screen is done with it.
+  /// Offers camera vs. gallery, sends whatever's picked through
+  /// [PhotoCropScreen] to force it into 9:16 — the portrait shape every win
+  /// photo is shown in as a full-bleed background (see
+  /// win_reader_screen.dart), which a camera shot or an arbitrarily-shaped
+  /// gallery photo won't already be — and copies the cropped result into
+  /// app-private storage (see
+  /// [PhotoStorage]) since neither the picker's own path nor the crop
+  /// screen's output are guaranteed to still be valid once this screen is
+  /// done with them.
   Future<void> _pickPhoto() async {
     final colors = context.colors;
     final strings = context.strings;
@@ -173,7 +181,12 @@ class _AddWinScreenState extends State<AddWinScreen> {
       final picked = await ImagePicker().pickImage(source: source, maxWidth: 1600, imageQuality: 85);
       if (picked == null || !mounted) return;
 
-      final savedPath = await PhotoStorage.save(picked);
+      final croppedBytes = await Navigator.of(
+        context,
+      ).push<Uint8List>(MaterialPageRoute(builder: (_) => PhotoCropScreen(imageFile: File(picked.path))));
+      if (croppedBytes == null || !mounted) return;
+
+      final savedPath = await PhotoStorage.saveBytes(croppedBytes);
       if (!mounted) return;
       setState(() => _photoPath = savedPath);
     } catch (error) {
@@ -204,9 +217,26 @@ class _AddWinScreenState extends State<AddWinScreen> {
         picked.day,
         current?.hour ?? now.hour,
         current?.minute ?? now.minute,
-        current?.second ?? now.second,
-        current?.millisecond ?? now.millisecond,
       );
+    });
+  }
+
+  /// Without this, a star's time-of-day could only ever come from whatever
+  /// [DateTime.now] happened to be when the date was picked (or, for a date
+  /// that arrived already fixed — like "add a star for this day" from the
+  /// dashboard calendar — midnight, since that flow only knows the day, not
+  /// a time) — with no way to see or correct it afterward.
+  Future<void> _pickTime() async {
+    final now = DateTime.now();
+    final current = _date;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: current?.hour ?? now.hour, minute: current?.minute ?? now.minute),
+    );
+    if (picked == null) return;
+    final base = current ?? DateTime(now.year, now.month, now.day);
+    setState(() {
+      _date = DateTime(base.year, base.month, base.day, picked.hour, picked.minute);
     });
   }
 
@@ -356,35 +386,93 @@ class _AddWinScreenState extends State<AddWinScreen> {
                 ),
                 const SizedBox(height: 20),
               ],
-              Text(strings.dateLabel, style: TextStyle(fontSize: 13, color: colors.muted)),
-              const SizedBox(height: 6),
-              InkWell(
-                onTap: _pickDate,
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: colors.nightPanel,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: colors.nightBorder),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(strings.dateLabel, style: TextStyle(fontSize: 13, color: colors.muted)),
+                        const SizedBox(height: 6),
+                        InkWell(
+                          onTap: _pickDate,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: colors.nightPanel,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: colors.nightBorder),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.calendar_today, size: 16, color: colors.muted),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: _date == null
+                                      ? Text(
+                                          strings.selectADateHint,
+                                          style: TextStyle(color: colors.muted, fontSize: 15),
+                                          overflow: TextOverflow.ellipsis,
+                                        )
+                                      : Text(
+                                          formatDisplayDate(_date!, strings),
+                                          style: TextStyle(color: colors.text, fontSize: 15),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.calendar_today, size: 16, color: colors.muted),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _date == null
-                            ? Text(strings.selectADateHint, style: TextStyle(color: colors.muted, fontSize: 15))
-                            : Text(
-                                formatDisplayDate(_date!, strings),
-                                style: TextStyle(color: colors.text, fontSize: 15),
-                              ),
-                      ),
-                      Icon(Icons.expand_more, color: colors.muted),
-                    ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(strings.timeLabel, style: TextStyle(fontSize: 13, color: colors.muted)),
+                        const SizedBox(height: 6),
+                        InkWell(
+                          onTap: _pickTime,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: colors.nightPanel,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: colors.nightBorder),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.access_time, size: 16, color: colors.muted),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: _date == null
+                                      ? Text(
+                                          strings.selectATimeHint,
+                                          style: TextStyle(color: colors.muted, fontSize: 15),
+                                          overflow: TextOverflow.ellipsis,
+                                        )
+                                      : Text(
+                                          formatDisplayTime(_date!),
+                                          style: TextStyle(color: colors.text, fontSize: 15),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ),
               const SizedBox(height: 20),
               Text(strings.titleFieldLabel, style: TextStyle(fontSize: 13, color: colors.muted)),
@@ -408,7 +496,7 @@ class _AddWinScreenState extends State<AddWinScreen> {
               const SizedBox(height: 20),
               Text(strings.intensityLabel, style: TextStyle(fontSize: 13, color: colors.muted)),
               const SizedBox(height: 10),
-              Center(child: IntensityBolts(intensity: _intensity, size: 22, spacing: 6, emphasizeLast: true)),
+              Center(child: IntensityBolts(intensity: _intensity, size: 26, spacing: 6, emphasizeLast: true)),
               SliderTheme(
                 data: SliderTheme.of(context).copyWith(
                   activeTrackColor: colors.gold,
@@ -618,7 +706,11 @@ class _PhotoPicker extends StatelessWidget {
     }
 
     final borderRadius = BorderRadius.circular(10);
-    final previewSize = MediaQuery.sizeOf(context).width * 0.88;
+    // Matches the 9:16 every win photo is saved as (see PhotoCropScreen), so
+    // the preview isn't misleadingly squarer than what actually gets shown
+    // as the star's background.
+    final previewWidth = MediaQuery.sizeOf(context).width * 0.88;
+    final previewHeight = previewWidth * 16 / 9;
     return SizedBox(
       width: double.infinity,
       child: Center(
@@ -630,7 +722,7 @@ class _PhotoPicker extends StatelessWidget {
               borderRadius: borderRadius,
               child: ClipRRect(
                 borderRadius: borderRadius,
-                child: Image.file(File(path), width: previewSize, height: previewSize, fit: BoxFit.cover),
+                child: Image.file(File(path), width: previewWidth, height: previewHeight, fit: BoxFit.cover),
               ),
             ),
             Positioned(

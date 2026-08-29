@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -29,6 +30,17 @@ class PhotoStorage {
     final fileName = '${DateTime.now().microsecondsSinceEpoch}$extension';
     final savedPath = '${dir.path}/$fileName';
     await File(picked.path).copy(savedPath);
+    return savedPath;
+  }
+
+  /// Same as [save], but for a photo that's already been through the 9:16
+  /// crop step (see [PhotoCropScreen]) and only exists as encoded bytes —
+  /// there's no picker [XFile] backing it to copy from.
+  static Future<String> saveBytes(Uint8List bytes, {String extension = '.png'}) async {
+    final dir = await _photosDir();
+    final fileName = '${DateTime.now().microsecondsSinceEpoch}$extension';
+    final savedPath = '${dir.path}/$fileName';
+    await File(savedPath).writeAsBytes(bytes);
     return savedPath;
   }
 

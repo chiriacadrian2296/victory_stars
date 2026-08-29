@@ -175,6 +175,10 @@ class StringsIt implements AppStrings {
   @override
   String get selectADateHint => 'Seleziona una data';
   @override
+  String get timeLabel => 'Ora';
+  @override
+  String get selectATimeHint => 'Seleziona un orario';
+  @override
   String get titleFieldLabel => 'In poche parole';
   @override
   String get titleHint => 'Es. Ho retto dopo un rifiuto e sono andato avanti';
@@ -194,6 +198,12 @@ class StringsIt implements AppStrings {
   String get choosePhotoOption => 'Scegli dalla libreria';
   @override
   String get photoPickError => 'Non è stato possibile ottenere la foto. Riprova?';
+  @override
+  String get cropPhotoTitle => 'Modifica la foto';
+  @override
+  String get cropPhotoConfirm => 'Fatto';
+  @override
+  String get cropPhotoHint => 'Pizzica e trascina per adattare la foto alla cornice';
   @override
   String get saveChanges => 'Salva modifiche';
   @override

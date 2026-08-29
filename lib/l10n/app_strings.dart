@@ -108,6 +108,8 @@ abstract class AppStrings {
   String get selectAProject;
   String get dateLabel;
   String get selectADateHint;
+  String get timeLabel;
+  String get selectATimeHint;
   String get titleFieldLabel;
   String get titleHint;
   String get detailsLabel;
@@ -118,6 +120,9 @@ abstract class AppStrings {
   String get takePhotoOption;
   String get choosePhotoOption;
   String get photoPickError;
+  String get cropPhotoTitle;
+  String get cropPhotoConfirm;
+  String get cropPhotoHint;
   String get saveChanges;
   String get lightThisStar;
 

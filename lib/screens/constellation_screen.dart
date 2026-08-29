@@ -48,6 +48,7 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
 
   late List<Win> _wins;
   late List<ConstellationStar> _stars;
+  late List<(int, int)> _edges;
   int _revision = 0;
   ui.Image? _glowSprite;
   final _transformationController = TransformationController();
@@ -79,22 +80,22 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
 
   List<ConstellationStar> _buildStars(List<Win> winsOldestFirst) {
     final shape = _shape;
-    if (shape == null) return const [];
-    final chain = buildConstellationPositions(shape, winsOldestFirst.length);
+    if (shape == null) {
+      _edges = const [];
+      return const [];
+    }
+    final layout = buildConstellationLayout(shape, winsOldestFirst.length);
+    _edges = layout.edges;
     final stars = <ConstellationStar>[];
     for (var i = 0; i < winsOldestFirst.length; i++) {
       final win = winsOldestFirst[i];
-      final position = i < chain.length
-          ? chain[i]
+      final position = i < layout.points.length
+          ? layout.points[i]
           : seededOverflowPosition(win.id);
       stars.add(ConstellationStar(winId: win.id, position: position));
     }
     return stars;
   }
-
-  /// How many leading [_stars] are chained (connected by lines) rather than
-  /// scattered overflow — see [maxChainedStars].
-  int get _chainStarCount => math.min(_stars.length, maxChainedStars);
 
   Rect _boundsPixels() {
     return Rect.fromLTRB(
@@ -235,8 +236,7 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
                                   revision: _revision,
                                   starColor: colors.gold,
                                   coreColor: colors.text,
-                                  chainStarCount: _chainStarCount,
-                                  chainClosed: shape.closed,
+                                  edges: _edges,
                                   linkThreshold: shape.points.length,
                                 ),
                               ),

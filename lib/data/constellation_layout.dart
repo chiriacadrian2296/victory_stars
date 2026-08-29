@@ -3,52 +3,77 @@ import 'dart:ui';
 
 import 'constellation_shapes_v2.dart';
 
-/// A shape's connected chain grows this large before overflow stars stop
-/// being woven into the pictogram and start scattering instead (see
-/// [seededOverflowPosition]) — a guard against the O(n²) bisection search
+/// A shape's graph grows this large before overflow stars stop being woven
+/// into the constellation and start scattering instead (see
+/// [seededOverflowPosition]) — a guard against the O(n²) longest-edge search
 /// below getting expensive for a project with an implausible number of wins.
 const int maxChainedStars = 600;
 
-/// Grows [shape]'s fixed [ConstellationShape.points] outline up to [count]
-/// stars by repeatedly bisecting whichever edge of the current chain is
-/// currently longest, and inserting the new star at its midpoint.
+/// The result of growing a [ConstellationShape] to a target star count:
+/// every star's position, and every line segment (as index pairs into
+/// [points]) that should connect them.
+class ConstellationLayout {
+  const ConstellationLayout({required this.points, required this.edges});
+
+  final List<Offset> points;
+  final List<(int, int)> edges;
+}
+
+/// Grows [shape]'s fixed graph up to [count] stars by repeatedly finding
+/// whichever edge in the current graph is longest, and splitting it in two
+/// with a new star at its midpoint.
 ///
 /// This is what replaces sequential placement along a precomputed dense
-/// outline: because the *longest remaining gap* is always the one filled
-/// next, the pattern thickens evenly on all sides as wins are logged,
-/// instead of concentrating new stars along whichever stretch happens to
-/// come next in a fixed list. The result is deterministic for a given
-/// [count] — recomputing it from scratch always reproduces the same
-/// positions, so a star's place in the sky never shifts as more are added.
-List<Offset> buildConstellationPositions(ConstellationShape shape, int count) {
-  final base = shape.points;
-  if (count <= 0 || base.isEmpty) return const [];
-  if (count <= base.length) return base.sublist(0, count);
+/// outline: because the *longest remaining edge* is always the one split
+/// next, the pattern thickens evenly across every branch as wins are
+/// logged, instead of concentrating new stars along whichever stretch
+/// happens to come next in a fixed list. Works the same whether the shape's
+/// base graph is a simple path, a closed loop, or — as with a figure's arms
+/// and legs, or a teapot's handle — branches. The result is deterministic
+/// for a given [count]: recomputing it from scratch always reproduces the
+/// same positions, so a star's place in the sky never shifts as more are
+/// added.
+ConstellationLayout buildConstellationLayout(
+  ConstellationShape shape,
+  int count,
+) {
+  final basePoints = shape.points;
+  if (count <= 0 || basePoints.isEmpty) {
+    return const ConstellationLayout(points: [], edges: []);
+  }
+  if (count <= basePoints.length) {
+    return ConstellationLayout(
+      points: basePoints.sublist(0, count),
+      edges: shape.edges,
+    );
+  }
 
-  final chain = List<Offset>.from(base);
+  final points = List<Offset>.from(basePoints);
+  final edges = List<(int, int)>.from(shape.edges);
   final target = math.min(count, maxChainedStars);
-  while (chain.length < target) {
-    final n = chain.length;
-    final segmentCount = shape.closed ? n : n - 1;
+
+  while (points.length < target) {
     var longestIndex = 0;
     var longestDistanceSq = -1.0;
-    for (var i = 0; i < segmentCount; i++) {
-      final a = chain[i];
-      final b = chain[(i + 1) % n];
-      final distanceSq = (a - b).distanceSquared;
+    for (var i = 0; i < edges.length; i++) {
+      final (a, b) = edges[i];
+      final distanceSq = (points[a] - points[b]).distanceSquared;
       if (distanceSq > longestDistanceSq) {
         longestDistanceSq = distanceSq;
         longestIndex = i;
       }
     }
-    final a = chain[longestIndex];
-    final b = chain[(longestIndex + 1) % chain.length];
-    chain.insert(
-      longestIndex + 1,
-      Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2),
+    final (a, b) = edges[longestIndex];
+    final midpoint = Offset(
+      (points[a].dx + points[b].dx) / 2,
+      (points[a].dy + points[b].dy) / 2,
     );
+    final newIndex = points.length;
+    points.add(midpoint);
+    edges[longestIndex] = (a, newIndex);
+    edges.add((newIndex, b));
   }
-  return chain;
+  return ConstellationLayout(points: points, edges: edges);
 }
 
 /// Deterministic placement for a win beyond [maxChainedStars] — vanishingly

@@ -1,81 +1,190 @@
-// Hand-designed constellation pictograms — v2.
+// Hand-built real constellations — v2.
 //
-// Each shape is a single ordered, closed loop of keypoints (the
-// silhouette's corners), meant to be connected star-to-star with straight
-// lines once every point is lit — the same way real star charts reduce a
-// figure to a handful of connect-the-dot vertices instead of a dense
-// traced outline. Overflow stars beyond `points.length` are NOT stored
-// here: `buildConstellationPositions` (constellation_layout.dart) grows the
-// shape by repeatedly bisecting its current longest edge, so the pattern
-// thickens evenly instead of piling stars along one stretch of outline.
+// Not icon silhouettes: each shape below is one of a small set of
+// well-known real constellations (Orion, Cassiopeia, the Dippers, ...),
+// built from scratch as a graph of keypoints (`points`) and the line
+// segments connecting them (`edges`, index pairs into `points`) — real
+// constellations branch (a figure's arms and legs, a teapot's handle),
+// so this isn't restricted to a single path or closed loop the way the
+// old icon-outline shapes were. `constellationShapes` rotates this set
+// across every project icon slug; the pairing is cosmetic; a project's
+// icon and its constellation's namesake aren't meant to match.
+//
+// Overflow stars beyond `points.length` are NOT stored here:
+// `buildConstellationLayout` (constellation_layout.dart) grows the graph
+// by repeatedly bisecting its current longest edge, so the pattern
+// thickens evenly instead of piling stars along one branch.
 import 'dart:ui';
 
 class ConstellationShape {
   final List<Offset> points;
-  final bool closed;
-  const ConstellationShape({required this.points, this.closed = true});
+  final List<(int, int)> edges;
+  const ConstellationShape({required this.points, required this.edges});
 }
 
+const _orion = ConstellationShape(
+  points: [Offset(0.30, 0.05), Offset(0.70, 0.08), Offset(0.38, 0.45), Offset(0.50, 0.48), Offset(0.62, 0.51), Offset(0.28, 0.95), Offset(0.68, 0.92), Offset(0.50, 0.65)],
+  edges: [(0, 1), (0, 2), (1, 4), (2, 3), (3, 4), (2, 5), (4, 6), (3, 7)],
+);
+
+const _ursaMajor = ConstellationShape(
+  points: [Offset(0.10, 0.55), Offset(0.28, 0.45), Offset(0.45, 0.40), Offset(0.62, 0.42), Offset(0.62, 0.62), Offset(0.85, 0.65), Offset(0.82, 0.40)],
+  edges: [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 3)],
+);
+
+const _ursaMinor = ConstellationShape(
+  points: [Offset(0.15, 0.15), Offset(0.30, 0.28), Offset(0.45, 0.38), Offset(0.60, 0.42), Offset(0.75, 0.35), Offset(0.80, 0.55), Offset(0.62, 0.60)],
+  edges: [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 3)],
+);
+
+const _cassiopeia = ConstellationShape(
+  points: [Offset(0.05, 0.60), Offset(0.28, 0.20), Offset(0.50, 0.65), Offset(0.72, 0.15), Offset(0.95, 0.55)],
+  edges: [(0, 1), (1, 2), (2, 3), (3, 4)],
+);
+
+const _cygnus = ConstellationShape(
+  points: [Offset(0.50, 0.05), Offset(0.50, 0.95), Offset(0.50, 0.50), Offset(0.15, 0.35), Offset(0.85, 0.65)],
+  edges: [(0, 2), (2, 1), (2, 3), (2, 4)],
+);
+
+const _lyra = ConstellationShape(
+  points: [Offset(0.50, 0.05), Offset(0.35, 0.35), Offset(0.30, 0.70), Offset(0.55, 0.85), Offset(0.65, 0.55)],
+  edges: [(0, 1), (1, 2), (2, 3), (3, 4), (4, 1)],
+);
+
+const _leo = ConstellationShape(
+  points: [Offset(0.15, 0.30), Offset(0.20, 0.15), Offset(0.32, 0.08), Offset(0.40, 0.18), Offset(0.30, 0.35), Offset(0.60, 0.45), Offset(0.85, 0.35), Offset(0.68, 0.62)],
+  edges: [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (5, 7)],
+);
+
+const _draco = ConstellationShape(
+  points: [Offset(0.05, 0.85), Offset(0.15, 0.65), Offset(0.28, 0.75), Offset(0.40, 0.55), Offset(0.35, 0.35), Offset(0.50, 0.25), Offset(0.65, 0.35), Offset(0.80, 0.20), Offset(0.90, 0.10), Offset(0.78, 0.08)],
+  edges: [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9), (9, 7)],
+);
+
+const _sagittarius = ConstellationShape(
+  points: [Offset(0.20, 0.30), Offset(0.35, 0.35), Offset(0.60, 0.25), Offset(0.75, 0.35), Offset(0.85, 0.55), Offset(0.75, 0.70), Offset(0.55, 0.75), Offset(0.35, 0.65)],
+  edges: [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 1)],
+);
+
+const _gemini = ConstellationShape(
+  points: [Offset(0.20, 0.10), Offset(0.20, 0.40), Offset(0.15, 0.75), Offset(0.55, 0.08), Offset(0.55, 0.38), Offset(0.50, 0.72), Offset(0.35, 0.90)],
+  edges: [(0, 1), (1, 2), (3, 4), (4, 5), (2, 6), (5, 6)],
+);
+
+const _taurus = ConstellationShape(
+  points: [Offset(0.50, 0.55), Offset(0.30, 0.35), Offset(0.65, 0.35), Offset(0.15, 0.15), Offset(0.85, 0.12)],
+  edges: [(0, 1), (0, 2), (1, 3), (2, 4)],
+);
+
+const _pegasus = ConstellationShape(
+  points: [Offset(0.55, 0.20), Offset(0.85, 0.25), Offset(0.80, 0.55), Offset(0.50, 0.50), Offset(0.35, 0.10), Offset(0.15, 0.05)],
+  edges: [(0, 1), (1, 2), (2, 3), (3, 0), (0, 4), (4, 5)],
+);
+
+const _andromeda = ConstellationShape(
+  points: [Offset(0.10, 0.20), Offset(0.30, 0.35), Offset(0.50, 0.30), Offset(0.68, 0.45), Offset(0.85, 0.40), Offset(0.95, 0.60)],
+  edges: [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5)],
+);
+
+const _perseus = ConstellationShape(
+  points: [Offset(0.15, 0.15), Offset(0.30, 0.30), Offset(0.45, 0.45), Offset(0.35, 0.65), Offset(0.60, 0.60), Offset(0.75, 0.75)],
+  edges: [(0, 1), (1, 2), (2, 3), (2, 4), (4, 5)],
+);
+
+const _aquila = ConstellationShape(
+  points: [Offset(0.50, 0.15), Offset(0.50, 0.45), Offset(0.50, 0.75), Offset(0.20, 0.50), Offset(0.80, 0.50)],
+  edges: [(0, 1), (1, 2), (1, 3), (1, 4)],
+);
+
+const _bootes = ConstellationShape(
+  points: [Offset(0.50, 0.10), Offset(0.30, 0.35), Offset(0.70, 0.35), Offset(0.50, 0.55), Offset(0.40, 0.85), Offset(0.60, 0.85)],
+  edges: [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (3, 5)],
+);
+
+const _coronaBorealis = ConstellationShape(
+  points: [Offset(0.10, 0.55), Offset(0.25, 0.35), Offset(0.42, 0.22), Offset(0.58, 0.18), Offset(0.74, 0.24), Offset(0.88, 0.40), Offset(0.92, 0.60)],
+  edges: [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
+);
+
+const _auriga = ConstellationShape(
+  points: [Offset(0.50, 0.10), Offset(0.78, 0.35), Offset(0.68, 0.75), Offset(0.32, 0.75), Offset(0.22, 0.35)],
+  edges: [(0, 1), (1, 2), (2, 3), (3, 4), (4, 0)],
+);
+
+const _canisMajor = ConstellationShape(
+  points: [Offset(0.50, 0.15), Offset(0.30, 0.35), Offset(0.65, 0.40), Offset(0.20, 0.70), Offset(0.75, 0.75), Offset(0.50, 0.55)],
+  edges: [(0, 1), (1, 3), (0, 2), (2, 4), (1, 5), (5, 2)],
+);
+
+const _scorpius = ConstellationShape(
+  points: [Offset(0.10, 0.20), Offset(0.22, 0.15), Offset(0.30, 0.30), Offset(0.42, 0.35), Offset(0.55, 0.45), Offset(0.65, 0.55), Offset(0.72, 0.68), Offset(0.68, 0.82), Offset(0.55, 0.90), Offset(0.42, 0.85)],
+  edges: [(0, 2), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9)],
+);
+
+/// Every icon slug a project can pick, mapped to one of the 20
+/// constellations above (round-robin — the assignment carries no
+/// meaning beyond giving each icon a fixed, deterministic shape).
 const Map<String, ConstellationShape> constellationShapes = {
-  'bolt': ConstellationShape(points: [Offset(0.1990, 1.0000), Offset(0.2485, 0.6500), Offset(0.0022, 0.6500), Offset(0.0000, 0.6485), Offset(0.4468, 0.0031), Offset(0.4503, 0.0000), Offset(0.5478, 0.0000), Offset(0.5000, 0.4000), Offset(0.7975, 0.4000), Offset(0.7966, 0.4029), Offset(0.3006, 0.9980), Offset(0.2964, 1.0000)]),
-  'favorite': ConstellationShape(points: [Offset(0.5000, 0.9175), Offset(0.1536, 0.5878), Offset(0.0188, 0.3859), Offset(0.0239, 0.1572), Offset(0.1768, 0.0159), Offset(0.3523, 0.0102), Offset(0.5000, 0.1048), Offset(0.6332, 0.0146), Offset(0.7839, 0.0053), Offset(0.9062, 0.0645), Offset(0.9838, 0.1761), Offset(0.9961, 0.3267), Offset(0.9377, 0.4720)]),
-  'fitness_center': ConstellationShape(points: [Offset(0.5699, 1.0000), Offset(0.6768, 0.7483), Offset(0.2500, 0.3215), Offset(0.0694, 0.4996), Offset(0.0000, 0.4284), Offset(0.1031, 0.0374), Offset(0.4284, 0.0000), Offset(0.3215, 0.2517), Offset(0.7483, 0.6785), Offset(0.9289, 0.5004), Offset(0.9983, 0.5716), Offset(0.8952, 0.9626)]),
-  'monitor_heart': ConstellationShape(points: [Offset(0.4263, 0.4906), Offset(0.5997, 0.1605), Offset(0.6953, 0.2972), Offset(0.9998, 0.2975), Offset(1.0000, 0.1978), Offset(0.7311, 0.1971), Offset(0.5975, 0.0000), Offset(0.3997, 0.3345), Offset(0.3181, 0.2006), Offset(0.0000, 0.1984), Offset(0.0008, 0.2975), Offset(0.2694, 0.2989)]),
-  'pool': ConstellationShape(points: [Offset(0.1431, 0.7068), Offset(0.4221, 0.4277), Offset(0.2197, 0.2548), Offset(0.0015, 0.2104), Offset(0.0019, 0.0000), Offset(0.2195, 0.0227), Offset(0.3733, 0.0925), Offset(1.0000, 0.7055), Offset(0.8552, 0.7573), Offset(0.6115, 0.6745), Offset(0.4699, 0.6845), Offset(0.3075, 0.7567)]),
-  'sports_gymnastics': ConstellationShape(points: [Offset(0.5001, 0.8175), Offset(0.4774, 0.3648), Offset(0.0018, 0.3174), Offset(0.0000, 0.2273), Offset(0.2744, 0.2253), Offset(0.5884, 0.0010), Offset(0.6471, 0.0707), Offset(0.4629, 0.2027), Offset(0.5883, 0.2037), Offset(0.9441, 0.0000), Offset(1.0000, 0.0629), Offset(0.6137, 0.3638), Offset(0.5911, 0.8165)]),
-  'air': ConstellationShape(points: [Offset(0.8252, 0.3501), Offset(0.8264, 0.2500), Offset(0.8750, 0.2325), Offset(0.8994, 0.1870), Offset(0.8583, 0.1068), Offset(0.0012, 0.1000), Offset(0.0000, 0.0000), Offset(0.8959, 0.0139), Offset(0.9811, 0.0933), Offset(0.9965, 0.2133), Offset(0.9319, 0.3150)]),
-  'brightness_5': ConstellationShape(points: [Offset(0.5000, 1.0000), Offset(0.1460, 0.8540), Offset(0.0000, 0.5000), Offset(0.1460, 0.1460), Offset(0.5000, 0.0000), Offset(0.8540, 0.1460), Offset(1.0000, 0.5000), Offset(0.8540, 0.8540)]),
-  'healing': ConstellationShape(points: [Offset(0.5000, 0.7831), Offset(0.2440, 0.9999), Offset(0.0073, 0.7966), Offset(0.2167, 0.4998), Offset(0.0029, 0.2162), Offset(0.2032, 0.0072), Offset(0.5000, 0.2166), Offset(0.7836, 0.0028), Offset(0.9927, 0.2030), Offset(0.7832, 0.4998), Offset(0.9783, 0.8204), Offset(0.7490, 0.9995)]),
-  'mood': ConstellationShape(points: [Offset(0.3050, 0.9605), Offset(0.1344, 0.8414), Offset(0.0324, 0.6780), Offset(0.0393, 0.3049), Offset(0.1585, 0.1343), Offset(0.3219, 0.0323), Offset(0.6950, 0.0392), Offset(0.8656, 0.1583), Offset(0.9676, 0.3218), Offset(0.9607, 0.6949), Offset(0.8416, 0.8655), Offset(0.6781, 0.9675)]),
-  'nightlight': ConstellationShape(points: [Offset(0.5000, 1.0000), Offset(0.1467, 0.8530), Offset(0.0000, 0.4996), Offset(0.0392, 0.3060), Offset(0.1472, 0.1466), Offset(0.5006, 0.0000), Offset(0.7497, 0.0677), Offset(0.5662, 0.2503), Offset(0.5000, 0.5003), Offset(0.5665, 0.7502), Offset(0.7498, 0.9326)]),
-  'psychology': ConstellationShape(points: [Offset(0.1498, 1.0000), Offset(0.0534, 0.2332), Offset(0.3258, 0.0159), Offset(0.6806, 0.0606), Offset(0.9448, 0.6233), Offset(0.4999, 1.0000), Offset(0.4999, 0.8024), Offset(0.6951, 0.8000), Offset(0.8337, 0.5448), Offset(0.6701, 0.1752), Offset(0.3055, 0.1294), Offset(0.1066, 0.3766), Offset(0.2499, 0.7424)]),
-  'psychology_alt': ConstellationShape(points: [Offset(0.1498, 1.0000), Offset(0.0534, 0.2332), Offset(0.3258, 0.0159), Offset(0.6806, 0.0606), Offset(0.9448, 0.6233), Offset(0.4999, 1.0000), Offset(0.4999, 0.8024), Offset(0.6951, 0.8000), Offset(0.8337, 0.5448), Offset(0.6701, 0.1752), Offset(0.3055, 0.1294), Offset(0.1066, 0.3766), Offset(0.2499, 0.7424)]),
-  'spa': ConstellationShape(points: [Offset(0.5000, 1.0000), Offset(0.2846, 0.9345), Offset(0.1206, 0.7982), Offset(0.0239, 0.6014), Offset(0.0000, 0.3545), Offset(0.3071, 0.4147), Offset(0.5000, 0.0000), Offset(0.6930, 0.4147), Offset(0.9255, 0.3506), Offset(1.0000, 0.3999), Offset(0.8688, 0.8115)]),
-  'badge': ConstellationShape(points: [Offset(0.1000, 1.0000), Offset(0.0003, 0.9075), Offset(0.0001, 0.3460), Offset(0.0389, 0.2709), Offset(0.3461, 0.2500), Offset(0.3700, 0.0400), Offset(0.5506, 0.0000), Offset(0.6430, 0.0628), Offset(0.6500, 0.2491), Offset(0.9796, 0.2896), Offset(0.9999, 0.9027), Offset(0.9621, 0.9782)]),
-  'business_center': ConstellationShape(points: [Offset(0.1000, 0.9500), Offset(0.0007, 0.8615), Offset(0.0365, 0.2229), Offset(0.2982, 0.2000), Offset(0.3048, 0.0687), Offset(0.3663, 0.0056), Offset(0.6025, 0.0001), Offset(0.6900, 0.0561), Offset(0.7003, 0.2000), Offset(0.9793, 0.2392), Offset(0.9999, 0.8539), Offset(0.9630, 0.9275)]),
-  'corporate_fare': ConstellationShape(points: [Offset(0.0000, 0.9000), Offset(0.0000, 0.0007), Offset(0.0057, 0.0000), Offset(0.4997, 0.0000), Offset(0.5000, 0.0060), Offset(0.5000, 0.1960), Offset(0.5023, 0.2000), Offset(0.9963, 0.2000), Offset(1.0000, 0.2027), Offset(1.0000, 0.8993), Offset(0.9943, 0.9000)]),
-  'engineering': ConstellationShape(points: [Offset(0.0000, 0.4375), Offset(0.0020, 0.2348), Offset(0.0382, 0.1481), Offset(0.1280, 0.0833), Offset(0.3197, 0.0182), Offset(0.5427, 0.0009), Offset(0.7421, 0.0345), Offset(0.9243, 0.1115), Offset(0.9687, 0.1580), Offset(0.9964, 0.2255), Offset(0.9965, 0.4375)]),
-  'laptop_mac': ConstellationShape(points: [Offset(0.0835, 0.7099), Offset(0.0000, 0.6278), Offset(0.1641, 0.6263), Offset(0.0841, 0.5531), Offset(0.0836, 0.0806), Offset(0.1140, 0.0191), Offset(0.8360, 0.0000), Offset(0.8983, 0.0290), Offset(0.9184, 0.5496), Offset(0.8357, 0.6264), Offset(1.0000, 0.6264), Offset(0.9710, 0.6914)]),
-  'rocket_launch': ConstellationShape(points: [Offset(0.9914, 0.0072), Offset(0.9623, 0.3013), Offset(0.7802, 0.5739), Offset(0.7974, 0.7583), Offset(0.5658, 1.0000), Offset(0.4609, 0.7543), Offset(0.2498, 0.5427), Offset(0.0000, 0.4343), Offset(0.2408, 0.2024), Offset(0.4254, 0.2202), Offset(0.6974, 0.0371)]),
-  'school': ConstellationShape(points: [Offset(0.4997, 0.8183), Offset(0.1827, 0.6462), Offset(0.1813, 0.3736), Offset(0.0000, 0.2722), Offset(0.5004, 0.0000), Offset(1.0000, 0.2735), Offset(1.0000, 0.6342), Offset(0.9091, 0.6363), Offset(0.9088, 0.3226), Offset(0.8181, 0.3736), Offset(0.8167, 0.6462)]),
-  'trending_up': ConstellationShape(points: [Offset(0.0698, 0.6002), Offset(0.0000, 0.5299), Offset(0.3667, 0.1608), Offset(0.5692, 0.3569), Offset(0.8287, 0.1000), Offset(0.7001, 0.1000), Offset(0.6999, 0.0008), Offset(1.0000, 0.0031), Offset(0.9988, 0.3001), Offset(0.9000, 0.2996), Offset(0.9000, 0.1710), Offset(0.5699, 0.5001), Offset(0.3674, 0.3025)]),
-  'work': ConstellationShape(points: [Offset(0.1000, 0.9500), Offset(0.0007, 0.8615), Offset(0.0365, 0.2229), Offset(0.2982, 0.2000), Offset(0.3048, 0.0687), Offset(0.3663, 0.0056), Offset(0.6025, 0.0001), Offset(0.6900, 0.0561), Offset(0.7003, 0.2000), Offset(0.9793, 0.2392), Offset(0.9999, 0.8539), Offset(0.9630, 0.9275)]),
-  'work_history': ConstellationShape(points: [Offset(0.1000, 0.9500), Offset(0.0008, 0.8626), Offset(0.0362, 0.2231), Offset(0.6043, 0.0001), Offset(0.7041, 0.2000), Offset(0.9803, 0.2404), Offset(0.9972, 0.5118), Offset(0.9000, 0.3003), Offset(0.1000, 0.3029), Offset(0.1000, 0.8490), Offset(0.4524, 0.8500), Offset(0.4830, 0.9484)]),
-  'account_balance': ConstellationShape(points: [Offset(0.0000, 0.3493), Offset(0.0000, 0.2527), Offset(0.0004, 0.2491), Offset(0.4980, 0.0003), Offset(0.5015, 0.0000), Offset(0.9990, 0.2488), Offset(1.0000, 0.2521), Offset(1.0000, 0.3487), Offset(0.9968, 0.3493)]),
-  'account_balance_wallet': ConstellationShape(points: [Offset(0.1111, 1.0000), Offset(0.0005, 0.8997), Offset(0.0287, 0.0368), Offset(0.9630, 0.0286), Offset(0.9967, 0.2500), Offset(0.8889, 0.1121), Offset(0.1117, 0.1111), Offset(0.1111, 0.8886), Offset(0.8889, 0.8888), Offset(0.9958, 0.7500), Offset(0.9709, 0.9636)]),
-  'credit_score': ConstellationShape(points: [Offset(0.0000, 0.1000), Offset(0.0852, 0.0010), Offset(0.9259, 0.0032), Offset(0.9979, 0.0790), Offset(1.0000, 0.3959), Offset(0.1000, 0.4016), Offset(0.1000, 0.6992), Offset(0.3050, 0.7012), Offset(0.3050, 0.7983), Offset(0.0741, 0.7967), Offset(0.0010, 0.7146)]),
-  'paid': ConstellationShape(points: [Offset(0.5000, 1.0000), Offset(0.1463, 0.8538), Offset(0.0000, 0.5000), Offset(0.1462, 0.1463), Offset(0.5000, 0.0000), Offset(0.8538, 0.1462), Offset(1.0000, 0.5000), Offset(0.8538, 0.8538)]),
-  'payments': ConstellationShape(points: [Offset(1.0000, 0.6842), Offset(0.1027, 0.6841), Offset(0.0754, 0.6801), Offset(0.0456, 0.6657), Offset(0.0252, 0.6471), Offset(0.0124, 0.6290), Offset(0.0003, 0.5868), Offset(0.0004, 0.0000), Offset(0.1053, 0.0003), Offset(0.1053, 0.5764), Offset(0.1082, 0.5789), Offset(1.0000, 0.5790)]),
-  'pie_chart': ConstellationShape(points: [Offset(0.5000, 1.0000), Offset(0.1463, 0.8538), Offset(0.0000, 0.5002), Offset(0.1460, 0.1465), Offset(0.4996, 0.0000), Offset(0.6933, 0.0389), Offset(0.8529, 0.1467), Offset(0.9609, 0.3062), Offset(1.0000, 0.4999), Offset(0.8534, 0.8535), Offset(0.6938, 0.9611)]),
-  'real_estate_agent': ConstellationShape(points: [Offset(0.0000, 0.5238), Offset(0.0038, 0.0000), Offset(0.3929, 0.0056), Offset(0.6952, 0.1196), Offset(0.7623, 0.2381), Offset(0.9218, 0.2522), Offset(0.9972, 0.3499), Offset(0.9981, 0.4292), Offset(0.6216, 0.5468), Offset(0.2874, 0.4552), Offset(0.2852, 0.5238)]),
-  'request_quote': ConstellationShape(points: [Offset(0.1000, 1.0000), Offset(0.0346, 0.9755), Offset(0.0004, 0.9089), Offset(0.0066, 0.0638), Offset(0.0394, 0.0205), Offset(0.0843, 0.0012), Offset(0.5012, 0.0012), Offset(0.8000, 0.3004), Offset(0.7932, 0.9368), Offset(0.7602, 0.9798), Offset(0.7097, 0.9995)]),
-  'savings': ConstellationShape(points: [Offset(0.1248, 0.9497), Offset(0.0427, 0.2251), Offset(0.7679, 0.0128), Offset(0.7783, 0.1617), Offset(1.0000, 0.2779), Offset(1.0000, 0.6221), Offset(0.8584, 0.6707), Offset(0.7754, 0.9484), Offset(0.5046, 0.9497), Offset(0.4053, 0.8497), Offset(0.3966, 0.9497)]),
-  'checklist': ConstellationShape(points: [Offset(0.3869, 0.7708), Offset(0.0028, 0.3868), Offset(0.0000, 0.3834), Offset(0.1503, 0.2332), Offset(0.1536, 0.2323), Offset(0.3841, 0.4627), Offset(0.8449, 0.0020), Offset(0.8483, 0.0000), Offset(0.9972, 0.1516), Offset(1.0000, 0.1550)]),
-  'emoji_objects': ConstellationShape(points: [Offset(0.3625, 1.0000), Offset(0.1756, 0.8922), Offset(0.1615, 0.6643), Offset(0.0443, 0.5362), Offset(0.0000, 0.3637), Offset(0.1052, 0.1060), Offset(0.3626, 0.0000), Offset(0.6199, 0.1062), Offset(0.7249, 0.3640), Offset(0.6811, 0.5366), Offset(0.5634, 0.6643), Offset(0.5493, 0.8922)]),
-  'explore': ConstellationShape(points: [Offset(0.5000, 1.0000), Offset(0.1463, 0.8538), Offset(0.0000, 0.5000), Offset(0.1462, 0.1463), Offset(0.5000, 0.0000), Offset(0.8538, 0.1462), Offset(1.0000, 0.5000), Offset(0.8538, 0.8538)]),
-  'flag': ConstellationShape(points: [Offset(0.0000, 1.0000), Offset(0.0026, 0.0000), Offset(0.5237, 0.0000), Offset(0.5296, 0.0008), Offset(0.5529, 0.1173), Offset(0.8824, 0.1176), Offset(0.8824, 0.7047), Offset(0.4746, 0.7059), Offset(0.4457, 0.5882), Offset(0.1225, 0.5882), Offset(0.1176, 0.9989)]),
-  'local_florist': ConstellationShape(points: [Offset(0.3382, 0.9616), Offset(0.0270, 0.7456), Offset(0.0044, 0.3256), Offset(0.1028, 0.1735), Offset(0.2554, 0.1392), Offset(0.3805, 0.0156), Offset(0.5009, 0.0027), Offset(0.8917, 0.2408), Offset(0.9237, 0.6752), Offset(0.8458, 0.8108), Offset(0.6719, 0.8607), Offset(0.5615, 0.9781)]),
-  'military_tech': ConstellationShape(points: [Offset(0.0000, 0.0000), Offset(0.4987, 0.0000), Offset(0.4941, 0.4291), Offset(0.2761, 0.5886), Offset(0.4989, 0.7008), Offset(0.3457, 0.8121), Offset(0.4050, 1.0000), Offset(0.2481, 0.8840), Offset(0.0960, 0.9994), Offset(0.1528, 0.8085), Offset(0.0022, 0.7016), Offset(0.2240, 0.5845), Offset(0.0063, 0.4303)]),
-  'star': ConstellationShape(points: [Offset(0.1912, 0.9501), Offset(0.2725, 0.5988), Offset(0.0000, 0.3626), Offset(0.3591, 0.3314), Offset(0.5000, 0.0000), Offset(0.6381, 0.3266), Offset(0.6410, 0.3314), Offset(1.0000, 0.3626), Offset(0.7276, 0.5989), Offset(0.8088, 0.9501), Offset(0.5000, 0.7639)]),
-  'connect_without_contact': ConstellationShape(points: [Offset(0.0000, 1.0000), Offset(0.0222, 0.7798), Offset(0.0859, 0.5848), Offset(0.2932, 0.2902), Offset(0.4607, 0.1539), Offset(0.6438, 0.0616), Offset(0.9989, 0.0000), Offset(1.0000, 0.2205), Offset(0.6709, 0.2915), Offset(0.5324, 0.3752), Offset(0.3760, 0.5315), Offset(0.2691, 0.7247), Offset(0.2217, 1.0000)]),
-  'diversity_3': ConstellationShape(points: [Offset(0.0000, 0.2727), Offset(0.0730, 0.0017), Offset(0.2677, 0.0046), Offset(0.4791, 0.1354), Offset(0.7506, 0.0006), Offset(0.9984, 0.0727), Offset(1.0000, 0.2726), Offset(0.6838, 0.2727), Offset(0.6805, 0.1702), Offset(0.4970, 0.2272), Offset(0.3187, 0.1685), Offset(0.3163, 0.2727)]),
-  'family_restroom': ConstellationShape(points: [Offset(0.1217, 1.0000), Offset(0.1191, 0.4309), Offset(0.0799, 0.3354), Offset(0.0000, 0.2631), Offset(0.0788, 0.0520), Offset(0.1973, 0.0001), Offset(0.2630, 0.0207), Offset(0.3117, 0.0748), Offset(0.4877, 0.5978), Offset(0.3217, 0.6004), Offset(0.3215, 1.0000)]),
-  'forum': ConstellationShape(points: [Offset(1.0000, 1.0000), Offset(0.7466, 0.7500), Offset(0.0769, 0.7406), Offset(0.0091, 0.6725), Offset(0.0000, 0.5629), Offset(0.6890, 0.5625), Offset(0.7479, 0.5471), Offset(0.7925, 0.5055), Offset(0.8115, 0.4540), Offset(0.8140, 0.0000), Offset(0.9235, 0.0095), Offset(0.9759, 0.0512), Offset(0.9995, 0.1137)]),
-  'group_add': ConstellationShape(points: [Offset(0.0000, 0.4375), Offset(0.0019, 0.2349), Offset(0.0386, 0.1485), Offset(0.1203, 0.0870), Offset(0.3157, 0.0199), Offset(0.5385, 0.0008), Offset(0.7546, 0.0384), Offset(0.9311, 0.1171), Offset(0.9732, 0.1658), Offset(0.9965, 0.2258), Offset(1.0000, 0.4369)]),
-  'groups': ConstellationShape(points: [Offset(0.0000, 0.4375), Offset(0.0027, 0.2667), Offset(0.0492, 0.1625), Offset(0.1646, 0.0689), Offset(0.3346, 0.0137), Offset(0.5773, 0.0027), Offset(0.7819, 0.0440), Offset(0.8625, 0.0833), Offset(0.9323, 0.1393), Offset(0.9768, 0.2017), Offset(0.9974, 0.2666), Offset(1.0000, 0.4374)]),
-  'groups_2': ConstellationShape(points: [Offset(0.0000, 0.4375), Offset(0.0041, 0.2581), Offset(0.0423, 0.1684), Offset(0.0922, 0.1158), Offset(0.1638, 0.0692), Offset(0.3170, 0.0168), Offset(0.5768, 0.0026), Offset(0.7774, 0.0428), Offset(0.8622, 0.0831), Offset(0.9268, 0.1322), Offset(0.9714, 0.1893), Offset(0.9951, 0.2532), Offset(0.9964, 0.4375)]),
-  'all_inclusive': ConstellationShape(points: [Offset(0.2289, 0.4587), Offset(0.0053, 0.2829), Offset(0.1388, 0.0174), Offset(0.4374, 0.1167), Offset(0.1181, 0.1341), Offset(0.2028, 0.3731), Offset(0.7089, 0.0093), Offset(0.9825, 0.1382), Offset(0.8611, 0.4412), Offset(0.5625, 0.3419), Offset(0.8867, 0.3184), Offset(0.7657, 0.0835)]),
-  'brightness_4': ConstellationShape(points: [Offset(0.5000, 1.0000), Offset(0.1460, 0.8540), Offset(0.0000, 0.5000), Offset(0.1460, 0.1460), Offset(0.5000, 0.0000), Offset(0.8540, 0.1460), Offset(1.0000, 0.5000), Offset(0.8540, 0.8540)]),
-  'church': ConstellationShape(points: [Offset(0.0000, 1.0000), Offset(0.0009, 0.6187), Offset(0.4260, 0.2632), Offset(0.3333, 0.0957), Offset(0.5238, 0.0003), Offset(0.6190, 0.0960), Offset(0.5267, 0.2634), Offset(0.9518, 0.6188), Offset(0.9520, 1.0000), Offset(0.5260, 1.0000), Offset(0.4797, 0.7620), Offset(0.4260, 1.0000)]),
-  'mosque': ConstellationShape(points: [Offset(0.0404, 0.8354), Offset(0.0810, 0.1258), Offset(0.1302, 0.5009), Offset(0.2809, 0.1587), Offset(0.5015, 0.0000), Offset(0.7304, 0.1755), Offset(0.7963, 0.5009), Offset(0.8501, 0.2062), Offset(0.9824, 0.1994), Offset(0.9573, 0.8354), Offset(0.5468, 0.8354), Offset(0.4988, 0.6264), Offset(0.4585, 0.8344)]),
-  'synagogue': ConstellationShape(points: [Offset(0.0000, 0.8182), Offset(0.0582, 0.0697), Offset(0.2736, 0.1947), Offset(0.5000, 0.0000), Offset(0.7264, 0.1947), Offset(0.8130, 0.0547), Offset(0.9725, 0.0992), Offset(1.0000, 0.8182), Offset(0.5455, 0.8177), Offset(0.5000, 0.5454), Offset(0.4545, 0.8177)]),
-  'temple_buddhist': ConstellationShape(points: [Offset(0.1363, 0.9525), Offset(0.0000, 0.3669), Offset(0.2273, 0.3613), Offset(0.0909, 0.1820), Offset(0.2972, 0.2680), Offset(0.5020, 0.0000), Offset(0.7082, 0.2703), Offset(0.9091, 0.1805), Offset(0.8639, 0.9507), Offset(0.5488, 0.9525), Offset(0.4970, 0.7252), Offset(0.4533, 0.9525)]),
-  'campaign': ConstellationShape(points: [Offset(0.2310, 1.0000), Offset(0.2310, 0.6923), Offset(0.0860, 0.6765), Offset(0.0055, 0.5801), Offset(0.0235, 0.3020), Offset(0.1278, 0.2322), Offset(0.4599, 0.2301), Offset(0.8454, 0.0000), Offset(0.8469, 0.9203), Offset(0.3850, 0.6925), Offset(0.3848, 1.0000)]),
-  'eco': ConstellationShape(points: [Offset(0.1412, 0.8586), Offset(0.0373, 0.7051), Offset(0.0000, 0.5238), Offset(0.0420, 0.3267), Offset(0.1484, 0.1748), Offset(0.4713, 0.0239), Offset(0.9906, 0.0112), Offset(0.9744, 0.5352), Offset(0.8300, 0.8494), Offset(0.6791, 0.9573), Offset(0.4878, 0.9998), Offset(0.3006, 0.9631)]),
-  'park': ConstellationShape(points: [Offset(0.5457, 1.0000), Offset(0.3507, 1.0000), Offset(0.3499, 0.8000), Offset(0.0000, 0.8000), Offset(0.1977, 0.5008), Offset(0.0995, 0.4981), Offset(0.4482, 0.0000), Offset(0.7969, 0.4981), Offset(0.6988, 0.5008), Offset(0.8964, 0.8000), Offset(0.5465, 0.8000)]),
-  'recycling': ConstellationShape(points: [Offset(0.4566, 0.9153), Offset(0.0000, 0.4558), Offset(0.4558, 0.0000), Offset(0.4585, 0.2282), Offset(1.0000, 0.2282), Offset(0.8347, 0.5599), Offset(0.8089, 0.5984), Offset(0.7765, 0.6315), Offset(0.7293, 0.6628), Offset(0.6708, 0.6824), Offset(0.4566, 0.6884)]),
-  'redeem': ConstellationShape(points: [Offset(0.1000, 0.1999), Offset(0.2095, 0.1990), Offset(0.2168, 0.0798), Offset(0.3104, 0.0049), Offset(0.5002, 0.0997), Offset(0.6105, 0.0055), Offset(0.7394, 0.0290), Offset(0.7904, 0.1992), Offset(0.9964, 0.2727), Offset(0.9803, 0.9095), Offset(0.0366, 0.9271), Offset(0.0004, 0.2907)]),
-  'volunteer_activism': ConstellationShape(points: [Offset(0.0000, 0.5238), Offset(0.0038, 0.0000), Offset(0.3929, 0.0056), Offset(0.6952, 0.1196), Offset(0.7623, 0.2381), Offset(0.9218, 0.2522), Offset(0.9972, 0.3499), Offset(0.9981, 0.4292), Offset(0.6216, 0.5468), Offset(0.2874, 0.4552), Offset(0.2852, 0.5238)]),
+  'account_balance': _orion,
+  'account_balance_wallet': _ursaMajor,
+  'air': _ursaMinor,
+  'all_inclusive': _cassiopeia,
+  'badge': _cygnus,
+  'bolt': _lyra,
+  'brightness_4': _leo,
+  'brightness_5': _draco,
+  'business_center': _sagittarius,
+  'campaign': _gemini,
+  'checklist': _taurus,
+  'church': _pegasus,
+  'connect_without_contact': _andromeda,
+  'corporate_fare': _perseus,
+  'credit_score': _aquila,
+  'diversity_3': _bootes,
+  'eco': _coronaBorealis,
+  'emoji_objects': _auriga,
+  'engineering': _canisMajor,
+  'explore': _scorpius,
+  'family_restroom': _orion,
+  'favorite': _ursaMajor,
+  'fitness_center': _ursaMinor,
+  'flag': _cassiopeia,
+  'forum': _cygnus,
+  'group_add': _lyra,
+  'groups': _leo,
+  'groups_2': _draco,
+  'healing': _sagittarius,
+  'laptop_mac': _gemini,
+  'local_florist': _taurus,
+  'military_tech': _pegasus,
+  'monitor_heart': _andromeda,
+  'mood': _perseus,
+  'mosque': _aquila,
+  'nightlight': _bootes,
+  'paid': _coronaBorealis,
+  'park': _auriga,
+  'payments': _canisMajor,
+  'pie_chart': _scorpius,
+  'pool': _orion,
+  'psychology': _ursaMajor,
+  'psychology_alt': _ursaMinor,
+  'real_estate_agent': _cassiopeia,
+  'recycling': _cygnus,
+  'redeem': _lyra,
+  'request_quote': _leo,
+  'rocket_launch': _draco,
+  'savings': _sagittarius,
+  'school': _gemini,
+  'spa': _taurus,
+  'sports_gymnastics': _pegasus,
+  'star': _andromeda,
+  'synagogue': _perseus,
+  'temple_buddhist': _aquila,
+  'trending_up': _bootes,
+  'volunteer_activism': _coronaBorealis,
+  'work': _auriga,
+  'work_history': _canisMajor,
 };
 
 const Map<String, List<String>> suggestedIconsByArea = {

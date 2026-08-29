@@ -38,8 +38,7 @@ class ConstellationPainter extends CustomPainter {
     required this.revision,
     required this.starColor,
     required this.coreColor,
-    this.chainStarCount = 0,
-    this.chainClosed = false,
+    this.edges = const [],
     this.linkThreshold = 0,
   });
 
@@ -52,19 +51,14 @@ class ConstellationPainter extends CustomPainter {
   final Color starColor;
   final Color coreColor;
 
-  /// How many leading entries of [stars] belong to the shape's connected
-  /// chain (built by `buildConstellationPositions`, in outline order) —
-  /// any stars beyond this are unconnected overflow scatter, and never get
-  /// a line drawn to or from them.
-  final int chainStarCount;
+  /// Which pairs of [stars] (by index) get a connecting line — built by
+  /// `buildConstellationLayout`, so this can branch (a figure's arms and
+  /// legs, a teapot's handle) instead of being a single path or loop.
+  final List<(int, int)> edges;
 
-  /// Whether the chain's last point links back to its first, completing a
-  /// closed silhouette instead of an open path.
-  final bool chainClosed;
-
-  /// The chain isn't connected with lines at all until it reaches this many
-  /// stars — a project's constellation shows loose, unlinked stars until
-  /// its full base pictogram (the shape's primary keypoints) is lit.
+  /// No lines are drawn at all until [stars] reaches this many — a
+  /// project's constellation shows loose, unlinked stars until its full
+  /// base graph (the shape's keypoints) is lit.
   final int linkThreshold;
 
   /// Bumped by the caller whenever [stars] actually changes (a win was
@@ -79,20 +73,19 @@ class ConstellationPainter extends CustomPainter {
     final sprite = glowSprite;
     if (sprite == null || stars.isEmpty) return;
 
-    if (chainStarCount >= linkThreshold && linkThreshold > 0) {
+    if (stars.length >= linkThreshold && linkThreshold > 0) {
       final linePaint = Paint()
         ..color = starColor.withValues(alpha: 0.35)
         ..strokeWidth = 1.2
         ..style = PaintingStyle.stroke;
-      final path = Path();
-      final first = _toCanvas(stars[0].position, size);
-      path.moveTo(first.dx, first.dy);
-      for (var i = 1; i < chainStarCount; i++) {
-        final p = _toCanvas(stars[i].position, size);
-        path.lineTo(p.dx, p.dy);
+      for (final (a, b) in edges) {
+        if (a >= stars.length || b >= stars.length) continue;
+        canvas.drawLine(
+          _toCanvas(stars[a].position, size),
+          _toCanvas(stars[b].position, size),
+          linePaint,
+        );
       }
-      if (chainClosed) path.close();
-      canvas.drawPath(path, linePaint);
     }
 
     final srcRect = Rect.fromLTWH(
@@ -148,7 +141,7 @@ class ConstellationPainter extends CustomPainter {
         glowSprite != oldDelegate.glowSprite ||
         starColor != oldDelegate.starColor ||
         coreColor != oldDelegate.coreColor ||
-        chainStarCount != oldDelegate.chainStarCount;
+        stars.length != oldDelegate.stars.length;
   }
 }
 

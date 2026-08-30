@@ -1,0 +1,3 @@
+# Exchange files generated/consumed by to_astralarium.py / from_astralarium.py —
+# working data, not tooling. Keep the .py/.md tracked, ignore everything else.
+*.json

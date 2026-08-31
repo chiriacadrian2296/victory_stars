@@ -1,39 +1,61 @@
 import '../data/project_repository.dart';
-import '../data/win_repository.dart';
+import '../data/star_repository.dart';
 import '../models/life_area.dart';
-import '../models/win.dart';
+import '../models/star.dart';
 
-/// Total wins logged across every project in [area], summed over that
+/// Total victories logged across every project in [area], summed over that
 /// area's projects — used by both Sky's aggregate area counts and the
-/// Stars tab's area picker, so the two stay consistent.
-int starsInArea(LifeArea area, ProjectRepository projectRepository, WinRepository winRepository) {
+/// Stars tab's area picker, so the two stay consistent. Goals and dead stars
+/// don't count as a "star" here — only achieved ones do.
+int starsInArea(
+  LifeArea area,
+  ProjectRepository projectRepository,
+  StarRepository starRepository,
+) {
   var total = 0;
   for (final project in projectRepository.getProjectsForArea(area)) {
-    total += winRepository.getAllForProject(project.id).length;
+    total += starRepository
+        .getAllForProject(project.id)
+        .where((s) => s.isAchieved)
+        .length;
   }
   return total;
 }
 
-/// Groups [wins] by calendar day (time-of-day discarded), counting how many
-/// were logged on each day. Used to drive the dashboard's activity heatmap
-/// and streak calculations.
-Map<DateTime, int> winCountsByDay(List<Win> wins) {
+/// Groups achieved [stars] by calendar day (time-of-day discarded, [Star.dead]
+/// and unachieved goals excluded by the caller before this is called),
+/// counting how many were achieved on each day. Used to drive the
+/// dashboard's activity heatmap and streak calculations.
+Map<DateTime, int> starCountsByDay(List<Star> stars) {
   final counts = <DateTime, int>{};
-  for (final win in wins) {
-    final day = DateTime(win.date.year, win.date.month, win.date.day);
+  for (final star in stars) {
+    final achievedDate = star.achievedDate;
+    if (achievedDate == null) continue;
+    final day = DateTime(
+      achievedDate.year,
+      achievedDate.month,
+      achievedDate.day,
+    );
     counts[day] = (counts[day] ?? 0) + 1;
   }
   return counts;
 }
 
-/// Groups [wins] by calendar day, summing each day's win intensities — the
-/// total "brightness" for that day, used to scale the dashboard calendar's
-/// per-star glow.
-Map<DateTime, int> winIntensityByDay(List<Win> wins) {
+/// Groups achieved [stars] by calendar day, summing each day's intensities —
+/// the total "brightness" for that day, used to scale the dashboard
+/// calendar's per-star glow.
+Map<DateTime, int> starIntensityByDay(List<Star> stars) {
   final totals = <DateTime, int>{};
-  for (final win in wins) {
-    final day = DateTime(win.date.year, win.date.month, win.date.day);
-    totals[day] = (totals[day] ?? 0) + win.intensity;
+  for (final star in stars) {
+    final achievedDate = star.achievedDate;
+    final intensity = star.intensity;
+    if (achievedDate == null || intensity == null) continue;
+    final day = DateTime(
+      achievedDate.year,
+      achievedDate.month,
+      achievedDate.day,
+    );
+    totals[day] = (totals[day] ?? 0) + intensity;
   }
   return totals;
 }
@@ -57,7 +79,10 @@ int currentStreak(Map<DateTime, int> countsByDay, {DateTime? today}) {
 
 /// Same streak [currentStreak] measures, but with the date range it spans
 /// (ending on [today]) — used by the dashboard's streak detail screen.
-StreakRange currentStreakRange(Map<DateTime, int> countsByDay, {DateTime? today}) {
+StreakRange currentStreakRange(
+  Map<DateTime, int> countsByDay, {
+  DateTime? today,
+}) {
   final now = today ?? DateTime.now();
   var day = DateTime(now.year, now.month, now.day);
   final end = day;
@@ -67,7 +92,11 @@ StreakRange currentStreakRange(Map<DateTime, int> countsByDay, {DateTime? today}
     day = day.subtract(const Duration(days: 1));
   }
   if (streak == 0) return const StreakRange(length: 0);
-  return StreakRange(length: streak, start: end.subtract(Duration(days: streak - 1)), end: end);
+  return StreakRange(
+    length: streak,
+    start: end.subtract(Duration(days: streak - 1)),
+    end: end,
+  );
 }
 
 /// The longest run of consecutive days with at least one win, anywhere in

@@ -1,23 +1,34 @@
 import 'package:flutter/material.dart';
 
+import '../data/habit_completion_repository.dart';
+import '../data/habit_repository.dart';
 import '../data/project_repository.dart';
-import '../data/win_repository.dart';
+import '../data/star_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../models/life_area.dart';
 import '../theme/app_colors.dart';
-import '../utils/win_stats.dart';
+import '../utils/area_stats.dart';
+import '../utils/star_stats.dart';
 import '../widgets/area_tag.dart';
 import 'area_projects_screen.dart';
 
-/// The Sky hub: the 8 fixed life areas, each showing how many stars are lit
-/// across all of its projects combined. Tapping an area opens its project
-/// list ([AreaProjectsScreen]) — an area itself has no single constellation
-/// once it can hold more than one project.
+/// The Sky hub: the 8 fixed life areas, each showing how many victories are
+/// lit across all of its projects combined, plus how many open goals and
+/// active habits sit alongside them. Tapping an area opens its project list
+/// ([AreaProjectsScreen]).
 class SkyScreen extends StatefulWidget {
-  const SkyScreen({super.key, required this.projectRepository, required this.winRepository});
+  const SkyScreen({
+    super.key,
+    required this.projectRepository,
+    required this.starRepository,
+    required this.habitRepository,
+    required this.habitCompletionRepository,
+  });
 
   final ProjectRepository projectRepository;
-  final WinRepository winRepository;
+  final StarRepository starRepository;
+  final HabitRepository habitRepository;
+  final HabitCompletionRepository habitCompletionRepository;
 
   @override
   State<SkyScreen> createState() => _SkyScreenState();
@@ -30,7 +41,9 @@ class _SkyScreenState extends State<SkyScreen> {
         builder: (_) => AreaProjectsScreen(
           area: area,
           projectRepository: widget.projectRepository,
-          winRepository: widget.winRepository,
+          starRepository: widget.starRepository,
+          habitRepository: widget.habitRepository,
+          habitCompletionRepository: widget.habitCompletionRepository,
         ),
       ),
     );
@@ -45,11 +58,6 @@ class _SkyScreenState extends State<SkyScreen> {
         child: Column(
           children: [
             const _Header(),
-            // Every area's card gets an equal share of whatever height is
-            // left, rather than each sizing to its own content in a
-            // scrollable list — the 8 areas are a fixed, known set (not a
-            // growing list like wins/projects), so it reads better to show
-            // all of them on screen at once than to make the page scroll.
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
@@ -60,7 +68,22 @@ class _SkyScreenState extends State<SkyScreen> {
                       Expanded(
                         child: _AreaCard(
                           area: LifeArea.values[i],
-                          starCount: starsInArea(LifeArea.values[i], widget.projectRepository, widget.winRepository),
+                          starCount: starsInArea(
+                            LifeArea.values[i],
+                            widget.projectRepository,
+                            widget.starRepository,
+                          ),
+                          openGoals: openGoalsInArea(
+                            LifeArea.values[i],
+                            widget.projectRepository,
+                            widget.starRepository,
+                          ),
+                          activeHabits: litHabitsInArea(
+                            LifeArea.values[i],
+                            widget.projectRepository,
+                            widget.habitRepository,
+                            widget.habitCompletionRepository,
+                          ),
                           onTap: () => _openArea(LifeArea.values[i]),
                         ),
                       ),
@@ -84,11 +107,6 @@ class _Header extends StatelessWidget {
     final colors = context.colors;
     final strings = context.strings;
     return SizedBox(
-      // Without this, the Column below shrinks to the width of its longest
-      // line of text and then gets centered by the outer Column's default
-      // crossAxisAlignment — the text inside reads as left-aligned relative
-      // to its own (too-narrow) box, but that box itself sits centered on
-      // the page instead of pinned to the left edge.
       width: double.infinity,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
@@ -126,15 +144,29 @@ class _Header extends StatelessWidget {
 }
 
 class _AreaCard extends StatelessWidget {
-  const _AreaCard({required this.area, required this.starCount, required this.onTap});
+  const _AreaCard({
+    required this.area,
+    required this.starCount,
+    required this.openGoals,
+    required this.activeHabits,
+    required this.onTap,
+  });
 
   final LifeArea area;
   final int starCount;
+  final int openGoals;
+  final int activeHabits;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final strings = context.strings;
+    final extras = <String>[
+      if (openGoals > 0) strings.openGoalsBadge(openGoals),
+      if (activeHabits > 0) strings.activeHabitsBadge(activeHabits),
+    ];
+
     return Material(
       color: colors.nightPanel,
       borderRadius: BorderRadius.circular(12),
@@ -143,7 +175,6 @@ class _AreaCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: Container(
           width: double.infinity,
-          alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
             border: Border.all(color: colors.nightBorder),
@@ -152,10 +183,23 @@ class _AreaCard extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: AreaTag(area: area, iconSize: 20, fontSize: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AreaTag(area: area, iconSize: 20, fontSize: 16),
+                    if (extras.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        extras.join(' · '),
+                        style: TextStyle(fontSize: 12, color: colors.goldDim),
+                      ),
+                    ],
+                  ],
+                ),
               ),
               Text(
-                context.strings.starsCount(starCount),
+                strings.starsCount(starCount),
                 style: TextStyle(fontSize: 13, color: colors.muted),
               ),
               const SizedBox(width: 8),

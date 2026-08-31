@@ -6,7 +6,7 @@ import '../models/life_area.dart';
 import '../models/project.dart';
 
 /// Reads and writes the user's projects as a single JSON-encoded list under
-/// one [SharedPreferences] key, newest first — mirrors [WinRepository]'s
+/// one [SharedPreferences] key, newest first — mirrors [StarRepository]'s
 /// shape exactly, since the same "small list, always read/written whole"
 /// reasoning applies here.
 class ProjectRepository {

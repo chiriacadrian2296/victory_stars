@@ -1,41 +1,83 @@
 import 'package:flutter/material.dart';
 
+import '../data/habit_completion_repository.dart';
+import '../data/habit_repository.dart';
 import '../data/project_repository.dart';
-import '../data/win_repository.dart';
+import '../data/star_repository.dart';
 import '../l10n/strings_scope.dart';
+import '../models/habit.dart';
 import '../models/life_area.dart';
 import '../models/project.dart';
-import '../models/win.dart';
+import '../models/star.dart';
 import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
+import '../utils/habit_stats.dart';
 import '../utils/icon_for_slug.dart';
-import '../widgets/win_card.dart';
+import '../widgets/constellation_painter.dart' show StarKind;
+import '../widgets/dead_star_card.dart';
+import '../widgets/goal_card.dart';
+import '../widgets/habit_card.dart';
+import '../widgets/star_card.dart';
 import 'constellation_screen.dart';
-import 'win_reader_screen.dart';
+import 'habit_reader_screen.dart';
+import 'star_reader_screen.dart';
 
 enum _ViewMode { constellations, list }
 
+/// One flat-list row — either a [Star] (victory/goal/dead, told apart by
+/// [kind]) or a [Habit] (pulsar, [kind] always [StarKind.habit]) — wrapped
+/// with a shared [sortKey] so the two can be merged into one newest-first
+/// list without either side needing to know about the other's shape.
+class _AreaEntry {
+  _AreaEntry.fromStar(Star star)
+    : star = star,
+      habit = null,
+      kind = star.dead
+          ? StarKind.dead
+          : (star.isAchieved ? StarKind.victory : StarKind.goal),
+      sortKey = star.achievedDate ?? star.createdAt;
+
+  _AreaEntry.fromHabit(Habit habit)
+    : star = null,
+      habit = habit,
+      kind = StarKind.habit,
+      sortKey = habit.createdAt;
+
+  final Star? star;
+  final Habit? habit;
+  final StarKind kind;
+  final DateTime sortKey;
+
+  String get title => (star?.title ?? habit!.title);
+  String? get description => star?.description ?? habit?.description;
+}
+
 /// One life area's detail screen — Sky's second step after picking an
 /// area. Offers two views of the same underlying data, switched via a
-/// segmented control rather than living as two separate tabs (they were
-/// close enough in purpose that keeping both as top-level destinations was
-/// redundant), sharing one search field that filters whichever is active:
-/// - Constellations: the area's projects, each showing its own lit-star
-///   count and most recent star; tapping one opens its [ConstellationScreen].
-///   Search matches the project name.
-/// - Stars: every win in the area (across all its projects), flat, newest
-///   first. Search matches title or description.
+/// segmented control:
+/// - Constellations: the area's projects, each showing its lit-star count,
+///   open-goal count, and active-pulsar count; tapping one opens its
+///   [ConstellationScreen]. Search matches the project name.
+/// - Stars: every star and pulsar in the area (across all its projects),
+///   flat, newest first, with a row of toggle chips (below the
+///   Constellations/Stars switch) to show/hide each kind — victories, goals,
+///   dead stars, pulsars. All four are on by default. Search matches title
+///   or description.
 class AreaProjectsScreen extends StatefulWidget {
   const AreaProjectsScreen({
     super.key,
     required this.area,
     required this.projectRepository,
-    required this.winRepository,
+    required this.starRepository,
+    required this.habitRepository,
+    required this.habitCompletionRepository,
   });
 
   final LifeArea area;
   final ProjectRepository projectRepository;
-  final WinRepository winRepository;
+  final StarRepository starRepository;
+  final HabitRepository habitRepository;
+  final HabitCompletionRepository habitCompletionRepository;
 
   @override
   State<AreaProjectsScreen> createState() => _AreaProjectsScreenState();
@@ -44,12 +86,37 @@ class AreaProjectsScreen extends StatefulWidget {
 class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
   _ViewMode _mode = _ViewMode.constellations;
   String _query = '';
+  final Set<StarKind> _kindFilter = {
+    StarKind.victory,
+    StarKind.goal,
+    StarKind.dead,
+    StarKind.habit,
+  };
 
-  List<Project> get _projects => widget.projectRepository.getProjectsForArea(widget.area);
+  List<Project> get _projects =>
+      widget.projectRepository.getProjectsForArea(widget.area);
 
-  Map<int, Project> get _projectsById => {for (final project in _projects) project.id: project};
+  Map<int, Project> get _projectsById => {
+    for (final project in _projects) project.id: project,
+  };
 
-  List<Win> _winsForProject(int projectId) => widget.winRepository.getAllForProject(projectId);
+  List<Star> _starsForProject(int projectId) =>
+      widget.starRepository.getAllForProject(projectId);
+
+  int _activeHabitCountForProject(int projectId) {
+    var count = 0;
+    for (final habit in widget.habitRepository.getAllForProject(projectId)) {
+      if (isHabitLit(_completedDaysFor(habit.id))) count++;
+    }
+    return count;
+  }
+
+  Set<DateTime> _completedDaysFor(int habitId) {
+    return widget.habitCompletionRepository
+        .getAllForHabit(habitId)
+        .map((c) => DateTime(c.date.year, c.date.month, c.date.day))
+        .toSet();
+  }
 
   List<Project> get _filteredProjects {
     final query = _query.trim().toLowerCase();
@@ -58,18 +125,40 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
     return projects.where((p) => p.name.toLowerCase().contains(query)).toList();
   }
 
-  List<Win> get _areaWins {
+  /// Every star and pulsar across the area's projects, of every kind,
+  /// newest first — the unfiltered pool the kind-filter counts and the
+  /// flat list itself are both drawn from.
+  List<_AreaEntry> get _allEntries {
     final projectIds = _projectsById.keys.toSet();
-    return widget.winRepository.getAll().where((w) => projectIds.contains(w.projectId)).toList();
+    final entries = <_AreaEntry>[
+      for (final star in widget.starRepository.getAll())
+        if (projectIds.contains(star.projectId)) _AreaEntry.fromStar(star),
+      for (final projectId in projectIds)
+        for (final habit in widget.habitRepository.getAllForProject(projectId))
+          _AreaEntry.fromHabit(habit),
+    ];
+    entries.sort((a, b) => b.sortKey.compareTo(a.sortKey));
+    return entries;
   }
 
-  List<Win> get _filteredWins {
+  List<_AreaEntry> get _filteredEntries {
     final query = _query.trim().toLowerCase();
-    final wins = _areaWins;
-    if (query.isEmpty) return wins;
-    return wins.where((w) {
-      return w.title.toLowerCase().contains(query) || (w.description?.toLowerCase().contains(query) ?? false);
+    return _allEntries.where((e) {
+      if (!_kindFilter.contains(e.kind)) return false;
+      if (query.isEmpty) return true;
+      return e.title.toLowerCase().contains(query) ||
+          (e.description?.toLowerCase().contains(query) ?? false);
     }).toList();
+  }
+
+  /// The star-only (victory/goal/dead) subset of [_filteredEntries], in the
+  /// same order — what [StarReaderScreen]'s prev/next actually browses,
+  /// since pulsars aren't part of that reader.
+  List<Star> _filteredStarsOnly() {
+    return _filteredEntries
+        .where((e) => e.kind != StarKind.habit)
+        .map((e) => e.star!)
+        .toList();
   }
 
   Future<void> _openProject(Project project) async {
@@ -77,7 +166,42 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
       MaterialPageRoute(
         builder: (_) => ConstellationScreen(
           project: project,
-          winRepository: widget.winRepository,
+          starRepository: widget.starRepository,
+          projectRepository: widget.projectRepository,
+          habitRepository: widget.habitRepository,
+          habitCompletionRepository: widget.habitCompletionRepository,
+        ),
+      ),
+    );
+    setState(() {});
+  }
+
+  Future<void> _openStarReader(int index) async {
+    final stars = _filteredStarsOnly();
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => StarReaderScreen(
+          repository: widget.starRepository,
+          initialStars: stars,
+          startIndex: index,
+          allowEdit: true,
+          projectsById: _projectsById,
+          projectRepository: widget.projectRepository,
+          refreshStars: _filteredStarsOnly,
+        ),
+      ),
+    );
+    setState(() {});
+  }
+
+  Future<void> _openHabitReader(Habit habit) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => HabitReaderScreen(
+          habit: habit,
+          project: _projectsById[habit.projectId],
+          habitRepository: widget.habitRepository,
+          habitCompletionRepository: widget.habitCompletionRepository,
           projectRepository: widget.projectRepository,
         ),
       ),
@@ -85,21 +209,10 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
     setState(() {});
   }
 
-  Future<void> _openWinReader(List<Win> wins, int index) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => WinReaderScreen(
-          repository: widget.winRepository,
-          initialWins: wins,
-          startIndex: index,
-          allowEdit: true,
-          projectsById: _projectsById,
-          projectRepository: widget.projectRepository,
-          refreshWins: () => _filteredWins,
-        ),
-      ),
-    );
-    setState(() {});
+  void _toggleKind(StarKind kind) {
+    setState(() {
+      if (!_kindFilter.remove(kind)) _kindFilter.add(kind);
+    });
   }
 
   @override
@@ -107,6 +220,12 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
     final colors = context.colors;
     final strings = context.strings;
     final areaName = widget.area.displayName(strings);
+    final allEntries = _mode == _ViewMode.list
+        ? _allEntries
+        : const <_AreaEntry>[];
+    final filteredEntries = _mode == _ViewMode.list
+        ? _filteredEntries
+        : const <_AreaEntry>[];
 
     return Scaffold(
       backgroundColor: colors.night,
@@ -122,7 +241,11 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
                 Expanded(
                   child: Text(
                     areaName,
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20, color: colors.text),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 20,
+                      color: colors.text,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -145,9 +268,60 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
                   ),
                 ],
                 selected: {_mode},
-                onSelectionChanged: (selection) => setState(() => _mode = selection.first),
+                onSelectionChanged: (selection) =>
+                    setState(() => _mode = selection.first),
               ),
             ),
+            if (_mode == _ViewMode.list)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _KindFilterChip(
+                      icon: Icons.star,
+                      label: strings.starKindVictoryLabel,
+                      count: allEntries
+                          .where((e) => e.kind == StarKind.victory)
+                          .length,
+                      selected: _kindFilter.contains(StarKind.victory),
+                      color: colors.gold,
+                      onTap: () => _toggleKind(StarKind.victory),
+                    ),
+                    _KindFilterChip(
+                      icon: Icons.flag_outlined,
+                      label: strings.starKindGoalLabel,
+                      count: allEntries
+                          .where((e) => e.kind == StarKind.goal)
+                          .length,
+                      selected: _kindFilter.contains(StarKind.goal),
+                      color: colors.goldDim,
+                      onTap: () => _toggleKind(StarKind.goal),
+                    ),
+                    _KindFilterChip(
+                      icon: Icons.star_outline,
+                      label: strings.starKindDeadLabel,
+                      count: allEntries
+                          .where((e) => e.kind == StarKind.dead)
+                          .length,
+                      selected: _kindFilter.contains(StarKind.dead),
+                      color: colors.muted,
+                      onTap: () => _toggleKind(StarKind.dead),
+                    ),
+                    _KindFilterChip(
+                      icon: Icons.repeat,
+                      label: strings.starKindPulsarChipLabel,
+                      count: allEntries
+                          .where((e) => e.kind == StarKind.habit)
+                          .length,
+                      selected: _kindFilter.contains(StarKind.habit),
+                      color: colors.crisisMuted,
+                      onTap: () => _toggleKind(StarKind.habit),
+                    ),
+                  ],
+                ),
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
               child: TextField(
@@ -165,14 +339,21 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
                       allProjects: _projects,
                       filteredProjects: _filteredProjects,
                       areaName: areaName,
-                      winsForProject: _winsForProject,
+                      starsForProject: _starsForProject,
+                      activeHabitCountForProject: _activeHabitCountForProject,
                       onTap: _openProject,
                     )
-                  : _WinsList(
-                      allWins: _areaWins,
-                      filteredWins: _filteredWins,
+                  : _FlatList(
+                      hasAnyEntries: allEntries.isNotEmpty,
+                      entries: filteredEntries,
                       projectsById: _projectsById,
-                      onTap: _openWinReader,
+                      completedDaysFor: _completedDaysFor,
+                      onOpenStar: (entry) => _openStarReader(
+                        _filteredStarsOnly().indexWhere(
+                          (s) => s.id == entry.star!.id,
+                        ),
+                      ),
+                      onOpenHabit: (habit) => _openHabitReader(habit),
                     ),
             ),
           ],
@@ -187,14 +368,16 @@ class _ConstellationsList extends StatelessWidget {
     required this.allProjects,
     required this.filteredProjects,
     required this.areaName,
-    required this.winsForProject,
+    required this.starsForProject,
+    required this.activeHabitCountForProject,
     required this.onTap,
   });
 
   final List<Project> allProjects;
   final List<Project> filteredProjects;
   final String areaName;
-  final List<Win> Function(int projectId) winsForProject;
+  final List<Star> Function(int projectId) starsForProject;
+  final int Function(int projectId) activeHabitCountForProject;
   final void Function(Project) onTap;
 
   @override
@@ -233,12 +416,24 @@ class _ConstellationsList extends StatelessWidget {
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final project = filteredProjects[index];
-        final wins = winsForProject(project.id);
+        final stars = starsForProject(project.id);
+        final achievedStars = stars.where((s) => s.isAchieved).toList();
+        final openGoals = stars.where((s) => s.isGoal).length;
+        final activeHabits = activeHabitCountForProject(project.id);
         return _ProjectCard(
           project: project,
-          starCount: wins.length,
-          lastWinDate: wins.isEmpty ? null : wins.last.date,
-          combinedIntensity: wins.fold<int>(0, (sum, w) => sum + w.intensity),
+          starCount: achievedStars.length,
+          lastStarDate: achievedStars.isEmpty
+              ? null
+              : achievedStars
+                    .map((s) => s.achievedDate!)
+                    .reduce((a, b) => a.isAfter(b) ? a : b),
+          combinedIntensity: achievedStars.fold<int>(
+            0,
+            (sum, s) => sum + s.intensity!,
+          ),
+          openGoals: openGoals,
+          activeHabits: activeHabits,
           onTap: () => onTap(project),
         );
       },
@@ -246,20 +441,31 @@ class _ConstellationsList extends StatelessWidget {
   }
 }
 
-class _WinsList extends StatelessWidget {
-  const _WinsList({required this.allWins, required this.filteredWins, required this.projectsById, required this.onTap});
+/// The "Stars" flat list — mixed victories/goals/dead stars/pulsars, each
+/// rendered by the card suited to its kind.
+class _FlatList extends StatelessWidget {
+  const _FlatList({
+    required this.hasAnyEntries,
+    required this.entries,
+    required this.projectsById,
+    required this.completedDaysFor,
+    required this.onOpenStar,
+    required this.onOpenHabit,
+  });
 
-  final List<Win> allWins;
-  final List<Win> filteredWins;
+  final bool hasAnyEntries;
+  final List<_AreaEntry> entries;
   final Map<int, Project> projectsById;
-  final void Function(List<Win>, int) onTap;
+  final Set<DateTime> Function(int habitId) completedDaysFor;
+  final void Function(_AreaEntry entry) onOpenStar;
+  final void Function(Habit habit) onOpenHabit;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final strings = context.strings;
 
-    if (allWins.isEmpty) {
+    if (!hasAnyEntries) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
         child: Center(
@@ -271,7 +477,7 @@ class _WinsList extends StatelessWidget {
         ),
       );
     }
-    if (filteredWins.isEmpty) {
+    if (entries.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
         child: Center(
@@ -286,33 +492,123 @@ class _WinsList extends StatelessWidget {
 
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-      itemCount: filteredWins.length,
+      itemCount: entries.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
-        final win = filteredWins[index];
-        return WinCard(win: win, project: projectsById[win.projectId], onTap: () => onTap(filteredWins, index));
+        final entry = entries[index];
+        final project =
+            projectsById[entry.star?.projectId ?? entry.habit?.projectId];
+
+        switch (entry.kind) {
+          case StarKind.victory:
+            return StarCard(
+              star: entry.star!,
+              project: project,
+              onTap: () => onOpenStar(entry),
+            );
+          case StarKind.goal:
+            return GoalCard(
+              star: entry.star!,
+              project: project,
+              onTap: () => onOpenStar(entry),
+            );
+          case StarKind.dead:
+            return DeadStarCard(
+              star: entry.star!,
+              project: project,
+              onTap: () => onOpenStar(entry),
+            );
+          case StarKind.habit:
+            final habit = entry.habit!;
+            final completedDays = completedDaysFor(habit.id);
+            return HabitCard(
+              habit: habit,
+              project: project,
+              currentStreak: habitCurrentStreak(completedDays),
+              isLit: isHabitLit(completedDays),
+              onTap: () => onOpenHabit(habit),
+            );
+        }
       },
     );
   }
 }
 
-/// A project ("constellation") card — sized and structured to match
-/// [WinCard] (big icon + name up top, a secondary detail row below)
-/// instead of the slim single-line row it used to be, so the two views
-/// this screen switches between feel like the same family of card.
+/// A toggle chip for one star kind in the "Stars" flat list — icon, label,
+/// and a count that stays visible even when unselected, so the user can see
+/// what they're hiding, not just what they're showing.
+class _KindFilterChip extends StatelessWidget {
+  const _KindFilterChip({
+    required this.icon,
+    required this.label,
+    required this.count,
+    required this.selected,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final int count;
+  final bool selected;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: 0.14) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? color.withValues(alpha: 0.5) : colors.nightBorder,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: selected ? color : colors.muted),
+            const SizedBox(width: 6),
+            Text(
+              '$label $count',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: selected ? colors.text : colors.muted,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A project ("constellation") card — big icon + name up top, a secondary
+/// detail row below, and gold-tinted metric badges for star count, open
+/// goals, and active pulsars.
 class _ProjectCard extends StatelessWidget {
   const _ProjectCard({
     required this.project,
     required this.starCount,
-    required this.lastWinDate,
+    required this.lastStarDate,
     required this.combinedIntensity,
+    required this.openGoals,
+    required this.activeHabits,
     required this.onTap,
   });
 
   final Project project;
   final int starCount;
-  final DateTime? lastWinDate;
+  final DateTime? lastStarDate;
   final int combinedIntensity;
+  final int openGoals;
+  final int activeHabits;
   final VoidCallback onTap;
 
   @override
@@ -340,8 +636,15 @@ class _ProjectCard extends StatelessWidget {
                 Container(
                   width: 52,
                   height: 52,
-                  decoration: BoxDecoration(color: colors.gold.withValues(alpha: 0.12), shape: BoxShape.circle),
-                  child: Icon(iconForSlug(project.iconSlug), color: colors.gold, size: 26),
+                  decoration: BoxDecoration(
+                    color: colors.gold.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    iconForSlug(project.iconSlug),
+                    color: colors.gold,
+                    size: 26,
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -350,7 +653,11 @@ class _ProjectCard extends StatelessWidget {
                     children: [
                       Text(
                         project.name,
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: colors.text),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                          color: colors.text,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 10),
@@ -360,25 +667,42 @@ class _ProjectCard extends StatelessWidget {
                         children: [
                           _StatChip(
                             icon: Icons.auto_awesome_outlined,
-                            text: strings.createdOnLabel(formatDisplayDate(project.createdAt, strings)),
+                            text: strings.createdOnLabel(
+                              formatDisplayDate(project.createdAt, strings),
+                            ),
                           ),
-                          if (lastWinDate != null)
+                          if (lastStarDate != null)
                             _StatChip(
                               icon: Icons.schedule,
-                              text: strings.lastStarLabel(formatDisplayDate(lastWinDate!, strings)),
+                              text: strings.lastStarLabel(
+                                formatDisplayDate(lastStarDate!, strings),
+                              ),
                             ),
                         ],
                       ),
-                      // Set apart from the plain icon+text facts above —
-                      // stars and intensity are ratings, not just other
-                      // dates, so they get their own matching gold-tinted
-                      // pills instead of blending into the row above.
                       const SizedBox(height: 10),
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
                         children: [
-                          _MetricBadge(icon: Icons.star, text: strings.starsCount(starCount)),
-                          const SizedBox(width: 8),
-                          _MetricBadge(icon: Icons.offline_bolt, text: strings.intensityCount(combinedIntensity)),
+                          _MetricBadge(
+                            icon: Icons.star,
+                            text: strings.starsCount(starCount),
+                          ),
+                          _MetricBadge(
+                            icon: Icons.offline_bolt,
+                            text: strings.intensityCount(combinedIntensity),
+                          ),
+                          if (openGoals > 0)
+                            _MetricBadge(
+                              icon: Icons.flag_outlined,
+                              text: strings.openGoalsBadge(openGoals),
+                            ),
+                          if (activeHabits > 0)
+                            _MetricBadge(
+                              icon: Icons.repeat,
+                              text: strings.activeHabitsBadge(activeHabits),
+                            ),
                         ],
                       ),
                     ],
@@ -393,9 +717,6 @@ class _ProjectCard extends StatelessWidget {
   }
 }
 
-/// A gold-tinted pill for one of a [_ProjectCard]'s ratings (star count or
-/// combined intensity) — visually distinct from (and set below) the plain
-/// [_StatChip] facts, since these are ratings rather than just counts.
 class _MetricBadge extends StatelessWidget {
   const _MetricBadge({required this.icon, required this.text});
 
@@ -417,16 +738,20 @@ class _MetricBadge extends StatelessWidget {
         children: [
           Icon(icon, size: 13, color: colors.gold),
           const SizedBox(width: 5),
-          Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: colors.gold)),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: colors.gold,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-/// One small icon+text fact in a [_ProjectCard]'s info [Wrap] — keeps the
-/// three plain stats (stars, created, last star) visually uniform regardless
-/// of how many end up on the same line.
 class _StatChip extends StatelessWidget {
   const _StatChip({required this.icon, required this.text});
 
@@ -447,9 +772,6 @@ class _StatChip extends StatelessWidget {
   }
 }
 
-/// Overrides Material 3's default seed-color (teal) selection styling so
-/// the mode switch stays on-brand with the app's gold accent — same
-/// pattern as Settings' segmented controls.
 ButtonStyle _segmentedButtonStyle(AppColors colors) {
   return SegmentedButton.styleFrom(
     backgroundColor: colors.nightPanel,

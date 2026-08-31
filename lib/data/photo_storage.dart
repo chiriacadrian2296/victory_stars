@@ -9,7 +9,7 @@ import 'package:path_provider/path_provider.dart';
 /// [ImagePicker] only hands back a path into the OS's own temp/cache area
 /// (or a content URI on some Android versions) — not guaranteed to survive
 /// past the current session, and never meant to be kept long-term. Every
-/// photo a win points to (via [Win.photoPath]) is instead a copy living
+/// photo a star points to (via [Star.photoPath]) is instead a copy living
 /// under this app's own documents directory, made right when it's picked.
 class PhotoStorage {
   static const _subdirName = 'win_photos';

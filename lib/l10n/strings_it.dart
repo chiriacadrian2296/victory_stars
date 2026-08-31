@@ -35,7 +35,8 @@ class StringsIt implements AppStrings {
   @override
   String get homeTitle => 'La tua dashboard';
   @override
-  String get homeSubtitle => 'Ogni stella è una vittoria, accesa quando ne avevi bisogno.';
+  String get homeSubtitle =>
+      'Ogni stella è una vittoria, accesa quando ne avevi bisogno.';
   @override
   String get admireYourStars => 'Ammira le tue stelle';
   @override
@@ -87,14 +88,15 @@ class StringsIt implements AppStrings {
   String get starsLoggedLabel => 'Stelle registrate';
   @override
   @override
-  String get noCurrentStreakBody => 'Nessuna serie in corso al momento. Accendi una stella oggi per iniziarne una.';
+  String get noCurrentStreakBody =>
+      'Nessuna serie in corso al momento. Accendi una stella oggi per iniziarne una.';
 
   @override
   String get searchHint => 'Cerca per titolo o descrizione';
   @override
   String get noSearchResults => 'Nessuna stella corrisponde alla ricerca.';
   @override
-  String get areaWinsEmpty => 'Nessuna stella accesa in questa supernova, per ora.';
+  String get areaWinsEmpty => 'Ancora nessuna stella in questa supernova.';
   @override
   String intensityCount(int value) => '$value intensità';
   @override
@@ -111,7 +113,8 @@ class StringsIt implements AppStrings {
   @override
   String get seedSampleData => 'Genera dati di esempio';
   @override
-  String seedSampleDataResult(int count) => 'Aggiunte $count stelle a ogni costellazione di esempio.';
+  String seedSampleDataResult(int count) =>
+      'Aggiunte $count stelle a ogni costellazione di esempio.';
   @override
   String get resetAllData => 'Azzera tutti i dati';
   @override
@@ -126,7 +129,8 @@ class StringsIt implements AppStrings {
   @override
   String get allDataCleared => 'Tutti i dati sono stati eliminati.';
   @override
-  String get archiveEmpty => 'Il tuo archivio è ancora vuoto. Accendi la tua prima stella, anche piccola.';
+  String get archiveEmpty =>
+      'Il tuo archivio è ancora vuoto. Accendi la tua prima stella, anche piccola.';
 
   @override
   String get skyEyebrow => 'IL TUO CIELO';
@@ -141,7 +145,8 @@ class StringsIt implements AppStrings {
       'Ancora nessuna costellazione in $areaName. Iniziane una per accendere le prime stelle qui.';
 
   @override
-  String get constellationShapeMissing => 'La forma di questa costellazione non è stata trovata.';
+  String get constellationShapeMissing =>
+      'La forma di questa costellazione non è stata trovata.';
 
   @override
   String get newProjectEyebrow => 'NUOVA COSTELLAZIONE';
@@ -167,6 +172,8 @@ class StringsIt implements AppStrings {
   @override
   String get addWinQuestion => 'Cosa hai superato?';
   @override
+  String get addGoalQuestion => 'Cosa vuoi raggiungere?';
+  @override
   String get projectLabel => 'Costellazione';
   @override
   String get selectAProject => 'Seleziona una costellazione';
@@ -185,7 +192,8 @@ class StringsIt implements AppStrings {
   @override
   String get detailsLabel => 'Dettagli (opzionale)';
   @override
-  String get detailsHint => 'Cosa ha reso difficile questo momento e come l\'hai superato';
+  String get detailsHint =>
+      'Cosa ha reso difficile questo momento e come l\'hai superato';
   @override
   String get intensityLabel => 'Intensità';
   @override
@@ -197,13 +205,15 @@ class StringsIt implements AppStrings {
   @override
   String get choosePhotoOption => 'Scegli dalla libreria';
   @override
-  String get photoPickError => 'Non è stato possibile ottenere la foto. Riprova?';
+  String get photoPickError =>
+      'Non è stato possibile ottenere la foto. Riprova?';
   @override
   String get cropPhotoTitle => 'Modifica la foto';
   @override
   String get cropPhotoConfirm => 'Fatto';
   @override
-  String get cropPhotoHint => 'Pizzica e trascina per adattare la foto alla cornice';
+  String get cropPhotoHint =>
+      'Pizzica e trascina per adattare la foto alla cornice';
   @override
   String get saveChanges => 'Salva modifiche';
   @override
@@ -212,58 +222,141 @@ class StringsIt implements AppStrings {
   String get deleteStarConfirmTitle => 'Eliminare questa stella?';
   @override
   String get deleteStarConfirmBody =>
-      'Questo rimuove definitivamente la stella e tutto ciò che hai scritto. Non si può annullare.';
+      'La stella diventerà una stella spenta: uscirà da qui, ma resterà al suo posto nel cielo e potrai farla rinascere in seguito.';
   @override
   String get deleteStarAction => 'Elimina';
   @override
   String get discardChangesConfirmTitle => 'Scartare le modifiche?';
   @override
-  String get discardChangesConfirmBody => 'Perderai le modifiche fatte a questa stella.';
+  String get discardChangesConfirmBody =>
+      'Perderai le modifiche fatte a questa stella.';
   @override
   String get discardChangesAction => 'Scarta modifiche';
 
   @override
-  String get admireTagline => 'Per quando sei nel buio e hai bisogno di un po\' di luce.';
+  String get achievedToggleOn => 'Già raggiunta';
+  @override
+  String get achievedToggleOff => 'Obbiettivo futuro';
+  @override
+  String get targetDateLabel => 'Data obbiettivo (opzionale)';
+  @override
+  String get selectATargetDateHint => 'Seleziona una data';
+
+  @override
+  String goalTargetLabel(String date) => 'Obbiettivo per il $date';
+  @override
+  String get markAchievedAction => 'Segna come raggiunta';
+  @override
+  String get markAchievedSheetTitle => 'Quanto ti è costato raggiungerla?';
+  @override
+  String get markAchievedConfirm => 'Accendi questa stella';
+  @override
+  String get undoAchievedAction => 'Segna come non raggiunta';
+  @override
+  String get deadStarTitle => 'Stella spenta';
+  @override
+  String get deadStarBody =>
+      'Questa stella è stata cancellata. Puoi farla rinascere come una stella nuova, nello stesso punto del cielo.';
+  @override
+  String get resurrectAction => 'Resuscita questa stella';
+
+  @override
+  String get newHabitEyebrow => 'NUOVO PULSAR';
+  @override
+  String get editHabitEyebrow => 'MODIFICA PULSAR';
+  @override
+  String get addHabitQuestion => 'Quale pulsar vuoi accendere?';
+  @override
+  String get habitFrequencyLabel => 'Frequenza';
+  @override
+  String get habitFrequencyDaily => 'Ogni giorno';
+  @override
+  String get customReminderToggleLabel => 'Orario promemoria personalizzato';
+  @override
+  String get deleteHabitConfirmTitle => 'Eliminare questo pulsar?';
+  @override
+  String get deleteHabitConfirmBody =>
+      'Questo rimuove definitivamente il pulsar e tutta la sua cronologia. Non si può annullare.';
+  @override
+  String get deleteHabitAction => 'Elimina';
+
+  @override
+  String get habitCurrentStreakLabel => 'Serie attuale';
+  @override
+  String get markHabitDoneAction => 'Segna oggi come fatto';
+  @override
+  String get habitDoneTodayLabel => 'Fatto oggi';
+  @override
+  String get undoHabitTodayAction => 'Annulla';
+
+  @override
+  String openGoalsBadge(int count) =>
+      count == 1 ? '1 obbiettivo aperto' : '$count obbiettivi aperti';
+  @override
+  String activeHabitsBadge(int count) =>
+      count == 1 ? '1 pulsar attivo' : '$count pulsar attivi';
+
+  @override
+  String get starKindVictoryLabel => 'Vittorie';
+  @override
+  String get starKindGoalLabel => 'Obbiettivi';
+  @override
+  String get starKindDeadLabel => 'Stelle morte';
+  @override
+  String get starKindPulsarChipLabel => 'Pulsar';
+  @override
+  String get starKindPulsarTagLabel => 'Pulsar';
+
+  @override
+  String get admireTagline =>
+      'Per quando sei nel buio e hai bisogno di un po\' di luce.';
   @override
   String get allAreasLabel => 'Tutte le supernove';
   @override
-  String get pickAtLeastOneArea => 'Scegli almeno una supernova per continuare.';
+  String get pickAtLeastOneArea =>
+      'Scegli almeno una supernova per continuare.';
   @override
-  String get noStarsInSelection => 'Nessuna stella ancora accesa nelle supernove scelte.';
+  String get noStarsInSelection =>
+      'Nessuna stella ancora accesa nelle supernove scelte.';
   @override
   String get viewYourStars => 'Guarda le tue stelle';
 
   @override
-  String get addWinFabLabel => 'Nuova stella';
+  String get addWinFabLabel => 'Nuova vittoria';
+  @override
+  String get addGoalFabLabel => 'Nuovo obbiettivo';
+  @override
+  String get addHabitFabLabel => 'Nuovo pulsar';
   @override
   String get newConstellationOption => 'Nuova costellazione';
 
   @override
   List<String> get upliftingQuotes => const [
-        'Non devi vedere tutta la scala, basta il primo gradino.',
-        'Anche i piccoli passi ti portano avanti.',
-        'Hai superato ogni giorno difficile finora. Un record perfetto.',
-        'Riposare non significa arrendersi.',
-        'Puoi essere un lavoro in corso e meritare amore, allo stesso tempo.',
-        'Questo sentimento è reale, ma non è per sempre.',
-        'Non devi avere tutte le risposte per continuare ad andare avanti.',
-        'Progresso, non perfezione.',
-        "Certi giorni basta essere ancora qui. E conta.",
-        'Hai superato il 100% dei tuoi giorni peggiori, finora.',
-        'Sii paziente con te stesso. In natura nulla fiorisce tutto l\'anno.',
-        'Va bene non stare bene — solo non restarci da solo.',
-        'Un respiro alla volta. È tutto ciò che questo momento ti chiede.',
-        'Sei più forte di quanto pensi e più amato di quanto sai.',
-        'Anche la notte più buia finisce, e il sole sorge di nuovo.',
-        "Guarire non è un percorso lineare, ed è normale.",
-      ];
+    'Non devi vedere tutta la scala, basta il primo gradino.',
+    'Anche i piccoli passi ti portano avanti.',
+    'Hai superato ogni giorno difficile finora. Un record perfetto.',
+    'Riposare non significa arrendersi.',
+    'Puoi essere un lavoro in corso e meritare amore, allo stesso tempo.',
+    'Questo sentimento è reale, ma non è per sempre.',
+    'Non devi avere tutte le risposte per continuare ad andare avanti.',
+    'Progresso, non perfezione.',
+    "Certi giorni basta essere ancora qui. E conta.",
+    'Hai superato il 100% dei tuoi giorni peggiori, finora.',
+    'Sii paziente con te stesso. In natura nulla fiorisce tutto l\'anno.',
+    'Va bene non stare bene — solo non restarci da solo.',
+    'Un respiro alla volta. È tutto ciò che questo momento ti chiede.',
+    'Sei più forte di quanto pensi e più amato di quanto sai.',
+    'Anche la notte più buia finisce, e il sole sorge di nuovo.',
+    "Guarire non è un percorso lineare, ed è normale.",
+  ];
 
   @override
   String indexOfCount(int index, int total) => '$index di $total';
   @override
   String get shareStarLabel => 'Condividi questa Stella';
   @override
-  String get shareStarError => 'Non è stato possibile condividere questa stella. Riprova?';
+  String get shareStarError =>
+      'Non è stato possibile condividere questa stella. Riprova?';
 
   @override
   String get settingsEyebrow => 'IMPOSTAZIONI';
@@ -299,33 +392,63 @@ class StringsIt implements AppStrings {
 
   @override
   List<String> get reminderNotificationBodies => const [
-        "Cosa ti ha aiutato a superare oggi, anche solo un po'?",
-        'Anche il passo più piccolo accende una stella.',
-        "Un attimo — cos'è andato bene oggi?",
-        'Il tuo cielo aspetta la stella di stasera.',
-        'Hai superato qualcosa oggi? Scrivilo.',
-      ];
+    "Cosa ti ha aiutato a superare oggi, anche solo un po'?",
+    'Anche il passo più piccolo accende una stella.',
+    "Un attimo — cos'è andato bene oggi?",
+    'Il tuo cielo aspetta la stella di stasera.',
+    'Hai superato qualcosa oggi? Scrivilo.',
+  ];
   @override
   String get aboutSection => 'Informazioni';
   @override
   String aboutVersion(String version) => 'Versione $version';
   @override
-  String get aboutTagline => 'Un\'app di crescita personale per registrare i momenti che hai superato.';
+  String get aboutTagline =>
+      'Un\'app di crescita personale per registrare i momenti che hai superato.';
 
   @override
   List<String> get monthAbbreviations => const [
-        'Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu',
-        'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic',
-      ];
+    'Gen',
+    'Feb',
+    'Mar',
+    'Apr',
+    'Mag',
+    'Giu',
+    'Lug',
+    'Ago',
+    'Set',
+    'Ott',
+    'Nov',
+    'Dic',
+  ];
 
   @override
-  List<String> get weekdayAbbreviations => const ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+  List<String> get weekdayAbbreviations => const [
+    'Lun',
+    'Mar',
+    'Mer',
+    'Gio',
+    'Ven',
+    'Sab',
+    'Dom',
+  ];
 
   @override
-  String monthTitle(DateTime month) => '${_fullMonths[month.month - 1]} ${month.year}';
+  String monthTitle(DateTime month) =>
+      '${_fullMonths[month.month - 1]} ${month.year}';
 }
 
 const _fullMonths = [
-  'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
-  'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre',
+  'Gennaio',
+  'Febbraio',
+  'Marzo',
+  'Aprile',
+  'Maggio',
+  'Giugno',
+  'Luglio',
+  'Agosto',
+  'Settembre',
+  'Ottobre',
+  'Novembre',
+  'Dicembre',
 ];

@@ -76,13 +76,27 @@ ConstellationLayout buildConstellationLayout(
   return ConstellationLayout(points: points, edges: edges);
 }
 
-/// Deterministic placement for a win beyond [maxChainedStars] — vanishingly
-/// rare, but must never crash or lose a win. Seeded by the win's own
-/// immutable id (never by its position in the list), so a star's position
-/// can't shift if the list is ever reordered.
-Offset seededOverflowPosition(int seed) {
+Offset _seededScatter(
+  int seed, {
+  required double minRadius,
+  required double maxRadius,
+}) {
   final random = math.Random(seed);
   final angle = random.nextDouble() * 2 * math.pi;
-  final radius = 0.55 + random.nextDouble() * 0.45;
+  final radius = minRadius + random.nextDouble() * (maxRadius - minRadius);
   return Offset(0.5 + radius * math.cos(angle), 0.5 + radius * math.sin(angle));
 }
+
+/// Deterministic placement for a star beyond [maxChainedStars] — vanishingly
+/// rare, but must never crash or lose a star. Seeded by the star's own
+/// immutable id (never by its position in the list), so a star's position
+/// can't shift if the list is ever reordered.
+Offset seededOverflowPosition(int seed) =>
+    _seededScatter(seed, minRadius: 0.55, maxRadius: 1.0);
+
+/// Deterministic placement for a habit's own small, scattered star — a
+/// closer band that overlaps the constellation's own footprint (habits sit
+/// "around/inside/outside" the shape, not past its edge like overflow
+/// stars), seeded by the habit's own immutable id.
+Offset seededHabitPosition(int seed) =>
+    _seededScatter(seed, minRadius: 0.15, maxRadius: 0.65);

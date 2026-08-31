@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../data/habit_completion_repository.dart';
+import '../data/habit_repository.dart';
 import '../data/project_repository.dart';
-import '../data/win_repository.dart';
+import '../data/star_repository.dart';
 import '../debug/seed_data.dart';
 import '../l10n/strings_scope.dart';
 import '../notifications/reminder_service.dart';
@@ -18,14 +20,18 @@ class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
     super.key,
     required this.settings,
-    required this.winRepository,
+    required this.starRepository,
     required this.projectRepository,
+    required this.habitRepository,
+    required this.habitCompletionRepository,
     required this.reminderService,
   });
 
   final SettingsController settings;
-  final WinRepository winRepository;
+  final StarRepository starRepository;
   final ProjectRepository projectRepository;
+  final HabitRepository habitRepository;
+  final HabitCompletionRepository habitCompletionRepository;
   final ReminderService reminderService;
 
   @override
@@ -64,7 +70,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         bodies: strings.reminderNotificationBodies,
       );
     } else {
-      await widget.settings.setReminder(enabled: false, hour: widget.settings.reminderHour, minute: widget.settings.reminderMinute);
+      await widget.settings.setReminder(
+        enabled: false,
+        hour: widget.settings.reminderHour,
+        minute: widget.settings.reminderMinute,
+      );
       await widget.reminderService.cancel();
     }
     if (mounted) setState(() {});
@@ -74,11 +84,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final strings = context.strings;
     final picked = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay(hour: widget.settings.reminderHour, minute: widget.settings.reminderMinute),
+      initialTime: TimeOfDay(
+        hour: widget.settings.reminderHour,
+        minute: widget.settings.reminderMinute,
+      ),
     );
     if (picked == null) return;
 
-    await widget.settings.setReminder(enabled: true, hour: picked.hour, minute: picked.minute);
+    await widget.settings.setReminder(
+      enabled: true,
+      hour: picked.hour,
+      minute: picked.minute,
+    );
     await widget.reminderService.scheduleUpcoming(
       hour: picked.hour,
       minute: picked.minute,
@@ -95,12 +112,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     // No in-app confirmation on top of the notification itself — the
     // notification appearing already is the confirmation.
-    await widget.reminderService.showNow(title: strings.reminderNotificationTitle, body: body);
+    await widget.reminderService.showNow(
+      title: strings.reminderNotificationTitle,
+      body: body,
+    );
   }
 
   Future<void> _seedSampleData() async {
     final strings = context.strings;
-    await seedSampleData(winRepository: widget.winRepository, projectRepository: widget.projectRepository);
+    await seedSampleData(
+      starRepository: widget.starRepository,
+      projectRepository: widget.projectRepository,
+      habitRepository: widget.habitRepository,
+      habitCompletionRepository: widget.habitCompletionRepository,
+    );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(strings.seedSampleDataResult(winsPerSeedTap))),
@@ -116,8 +141,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: colors.nightPanel,
-        title: Text(strings.resetAllDataConfirmTitle, style: TextStyle(color: colors.text)),
-        content: Text(strings.resetAllDataConfirmBody, style: TextStyle(color: colors.muted)),
+        title: Text(
+          strings.resetAllDataConfirmTitle,
+          style: TextStyle(color: colors.text),
+        ),
+        content: Text(
+          strings.resetAllDataConfirmBody,
+          style: TextStyle(color: colors.muted),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -125,17 +156,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(strings.deleteEverything, style: TextStyle(color: colors.danger)),
+            child: Text(
+              strings.deleteEverything,
+              style: TextStyle(color: colors.danger),
+            ),
           ),
         ],
       ),
     );
     if (confirmed != true) return;
 
-    await widget.winRepository.clear();
+    await widget.starRepository.clear();
     await widget.projectRepository.clear();
+    await widget.habitRepository.clear();
+    await widget.habitCompletionRepository.clear();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(strings.allDataCleared)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(strings.allDataCleared)));
     }
   }
 
@@ -151,12 +188,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             Text(
               strings.settingsEyebrow,
-              style: TextStyle(fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.w600, color: colors.goldDim),
+              style: TextStyle(
+                fontSize: 12,
+                letterSpacing: 2,
+                fontWeight: FontWeight.w600,
+                color: colors.goldDim,
+              ),
             ),
             const SizedBox(height: 6),
             Text(
               strings.settingsTitle,
-              style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: colors.text),
+              style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.w700,
+                color: colors.text,
+              ),
             ),
             const SizedBox(height: 28),
 
@@ -165,8 +211,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SegmentedButton<ThemeMode>(
               style: _segmentedButtonStyle(colors),
               segments: [
-                ButtonSegment(value: ThemeMode.light, icon: const Icon(Icons.light_mode), label: Text(strings.themeLight)),
-                ButtonSegment(value: ThemeMode.dark, icon: const Icon(Icons.dark_mode), label: Text(strings.themeDark)),
+                ButtonSegment(
+                  value: ThemeMode.light,
+                  icon: const Icon(Icons.light_mode),
+                  label: Text(strings.themeLight),
+                ),
+                ButtonSegment(
+                  value: ThemeMode.dark,
+                  icon: const Icon(Icons.dark_mode),
+                  label: Text(strings.themeDark),
+                ),
               ],
               selected: {widget.settings.themeMode},
               onSelectionChanged: (selection) => setState(() {
@@ -180,9 +234,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SegmentedButton<String>(
               style: _segmentedButtonStyle(colors),
               segments: [
-                ButtonSegment(value: 'en', label: Text(strings.languageEnglish)),
-                ButtonSegment(value: 'it', label: Text(strings.languageItalian)),
-                ButtonSegment(value: 'ro', label: Text(strings.languageRomanian)),
+                ButtonSegment(
+                  value: 'en',
+                  label: Text(strings.languageEnglish),
+                ),
+                ButtonSegment(
+                  value: 'it',
+                  label: Text(strings.languageItalian),
+                ),
+                ButtonSegment(
+                  value: 'ro',
+                  label: Text(strings.languageRomanian),
+                ),
               ],
               selected: {widget.settings.locale},
               onSelectionChanged: (selection) => setState(() {
@@ -207,22 +270,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       value: widget.settings.reminderEnabled,
                       onChanged: _setReminderEnabled,
                       activeThumbColor: colors.gold,
-                      title: Text(strings.reminderToggleLabel, style: TextStyle(color: colors.text, fontSize: 14)),
+                      title: Text(
+                        strings.reminderToggleLabel,
+                        style: TextStyle(color: colors.text, fontSize: 14),
+                      ),
                     ),
                     if (widget.settings.reminderEnabled) ...[
                       ListTile(
                         onTap: _pickReminderTime,
-                        title: Text(strings.reminderTimeLabel, style: TextStyle(color: colors.muted, fontSize: 13)),
+                        title: Text(
+                          strings.reminderTimeLabel,
+                          style: TextStyle(color: colors.muted, fontSize: 13),
+                        ),
                         trailing: Text(
-                          TimeOfDay(hour: widget.settings.reminderHour, minute: widget.settings.reminderMinute)
-                              .format(context),
-                          style: TextStyle(color: colors.gold, fontWeight: FontWeight.w600, fontSize: 15),
+                          TimeOfDay(
+                            hour: widget.settings.reminderHour,
+                            minute: widget.settings.reminderMinute,
+                          ).format(context),
+                          style: TextStyle(
+                            color: colors.gold,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
                         ),
                       ),
                       ListTile(
                         onTap: _sendTestNotification,
-                        title: Text(strings.testNotificationButton, style: TextStyle(color: colors.gold, fontSize: 13)),
-                        leading: Icon(Icons.notifications_active_outlined, color: colors.gold, size: 20),
+                        title: Text(
+                          strings.testNotificationButton,
+                          style: TextStyle(color: colors.gold, fontSize: 13),
+                        ),
+                        leading: Icon(
+                          Icons.notifications_active_outlined,
+                          color: colors.gold,
+                          size: 20,
+                        ),
                       ),
                     ],
                   ],
@@ -238,13 +320,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 TextButton.icon(
                   onPressed: _seedSampleData,
-                  icon: Icon(Icons.science_outlined, size: 16, color: colors.muted),
-                  label: Text(strings.seedSampleData, style: TextStyle(color: colors.muted, fontSize: 12)),
+                  icon: Icon(
+                    Icons.science_outlined,
+                    size: 16,
+                    color: colors.muted,
+                  ),
+                  label: Text(
+                    strings.seedSampleData,
+                    style: TextStyle(color: colors.muted, fontSize: 12),
+                  ),
                 ),
                 TextButton.icon(
                   onPressed: _resetAllData,
-                  icon: Icon(Icons.delete_outline, size: 16, color: colors.danger),
-                  label: Text(strings.resetAllData, style: TextStyle(color: colors.danger, fontSize: 12)),
+                  icon: Icon(
+                    Icons.delete_outline,
+                    size: 16,
+                    color: colors.danger,
+                  ),
+                  label: Text(
+                    strings.resetAllData,
+                    style: TextStyle(color: colors.danger, fontSize: 12),
+                  ),
                 ),
               ],
             ),
@@ -266,13 +362,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Victory Stars', style: TextStyle(color: colors.text, fontWeight: FontWeight.w700, fontSize: 16)),
+                      Text(
+                        'Victory Stars',
+                        style: TextStyle(
+                          color: colors.text,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
+                      ),
                       if (version != null) ...[
                         const SizedBox(height: 4),
-                        Text(strings.aboutVersion(version), style: TextStyle(color: colors.muted, fontSize: 13)),
+                        Text(
+                          strings.aboutVersion(version),
+                          style: TextStyle(color: colors.muted, fontSize: 13),
+                        ),
                       ],
                       const SizedBox(height: 8),
-                      Text(strings.aboutTagline, style: TextStyle(color: colors.muted, fontSize: 13, height: 1.4)),
+                      Text(
+                        strings.aboutTagline,
+                        style: TextStyle(
+                          color: colors.muted,
+                          fontSize: 13,
+                          height: 1.4,
+                        ),
+                      ),
                     ],
                   ),
                 );
@@ -306,7 +419,11 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label,
-      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: context.colors.muted),
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: context.colors.muted,
+      ),
     );
   }
 }

@@ -2,7 +2,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Reads and writes user-facing app settings (theme, language, daily
 /// reminder). Each setting is its own [SharedPreferences] key rather than
-/// one JSON blob — unlike [WinRepository]/[ProjectRepository]'s lists,
+/// one JSON blob — unlike [StarRepository]/[ProjectRepository]'s lists,
 /// these are independent scalars with no shared ordering to preserve.
 class SettingsRepository {
   SettingsRepository(this._prefs);

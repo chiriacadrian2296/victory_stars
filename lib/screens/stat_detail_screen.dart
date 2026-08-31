@@ -1,32 +1,36 @@
 import 'package:flutter/material.dart';
 
 import '../data/project_repository.dart';
-import '../data/win_repository.dart';
+import '../data/star_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../models/life_area.dart';
-import '../models/win.dart';
+import '../models/star.dart';
 import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
-import '../utils/win_stats.dart';
+import '../utils/star_stats.dart';
 import '../widgets/area_tag.dart';
 
 /// The dashboard's three stat cards (Total Stars, Current Streak, Longest
 /// Streak) each open one of these — a closer look, in the same reflective,
-/// gradient-background style as [WinReaderScreen], but built around one big
-/// number and a card of supporting facts rather than a browsable win.
+/// gradient-background style as [StarReaderScreen], but built around one big
+/// number and a card of supporting facts rather than a browsable star.
 class TotalStarsDetailScreen extends StatelessWidget {
-  const TotalStarsDetailScreen({super.key, required this.winRepository, required this.projectRepository});
+  const TotalStarsDetailScreen({
+    super.key,
+    required this.starRepository,
+    required this.projectRepository,
+  });
 
-  final WinRepository winRepository;
+  final StarRepository starRepository;
   final ProjectRepository projectRepository;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final strings = context.strings;
-    final wins = winRepository.getAll();
+    final stars = starRepository.getAll().where((s) => s.isAchieved).toList();
 
-    if (wins.isEmpty) {
+    if (stars.isEmpty) {
       return _StatDetailScaffold(
         icon: Icons.star,
         value: '0',
@@ -35,29 +39,52 @@ class TotalStarsDetailScreen extends StatelessWidget {
       );
     }
 
-    final byDateAscending = [...wins]..sort((a, b) => a.date.compareTo(b.date));
-    final combinedIntensity = wins.fold<int>(0, (sum, w) => sum + w.intensity);
+    final byDateAscending = [...stars]
+      ..sort((a, b) => a.achievedDate!.compareTo(b.achievedDate!));
+    final combinedIntensity = stars.fold<int>(
+      0,
+      (sum, s) => sum + s.intensity!,
+    );
 
-    final projectsById = {for (final project in projectRepository.getAll()) project.id: project};
+    final projectsById = {
+      for (final project in projectRepository.getAll()) project.id: project,
+    };
     final countByArea = <LifeArea, int>{};
-    for (final win in wins) {
-      final area = projectsById[win.projectId]?.area;
+    for (final star in stars) {
+      final area = projectsById[star.projectId]?.area;
       if (area == null) continue;
       countByArea[area] = (countByArea[area] ?? 0) + 1;
     }
-    final areasByCount = countByArea.keys.toList()..sort((a, b) => countByArea[b]!.compareTo(countByArea[a]!));
+    final areasByCount = countByArea.keys.toList()
+      ..sort((a, b) => countByArea[b]!.compareTo(countByArea[a]!));
 
     return _StatDetailScaffold(
       icon: Icons.star,
-      value: '${wins.length}',
+      value: '${stars.length}',
       caption: strings.totalStarsLabel,
       body: Column(
         children: [
           _DetailCard(
             children: [
-              _DetailRow(label: strings.firstStarLabel, value: formatDisplayDate(byDateAscending.first.date, strings)),
-              _DetailRow(label: strings.mostRecentStarLabel, value: formatDisplayDate(byDateAscending.last.date, strings)),
-              _DetailRow(label: strings.combinedIntensityLabel, value: '$combinedIntensity', isLast: true),
+              _DetailRow(
+                label: strings.firstStarLabel,
+                value: formatDisplayDate(
+                  byDateAscending.first.achievedDate!,
+                  strings,
+                ),
+              ),
+              _DetailRow(
+                label: strings.mostRecentStarLabel,
+                value: formatDisplayDate(
+                  byDateAscending.last.achievedDate!,
+                  strings,
+                ),
+              ),
+              _DetailRow(
+                label: strings.combinedIntensityLabel,
+                value: '$combinedIntensity',
+                isLast: true,
+              ),
             ],
           ),
           if (areasByCount.isNotEmpty) ...[
@@ -66,7 +93,12 @@ class TotalStarsDetailScreen extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Text(
                 strings.starsByAreaLabel,
-                style: TextStyle(fontSize: 12, letterSpacing: 1.2, fontWeight: FontWeight.w600, color: colors.crisisMuted),
+                style: TextStyle(
+                  fontSize: 12,
+                  letterSpacing: 1.2,
+                  fontWeight: FontWeight.w600,
+                  color: colors.crisisMuted,
+                ),
               ),
             ),
             const SizedBox(height: 10),
@@ -78,8 +110,21 @@ class TotalStarsDetailScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     child: Row(
                       children: [
-                        Expanded(child: AreaTag(area: areasByCount[i], iconSize: 16, fontSize: 14, textColor: colors.text)),
-                        Text(strings.starsCount(countByArea[areasByCount[i]]!), style: TextStyle(fontSize: 13, color: colors.crisisMuted)),
+                        Expanded(
+                          child: AreaTag(
+                            area: areasByCount[i],
+                            iconSize: 16,
+                            fontSize: 14,
+                            textColor: colors.text,
+                          ),
+                        ),
+                        Text(
+                          strings.starsCount(countByArea[areasByCount[i]]!),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: colors.crisisMuted,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -93,15 +138,15 @@ class TotalStarsDetailScreen extends StatelessWidget {
 }
 
 class CurrentStreakDetailScreen extends StatelessWidget {
-  const CurrentStreakDetailScreen({super.key, required this.winRepository});
+  const CurrentStreakDetailScreen({super.key, required this.starRepository});
 
-  final WinRepository winRepository;
+  final StarRepository starRepository;
 
   @override
   Widget build(BuildContext context) {
     final strings = context.strings;
-    final wins = winRepository.getAll();
-    final dayCounts = winCountsByDay(wins);
+    final stars = starRepository.getAll().where((s) => s.isAchieved).toList();
+    final dayCounts = starCountsByDay(stars);
     final range = currentStreakRange(dayCounts);
 
     if (dayCounts.isEmpty) {
@@ -127,11 +172,14 @@ class CurrentStreakDetailScreen extends StatelessWidget {
       caption: strings.currentStreakLabel,
       body: _DetailCard(
         children: [
-          _DetailRow(label: strings.streakFromLabel, value: formatDisplayDate(range.start!, strings)),
+          _DetailRow(
+            label: strings.streakFromLabel,
+            value: formatDisplayDate(range.start!, strings),
+          ),
           _DetailRow(label: strings.streakToLabel, value: strings.todayLabel),
           _DetailRow(
             label: strings.starsLoggedLabel,
-            value: '${_starsWithinRange(wins, range)}',
+            value: '${_starsWithinRange(stars, range)}',
             isLast: true,
           ),
         ],
@@ -141,15 +189,15 @@ class CurrentStreakDetailScreen extends StatelessWidget {
 }
 
 class LongestStreakDetailScreen extends StatelessWidget {
-  const LongestStreakDetailScreen({super.key, required this.winRepository});
+  const LongestStreakDetailScreen({super.key, required this.starRepository});
 
-  final WinRepository winRepository;
+  final StarRepository starRepository;
 
   @override
   Widget build(BuildContext context) {
     final strings = context.strings;
-    final wins = winRepository.getAll();
-    final dayCounts = winCountsByDay(wins);
+    final stars = starRepository.getAll().where((s) => s.isAchieved).toList();
+    final dayCounts = starCountsByDay(stars);
     final range = longestStreakRange(dayCounts);
 
     if (range.length == 0) {
@@ -171,26 +219,36 @@ class LongestStreakDetailScreen extends StatelessWidget {
       caption: strings.longestStreakLabel,
       body: _DetailCard(
         children: [
-          _DetailRow(label: strings.streakFromLabel, value: formatDisplayDate(range.start!, strings)),
+          _DetailRow(
+            label: strings.streakFromLabel,
+            value: formatDisplayDate(range.start!, strings),
+          ),
           _DetailRow(
             label: strings.streakToLabel,
-            value: stillGoing ? strings.todayLabel : formatDisplayDate(range.end!, strings),
+            value: stillGoing
+                ? strings.todayLabel
+                : formatDisplayDate(range.end!, strings),
           ),
-          _DetailRow(label: strings.starsLoggedLabel, value: '${_starsWithinRange(wins, range)}', isLast: true),
+          _DetailRow(
+            label: strings.starsLoggedLabel,
+            value: '${_starsWithinRange(stars, range)}',
+            isLast: true,
+          ),
         ],
       ),
     );
   }
 }
 
-/// How many wins fall within [range]'s inclusive day span — the streak's
-/// length in days, unlike this, can be lower than the win count on days
-/// where more than one star was lit.
-int _starsWithinRange(List<Win> wins, StreakRange range) {
+/// How many achieved stars fall within [range]'s inclusive day span — the
+/// streak's length in days, unlike this, can be lower than the star count on
+/// days where more than one victory was achieved.
+int _starsWithinRange(List<Star> stars, StreakRange range) {
   final start = range.start!;
   final end = range.end!;
-  return wins.where((w) {
-    final day = DateTime(w.date.year, w.date.month, w.date.day);
+  return stars.where((s) {
+    final date = s.achievedDate!;
+    final day = DateTime(date.year, date.month, date.day);
     return !day.isBefore(start) && !day.isAfter(end);
   }).length;
 }
@@ -234,7 +292,10 @@ class _StatDetailScaffold extends StatelessWidget {
                           shape: BoxShape.circle,
                           color: colors.gold.withValues(alpha: 0.12),
                           boxShadow: [
-                            BoxShadow(color: colors.gold.withValues(alpha: 0.4), blurRadius: 28),
+                            BoxShadow(
+                              color: colors.gold.withValues(alpha: 0.4),
+                              blurRadius: 28,
+                            ),
                           ],
                         ),
                         child: Icon(icon, size: 38, color: colors.gold),
@@ -242,12 +303,22 @@ class _StatDetailScaffold extends StatelessWidget {
                       const SizedBox(height: 20),
                       Text(
                         value,
-                        style: TextStyle(fontSize: 52, fontWeight: FontWeight.w700, height: 1, color: colors.text),
+                        style: TextStyle(
+                          fontSize: 52,
+                          fontWeight: FontWeight.w700,
+                          height: 1,
+                          color: colors.text,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         caption.toUpperCase(),
-                        style: TextStyle(fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.w600, color: colors.goldDim),
+                        style: TextStyle(
+                          fontSize: 12,
+                          letterSpacing: 2,
+                          fontWeight: FontWeight.w600,
+                          color: colors.goldDim,
+                        ),
                       ),
                       const SizedBox(height: 28),
                       body,
@@ -267,11 +338,6 @@ class _DetailCard extends StatelessWidget {
   const _DetailCard({required this.children, this.divideRows = false});
 
   final List<Widget> children;
-
-  /// Whether to draw a divider between rows — the label/value rows built
-  /// from [_DetailRow] draw their own bottom border instead (so the last row
-  /// can skip it via [_DetailRow.isLast]), but the by-area list has no such
-  /// per-row control, so it opts into dividers here instead.
   final bool divideRows;
 
   @override
@@ -289,7 +355,11 @@ class _DetailCard extends StatelessWidget {
         children: divideRows
             ? [
                 for (var i = 0; i < children.length; i++) ...[
-                  if (i > 0) Divider(color: colors.crisisMuted.withValues(alpha: 0.12), height: 1),
+                  if (i > 0)
+                    Divider(
+                      color: colors.crisisMuted.withValues(alpha: 0.12),
+                      height: 1,
+                    ),
                   children[i],
                 ],
               ]
@@ -300,7 +370,11 @@ class _DetailCard extends StatelessWidget {
 }
 
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value, this.isLast = false});
+  const _DetailRow({
+    required this.label,
+    required this.value,
+    this.isLast = false,
+  });
 
   final String label;
   final String value;
@@ -314,12 +388,28 @@ class _DetailRow extends StatelessWidget {
       decoration: isLast
           ? null
           : BoxDecoration(
-              border: Border(bottom: BorderSide(color: colors.crisisMuted.withValues(alpha: 0.12))),
+              border: Border(
+                bottom: BorderSide(
+                  color: colors.crisisMuted.withValues(alpha: 0.12),
+                ),
+              ),
             ),
       child: Row(
         children: [
-          Expanded(child: Text(label, style: TextStyle(fontSize: 14, color: colors.crisisMuted))),
-          Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.text)),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 14, color: colors.crisisMuted),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: colors.text,
+            ),
+          ),
         ],
       ),
     );
@@ -336,7 +426,11 @@ class _EmptyBody extends StatelessWidget {
     return Text(
       text,
       textAlign: TextAlign.center,
-      style: TextStyle(fontSize: 14, height: 1.5, color: context.colors.crisisMuted),
+      style: TextStyle(
+        fontSize: 14,
+        height: 1.5,
+        color: context.colors.crisisMuted,
+      ),
     );
   }
 }

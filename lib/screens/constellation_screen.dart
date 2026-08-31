@@ -5,33 +5,45 @@ import 'package:flutter/material.dart';
 
 import '../data/constellation_layout.dart';
 import '../data/constellation_shapes_v2.dart';
+import '../data/habit_completion_repository.dart';
+import '../data/habit_repository.dart';
 import '../data/project_repository.dart';
-import '../data/win_repository.dart';
+import '../data/star_repository.dart';
 import '../l10n/strings_scope.dart';
+import '../models/habit.dart';
+import '../models/habit_completion.dart';
 import '../models/project.dart';
-import '../models/win.dart';
+import '../models/star.dart';
 import '../theme/app_colors.dart';
+import '../utils/habit_stats.dart';
 import '../widgets/constellation_painter.dart';
-import 'win_reader_screen.dart';
+import 'habit_reader_screen.dart';
+import 'star_reader_screen.dart';
 
 /// A single project's constellation: a pannable/zoomable star field shaped
-/// like [Project.iconSlug]'s precomputed silhouette, one star per win,
-/// oldest first. Tapping a lit star opens [WinReaderScreen] (with editing
-/// enabled — including reassigning the win to a different project, which
-/// requires [projectRepository] here too). Adding a new win to this
-/// project happens through Home's own add-win flow (via the project
-/// picker) — this screen is read/browse only.
+/// like [Project.iconSlug]'s precomputed silhouette. Victories, goals, and
+/// dead (tombstoned) stars share the shape's own point/edge graph, ordered
+/// by [Star.slotSequence]; habits are separate, smaller stars scattered
+/// around/inside/outside the shape (see [seededHabitPosition]), never part
+/// of that graph. Tapping a star opens [StarReaderScreen]/[HabitReaderScreen]
+/// (with editing enabled). Adding a new star/habit to this project happens
+/// through Home's own FAB chooser (via the project picker) — this screen is
+/// read/browse only.
 class ConstellationScreen extends StatefulWidget {
   const ConstellationScreen({
     super.key,
     required this.project,
-    required this.winRepository,
+    required this.starRepository,
     required this.projectRepository,
+    required this.habitRepository,
+    required this.habitCompletionRepository,
   });
 
   final Project project;
-  final WinRepository winRepository;
+  final StarRepository starRepository;
   final ProjectRepository projectRepository;
+  final HabitRepository habitRepository;
+  final HabitCompletionRepository habitCompletionRepository;
 
   @override
   State<ConstellationScreen> createState() => _ConstellationScreenState();
@@ -46,9 +58,11 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
       ? Rect.zero
       : boundingBoxOf(_shape.points);
 
-  late List<Win> _wins;
-  late List<ConstellationStar> _stars;
+  late List<Star> _stars;
+  late List<Habit> _habits;
+  late List<ConstellationStar> _renderStars;
   late List<(int, int)> _edges;
+  late int _shapeStarCount;
   int _revision = 0;
   ui.Image? _glowSprite;
   final _transformationController = TransformationController();
@@ -57,8 +71,7 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
   @override
   void initState() {
     super.initState();
-    _wins = widget.winRepository.getAllForProject(widget.project.id);
-    _stars = _buildStars(_wins);
+    _loadData();
     _loadGlowSprite();
   }
 
@@ -78,23 +91,65 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
     });
   }
 
-  List<ConstellationStar> _buildStars(List<Win> winsOldestFirst) {
+  void _loadData() {
+    _stars = widget.starRepository.getAllForProject(widget.project.id);
+    _habits = widget.habitRepository.getAllForProject(widget.project.id);
+    _renderStars = _buildRenderStars();
+  }
+
+  List<ConstellationStar> _buildRenderStars() {
     final shape = _shape;
     if (shape == null) {
       _edges = const [];
+      _shapeStarCount = 0;
       return const [];
     }
-    final layout = buildConstellationLayout(shape, winsOldestFirst.length);
+
+    _shapeStarCount = _stars.length;
+    final layout = buildConstellationLayout(shape, _stars.length);
     _edges = layout.edges;
-    final stars = <ConstellationStar>[];
-    for (var i = 0; i < winsOldestFirst.length; i++) {
-      final win = winsOldestFirst[i];
+
+    final result = <ConstellationStar>[];
+    for (var i = 0; i < _stars.length; i++) {
+      final star = _stars[i];
       final position = i < layout.points.length
           ? layout.points[i]
-          : seededOverflowPosition(win.id);
-      stars.add(ConstellationStar(winId: win.id, position: position));
+          : seededOverflowPosition(star.id);
+      final kind = star.dead
+          ? StarKind.dead
+          : (star.isAchieved ? StarKind.victory : StarKind.goal);
+      result.add(
+        ConstellationStar(
+          entityId: star.id,
+          position: position,
+          kind: kind,
+          lit: star.isAchieved,
+        ),
+      );
     }
-    return stars;
+
+    final completionsByHabit = <int, List<HabitCompletion>>{};
+    for (final completion in widget.habitCompletionRepository.getAll()) {
+      completionsByHabit
+          .putIfAbsent(completion.habitId, () => [])
+          .add(completion);
+    }
+    for (final habit in _habits) {
+      final completedDays =
+          (completionsByHabit[habit.id] ?? const <HabitCompletion>[])
+              .map((c) => DateTime(c.date.year, c.date.month, c.date.day))
+              .toSet();
+      result.add(
+        ConstellationStar(
+          entityId: habit.id,
+          position: seededHabitPosition(habit.id),
+          kind: StarKind.habit,
+          lit: isHabitLit(completedDays),
+        ),
+      );
+    }
+
+    return result;
   }
 
   Rect _boundsPixels() {
@@ -134,26 +189,42 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
 
   void _refresh() {
     setState(() {
-      _wins = widget.winRepository.getAllForProject(widget.project.id);
-      _stars = _buildStars(_wins);
+      _loadData();
       _revision++;
     });
   }
 
   Future<void> _openStar(ConstellationStar star) async {
-    final index = _wins.indexWhere((w) => w.id == star.winId);
+    if (star.kind == StarKind.habit) {
+      final habit = _habits.firstWhere((h) => h.id == star.entityId);
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => HabitReaderScreen(
+            habit: habit,
+            project: widget.project,
+            habitRepository: widget.habitRepository,
+            habitCompletionRepository: widget.habitCompletionRepository,
+            projectRepository: widget.projectRepository,
+          ),
+        ),
+      );
+      _refresh();
+      return;
+    }
+
+    final index = _stars.indexWhere((s) => s.id == star.entityId);
     if (index == -1) return;
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => WinReaderScreen(
-          repository: widget.winRepository,
-          initialWins: _wins,
+        builder: (_) => StarReaderScreen(
+          repository: widget.starRepository,
+          initialStars: _stars,
           startIndex: index,
           allowEdit: true,
           projectsById: {widget.project.id: widget.project},
           projectRepository: widget.projectRepository,
-          refreshWins: () =>
-              widget.winRepository.getAllForProject(widget.project.id),
+          refreshStars: () =>
+              widget.starRepository.getAllForProject(widget.project.id),
         ),
       ),
     );
@@ -224,20 +295,22 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
                                 final star = hitTestStar(
                                   details.localPosition,
                                   _canvasSize,
-                                  _stars,
+                                  _renderStars,
                                 );
                                 if (star != null) _openStar(star);
                               },
                               child: CustomPaint(
                                 size: _canvasSize,
                                 painter: ConstellationPainter(
-                                  stars: _stars,
+                                  stars: _renderStars,
                                   glowSprite: _glowSprite,
                                   revision: _revision,
                                   starColor: colors.gold,
                                   coreColor: colors.text,
+                                  habitColor: colors.crisisMuted,
                                   edges: _edges,
                                   linkThreshold: shape.points.length,
+                                  shapeStarCount: _shapeStarCount,
                                 ),
                               ),
                             ),

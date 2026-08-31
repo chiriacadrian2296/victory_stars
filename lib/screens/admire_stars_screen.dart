@@ -3,23 +3,29 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../data/project_repository.dart';
-import '../data/win_repository.dart';
+import '../data/star_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../models/life_area.dart';
 import '../models/project.dart';
-import '../models/win.dart';
+import '../models/star.dart';
 import '../theme/app_colors.dart';
-import 'win_reader_screen.dart';
+import 'star_reader_screen.dart';
 
-/// Entry point for reflecting on saved wins — reachable from every tab
+/// Entry point for reflecting on saved victories — reachable from every tab
 /// (see [RootScreen]'s persistent floating button), not tied to a "crisis"
 /// moment specifically. Asks which life areas to draw from every time
-/// (defaulting to all), then shows a shuffled, editable browse of every win
-/// in that selection via [WinReaderScreen].
+/// (defaulting to all), then shows a shuffled, editable browse of every
+/// achieved star in that selection via [StarReaderScreen]. Goals and dead
+/// stars aren't part of this reflection pool — there's nothing to admire in
+/// something not yet reached or no longer standing.
 class AdmireStarsScreen extends StatefulWidget {
-  const AdmireStarsScreen({super.key, required this.winRepository, required this.projectRepository});
+  const AdmireStarsScreen({
+    super.key,
+    required this.starRepository,
+    required this.projectRepository,
+  });
 
-  final WinRepository winRepository;
+  final StarRepository starRepository;
   final ProjectRepository projectRepository;
 
   @override
@@ -52,13 +58,17 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
   }
 
   Map<int, Project> _projectsById() {
-    return {for (final project in widget.projectRepository.getAll()) project.id: project};
+    return {
+      for (final project in widget.projectRepository.getAll())
+        project.id: project,
+    };
   }
 
-  List<Win> _poolForSelection() {
+  List<Star> _poolForSelection() {
     final projectsById = _projectsById();
-    return widget.winRepository.getAll().where((w) {
-      final project = projectsById[w.projectId];
+    return widget.starRepository.getAll().where((s) {
+      if (!s.isAchieved) return false;
+      final project = projectsById[s.projectId];
       return project != null && _selected.contains(project.area);
     }).toList();
   }
@@ -68,28 +78,29 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
     if (pool.isEmpty) return;
 
     final shuffled = [...pool]..shuffle();
-    final shuffledIds = shuffled.map((w) => w.id).toList();
+    final shuffledIds = shuffled.map((s) => s.id).toList();
     final selectionSnapshot = Set<LifeArea>.from(_selected);
 
-    List<Win> currentInShuffledOrder() {
+    List<Star> currentInShuffledOrder() {
       final projectsById = _projectsById();
-      final byId = {for (final w in widget.winRepository.getAll()) w.id: w};
-      return shuffledIds.map((id) => byId[id]).whereType<Win>().where((w) {
-        final project = projectsById[w.projectId];
+      final byId = {for (final s in widget.starRepository.getAll()) s.id: s};
+      return shuffledIds.map((id) => byId[id]).whereType<Star>().where((s) {
+        if (!s.isAchieved) return false;
+        final project = projectsById[s.projectId];
         return project != null && selectionSnapshot.contains(project.area);
       }).toList();
     }
 
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => WinReaderScreen(
-          repository: widget.winRepository,
-          initialWins: shuffled,
+        builder: (_) => StarReaderScreen(
+          repository: widget.starRepository,
+          initialStars: shuffled,
           startIndex: 0,
           allowEdit: true,
           projectsById: _projectsById(),
           projectRepository: widget.projectRepository,
-          refreshWins: currentInShuffledOrder,
+          refreshStars: currentInShuffledOrder,
         ),
       ),
     );
@@ -120,13 +131,10 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
                   builder: (context, constraints) {
                     return SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(horizontal: 28),
-                      // minHeight + IntrinsicHeight lets the quote carousel
-                      // below sit in an Expanded slot — centered in whatever
-                      // room is actually left under the chips — while still
-                      // allowing the whole column to scroll normally if the
-                      // content above ever needs more room than the screen has.
                       child: ConstrainedBox(
-                        constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
                         child: IntrinsicHeight(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.center,
@@ -148,7 +156,11 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
                                 width: double.infinity,
                                 child: Text(
                                   strings.admireTagline,
-                                  style: TextStyle(fontSize: 15, height: 1.5, color: colors.crisisMuted),
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    height: 1.5,
+                                    color: colors.crisisMuted,
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 32),
@@ -158,26 +170,34 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
                                 onChanged: (_) => _toggleAll(),
                               ),
                               const SizedBox(height: 28),
-                              // Two equal-width columns rather than a Wrap, so
-                              // every chip claims the same amount of space
-                              // regardless of how long its label is, instead
-                              // of packing tighter around short labels.
                               Column(
                                 children: [
-                                  for (var row = 0; row * 2 < LifeArea.values.length; row++) ...[
+                                  for (
+                                    var row = 0;
+                                    row * 2 < LifeArea.values.length;
+                                    row++
+                                  ) ...[
                                     if (row > 0) const SizedBox(height: 12),
                                     Row(
                                       children: [
                                         for (var col = 0; col < 2; col++) ...[
-                                          if (col > 0) const SizedBox(width: 12),
-                                          Expanded(child: _areaChip(context, LifeArea.values[row * 2 + col])),
+                                          if (col > 0)
+                                            const SizedBox(width: 12),
+                                          Expanded(
+                                            child: _areaChip(
+                                              context,
+                                              LifeArea.values[row * 2 + col],
+                                            ),
+                                          ),
                                         ],
                                       ],
                                     ),
                                   ],
                                 ],
                               ),
-                              Expanded(child: Center(child: _UpliftingQuoteCarousel())),
+                              Expanded(
+                                child: Center(child: _UpliftingQuoteCarousel()),
+                              ),
                             ],
                           ),
                         ),
@@ -191,7 +211,9 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
                 child: Column(
                   children: [
                     Text(
-                      poolSize == 0 ? strings.pickAtLeastOneArea : strings.starsCount(poolSize),
+                      poolSize == 0
+                          ? strings.pickAtLeastOneArea
+                          : strings.starsCount(poolSize),
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 13, color: colors.crisisMuted),
                     ),
@@ -205,10 +227,13 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: colors.gold,
                           foregroundColor: colors.onGold,
-                          disabledBackgroundColor: colors.crisisMuted.withValues(alpha: 0.15),
+                          disabledBackgroundColor: colors.crisisMuted
+                              .withValues(alpha: 0.15),
                           disabledForegroundColor: colors.crisisMuted,
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
                         ),
                       ),
                     ),
@@ -224,7 +249,12 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
 }
 
 class _AreaChip extends StatelessWidget {
-  const _AreaChip({required this.label, required this.selected, required this.onTap, this.icon});
+  const _AreaChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.icon,
+  });
 
   final String label;
   final IconData? icon;
@@ -234,9 +264,6 @@ class _AreaChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    // Selection reads only through the icon and border going gold — the
-    // background and text stay the same cool/muted colors as the
-    // unselected state, so the chip row doesn't turn into a wall of yellow.
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(22),
@@ -244,7 +271,11 @@ class _AreaChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.05),
-          border: Border.all(color: selected ? colors.gold : colors.crisisMuted.withValues(alpha: 0.3)),
+          border: Border.all(
+            color: selected
+                ? colors.gold
+                : colors.crisisMuted.withValues(alpha: 0.3),
+          ),
           borderRadius: BorderRadius.circular(22),
         ),
         child: Row(
@@ -274,14 +305,12 @@ class _AreaChip extends StatelessWidget {
   }
 }
 
-/// A visually distinct stand-in for "select every area at once" — a compact,
-/// centered switch rather than a full-width chip, even though toggling it
-/// does exactly what tapping every area chip at once would
-/// ([_AdmireStarsScreenState._toggleAll]). Hand-rolled instead of Flutter's
-/// own [Switch]/[SwitchListTile] because both insist on expanding to fill
-/// their row — there's no supported way to make them shrink to their content.
 class _AllAreasSwitch extends StatelessWidget {
-  const _AllAreasSwitch({required this.label, required this.value, required this.onChanged});
+  const _AllAreasSwitch({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
 
   final String label;
   final bool value;
@@ -297,7 +326,11 @@ class _AllAreasSwitch extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.05),
-          border: Border.all(color: value ? colors.gold : colors.crisisMuted.withValues(alpha: 0.3)),
+          border: Border.all(
+            color: value
+                ? colors.gold
+                : colors.crisisMuted.withValues(alpha: 0.3),
+          ),
           borderRadius: BorderRadius.circular(22),
         ),
         child: Row(
@@ -318,10 +351,14 @@ class _AllAreasSwitch extends StatelessWidget {
               height: 22,
               padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(
-                color: value ? colors.gold.withValues(alpha: 0.3) : colors.crisisMuted.withValues(alpha: 0.15),
+                color: value
+                    ? colors.gold.withValues(alpha: 0.3)
+                    : colors.crisisMuted.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(11),
                 border: Border.all(
-                  color: value ? colors.gold.withValues(alpha: 0.6) : colors.crisisMuted.withValues(alpha: 0.4),
+                  color: value
+                      ? colors.gold.withValues(alpha: 0.6)
+                      : colors.crisisMuted.withValues(alpha: 0.4),
                 ),
               ),
               child: AnimatedAlign(
@@ -331,7 +368,10 @@ class _AllAreasSwitch extends StatelessWidget {
                 child: Container(
                   width: 14,
                   height: 14,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: value ? colors.gold : colors.crisisMuted),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: value ? colors.gold : colors.crisisMuted,
+                  ),
                 ),
               ),
             ),
@@ -343,14 +383,13 @@ class _AllAreasSwitch extends StatelessWidget {
 }
 
 /// Cycles through [AppStrings.upliftingQuotes] on its own, one every 5
-/// seconds — replaces what used to be a button pushing [EncouragementScreen]
-/// with the quotes shown inline instead, right in the space below the area
-/// chips.
+/// seconds.
 class _UpliftingQuoteCarousel extends StatefulWidget {
   const _UpliftingQuoteCarousel();
 
   @override
-  State<_UpliftingQuoteCarousel> createState() => _UpliftingQuoteCarouselState();
+  State<_UpliftingQuoteCarousel> createState() =>
+      _UpliftingQuoteCarouselState();
 }
 
 class _UpliftingQuoteCarouselState extends State<_UpliftingQuoteCarousel> {
@@ -366,8 +405,6 @@ class _UpliftingQuoteCarouselState extends State<_UpliftingQuoteCarousel> {
 
   @override
   Widget build(BuildContext context) {
-    // Shuffled once, the first time build() runs with strings available —
-    // not in initState, since AppStrings needs an InheritedWidget lookup.
     final quotes = _quotes ??= [...context.strings.upliftingQuotes]..shuffle();
     _timer ??= Timer.periodic(const Duration(seconds: 5), (_) {
       if (!mounted) return;
@@ -382,11 +419,15 @@ class _UpliftingQuoteCarouselState extends State<_UpliftingQuoteCarousel> {
           duration: const Duration(milliseconds: 700),
           switchInCurve: Curves.easeOut,
           switchOutCurve: Curves.easeIn,
-          // A soft scale-up alongside the fade — reads more clearly as
-          // motion than a plain crossfade, while staying just as understated.
           transitionBuilder: (child, animation) {
-            final scale = Tween<double>(begin: 0.92, end: 1.0).animate(animation);
-            return FadeTransition(opacity: animation, child: ScaleTransition(scale: scale, child: child));
+            final scale = Tween<double>(
+              begin: 0.92,
+              end: 1.0,
+            ).animate(animation);
+            return FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(scale: scale, child: child),
+            );
           },
           child: Text(
             quotes[_index],

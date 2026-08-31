@@ -3,68 +3,106 @@ import 'dart:math' show pi, sin;
 
 import 'package:flutter/material.dart';
 
+import '../data/habit_completion_repository.dart';
+import '../data/habit_repository.dart';
 import '../data/project_repository.dart';
-import '../data/win_repository.dart';
+import '../data/star_repository.dart';
 import '../l10n/app_strings.dart';
 import '../l10n/strings_scope.dart';
 import '../models/project.dart';
-import '../models/win.dart';
+import '../models/star.dart';
 import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
-import '../utils/win_stats.dart';
+import '../utils/star_stats.dart';
+import '../widgets/star_card.dart';
 import '../widgets/star_heatmap.dart';
-import '../widgets/win_card.dart';
-import 'add_win_screen.dart';
+import 'add_habit_screen.dart';
+import 'add_star_screen.dart';
 import 'admire_stars_screen.dart';
 import 'new_project_screen.dart';
 import 'stat_detail_screen.dart';
-import 'win_reader_screen.dart';
+import 'star_reader_screen.dart';
 
 /// The dashboard — one tab of [RootScreen]: a quick read on consistency
 /// (total stars, streaks) and a GitHub-contribution-style calendar of when
-/// stars were lit, rather than a flat list (that's now the Stars tab).
-/// Still owns the "add a win" FAB, since it's the natural landing tab.
+/// victories were achieved, rather than a flat list (that's now the Stars
+/// tab). Still owns the "add" FAB (a chooser between Victory/Goal/Habit),
+/// since it's the natural landing tab.
 ///
-/// Never caches a win list in a field — [build] always re-reads
-/// [winRepository] fresh. This tab is kept alive (not disposed) by
+/// Never caches a star list in a field — [build] always re-reads
+/// [starRepository] fresh. This tab is kept alive (not disposed) by
 /// [RootScreen]'s `IndexedStack`, so a cached list would otherwise go stale
-/// whenever data changes from a *different* tab (e.g. seeding or resetting
-/// from Settings) instead of from here. The empty `setState(() {})` calls
-/// after local mutations exist only to trigger that fresh re-read
-/// immediately, without waiting for an unrelated rebuild (e.g. a tab
-/// switch) to happen to reveal it.
+/// whenever data changes from a *different* tab.
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.winRepository, required this.projectRepository});
+  const HomeScreen({
+    super.key,
+    required this.starRepository,
+    required this.projectRepository,
+    required this.habitRepository,
+    required this.habitCompletionRepository,
+  });
 
-  final WinRepository winRepository;
+  final StarRepository starRepository;
   final ProjectRepository projectRepository;
+  final HabitRepository habitRepository;
+  final HabitCompletionRepository habitCompletionRepository;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-enum _CreateChoice { star, constellation }
+enum _CreateChoice { victory, goal, habit, constellation }
 
 class _HomeScreenState extends State<HomeScreen> {
   Map<int, Project> _projectsById() {
-    return {for (final project in widget.projectRepository.getAll()) project.id: project};
+    return {
+      for (final project in widget.projectRepository.getAll())
+        project.id: project,
+    };
   }
 
-  Future<void> _openAddWinScreen({DateTime? initialDate}) async {
-    final result = await Navigator.of(context).push<AddWinResult>(
+  Future<void> _openAddStarScreen({
+    DateTime? initialDate,
+    bool initialAchieved = true,
+  }) async {
+    final result = await Navigator.of(context).push<AddStarResult>(
       MaterialPageRoute(
-        builder: (_) => AddWinScreen(projectRepository: widget.projectRepository, initialDate: initialDate),
+        builder: (_) => AddStarScreen(
+          projectRepository: widget.projectRepository,
+          initialDate: initialDate,
+          initialAchieved: initialAchieved,
+        ),
       ),
     );
     if (result == null) return;
 
-    await widget.winRepository.add(
+    await widget.starRepository.add(
       title: result.title,
       description: result.description,
       projectId: result.projectId,
+      targetDate: result.targetDate,
+      achievedDate: result.achievedDate,
       intensity: result.intensity,
-      date: result.date,
       photoPath: result.photoPath,
+    );
+    setState(() {});
+  }
+
+  Future<void> _openAddHabitScreen() async {
+    final result = await Navigator.of(context).push<AddHabitResult>(
+      MaterialPageRoute(
+        builder: (_) =>
+            AddHabitScreen(projectRepository: widget.projectRepository),
+      ),
+    );
+    if (result == null) return;
+
+    await widget.habitRepository.add(
+      title: result.title,
+      description: result.description,
+      projectId: result.projectId,
+      reminderHour: result.reminderHour,
+      reminderMinute: result.reminderMinute,
     );
     setState(() {});
   }
@@ -73,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => TotalStarsDetailScreen(
-          winRepository: widget.winRepository,
+          starRepository: widget.starRepository,
           projectRepository: widget.projectRepository,
         ),
       ),
@@ -82,13 +120,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openCurrentStreakDetail() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => CurrentStreakDetailScreen(winRepository: widget.winRepository)),
+      MaterialPageRoute(
+        builder: (_) =>
+            CurrentStreakDetailScreen(starRepository: widget.starRepository),
+      ),
     );
   }
 
   void _openLongestStreakDetail() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => LongestStreakDetailScreen(winRepository: widget.winRepository)),
+      MaterialPageRoute(
+        builder: (_) =>
+            LongestStreakDetailScreen(starRepository: widget.starRepository),
+      ),
     );
   }
 
@@ -96,7 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => AdmireStarsScreen(
-          winRepository: widget.winRepository,
+          starRepository: widget.starRepository,
           projectRepository: widget.projectRepository,
         ),
       ),
@@ -105,7 +149,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _openNewProjectScreen() async {
     await Navigator.of(context).push<Project>(
-      MaterialPageRoute(builder: (_) => NewProjectScreen(projectRepository: widget.projectRepository)),
+      MaterialPageRoute(
+        builder: (_) =>
+            NewProjectScreen(projectRepository: widget.projectRepository),
+      ),
     );
     setState(() {});
   }
@@ -124,13 +171,38 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               ListTile(
                 leading: Icon(Icons.star, color: colors.gold),
-                title: Text(strings.addWinFabLabel, style: TextStyle(color: colors.text)),
-                onTap: () => Navigator.of(sheetContext).pop(_CreateChoice.star),
+                title: Text(
+                  strings.addWinFabLabel,
+                  style: TextStyle(color: colors.text),
+                ),
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(_CreateChoice.victory),
+              ),
+              ListTile(
+                leading: Icon(Icons.flag_outlined, color: colors.gold),
+                title: Text(
+                  strings.addGoalFabLabel,
+                  style: TextStyle(color: colors.text),
+                ),
+                onTap: () => Navigator.of(sheetContext).pop(_CreateChoice.goal),
+              ),
+              ListTile(
+                leading: Icon(Icons.repeat, color: colors.gold),
+                title: Text(
+                  strings.addHabitFabLabel,
+                  style: TextStyle(color: colors.text),
+                ),
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(_CreateChoice.habit),
               ),
               ListTile(
                 leading: Icon(Icons.auto_awesome, color: colors.gold),
-                title: Text(strings.newConstellationOption, style: TextStyle(color: colors.text)),
-                onTap: () => Navigator.of(sheetContext).pop(_CreateChoice.constellation),
+                title: Text(
+                  strings.newConstellationOption,
+                  style: TextStyle(color: colors.text),
+                ),
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(_CreateChoice.constellation),
               ),
             ],
           ),
@@ -139,8 +211,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     switch (choice) {
-      case _CreateChoice.star:
-        await _openAddWinScreen();
+      case _CreateChoice.victory:
+        await _openAddStarScreen();
+      case _CreateChoice.goal:
+        await _openAddStarScreen(initialAchieved: false);
+      case _CreateChoice.habit:
+        await _openAddHabitScreen();
       case _CreateChoice.constellation:
         await _openNewProjectScreen();
       case null:
@@ -148,23 +224,31 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  List<Win> _winsOnDay(DateTime day) {
-    return widget.winRepository.getAll().where((w) {
-      return w.date.year == day.year && w.date.month == day.month && w.date.day == day.day;
+  List<Star> _achievedStarsOnDay(DateTime day) {
+    return widget.starRepository.getAll().where((s) {
+      if (!s.isAchieved) return false;
+      final date = s.achievedDate!;
+      return date.year == day.year &&
+          date.month == day.month &&
+          date.day == day.day;
     }).toList();
   }
 
-  Future<void> _openWinReader(List<Win> wins, int index, DateTime day) async {
+  Future<void> _openStarReader(
+    List<Star> stars,
+    int index,
+    DateTime day,
+  ) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => WinReaderScreen(
-          repository: widget.winRepository,
-          initialWins: wins,
+        builder: (_) => StarReaderScreen(
+          repository: widget.starRepository,
+          initialStars: stars,
           startIndex: index,
           allowEdit: true,
           projectsById: _projectsById(),
           projectRepository: widget.projectRepository,
-          refreshWins: () => _winsOnDay(day),
+          refreshStars: () => _achievedStarsOnDay(day),
         ),
       ),
     );
@@ -174,34 +258,28 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _openDayDetail(DateTime day) async {
     final colors = context.colors;
     final projectsById = _projectsById();
-    final dayWins = _winsOnDay(day);
+    final dayStars = _achievedStarsOnDay(day);
     final sheetMaxHeight = MediaQuery.sizeOf(context).height * 0.85;
 
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: colors.nightPanel,
       isScrollControlled: true,
-      // A day with any stars always opens the sheet at this exact height,
-      // never smaller — otherwise, narrowing the search down to one or two
-      // results would shrink the whole sheet along with the list, and it'd
-      // end up dipping behind the still-open keyboard. Only a genuinely
-      // empty day (nothing to ever filter down to) is left free to size
-      // itself to its own minimal content.
-      constraints: dayWins.isEmpty
+      constraints: dayStars.isEmpty
           ? BoxConstraints(maxHeight: sheetMaxHeight)
           : BoxConstraints.tightFor(height: sheetMaxHeight),
       builder: (sheetContext) {
         return _DayDetailSheet(
           day: day,
-          wins: dayWins,
+          stars: dayStars,
           projectsById: projectsById,
-          onWinTap: (wins, index) {
+          onStarTap: (stars, index) {
             Navigator.of(sheetContext).pop();
-            _openWinReader(wins, index, day);
+            _openStarReader(stars, index, day);
           },
           onAddForDay: () {
             Navigator.of(sheetContext).pop();
-            _openAddWinScreen(initialDate: day);
+            _openAddStarScreen(initialDate: day);
           },
         );
       },
@@ -212,9 +290,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final strings = context.strings;
-    final wins = widget.winRepository.getAll();
-    final dayCounts = winCountsByDay(wins);
-    final dayIntensities = winIntensityByDay(wins);
+    final achievedStars = widget.starRepository
+        .getAll()
+        .where((s) => s.isAchieved)
+        .toList();
+    final dayCounts = starCountsByDay(achievedStars);
+    final dayIntensities = starIntensityByDay(achievedStars);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final litToday = (dayCounts[today] ?? 0) > 0;
@@ -226,29 +307,51 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Text(
               strings.homeEyebrow,
-              style: TextStyle(fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.w600, color: colors.goldDim),
+              style: TextStyle(
+                fontSize: 12,
+                letterSpacing: 2,
+                fontWeight: FontWeight.w600,
+                color: colors.goldDim,
+              ),
             ),
             const SizedBox(height: 6),
             Text(
               strings.homeTitle,
-              style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: colors.text),
+              style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.w700,
+                color: colors.text,
+              ),
             ),
             const SizedBox(height: 6),
-            Text(strings.homeSubtitle, style: TextStyle(fontSize: 14, color: colors.muted)),
+            Text(
+              strings.homeSubtitle,
+              style: TextStyle(fontSize: 14, color: colors.muted),
+            ),
             const SizedBox(height: 24),
-            // The dashboard's headline element — whether today's star is lit
-            // is the one thing worth knowing at a glance, so it leads, ahead
-            // of the calendar and the totals/streaks tiles below it.
             Text(
               strings.todayStarSectionLabel,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.muted),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: colors.muted,
+              ),
             ),
             const SizedBox(height: 10),
-            _TodayStarHero(litToday: litToday, onTap: litToday ? () => _openDayDetail(today) : _openAddWinScreen),
+            _TodayStarHero(
+              litToday: litToday,
+              onTap: litToday
+                  ? () => _openDayDetail(today)
+                  : () => _openAddStarScreen(),
+            ),
             const SizedBox(height: 24),
             Text(
               strings.activityLabel,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.muted),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: colors.muted,
+              ),
             ),
             const SizedBox(height: 10),
             Container(
@@ -259,19 +362,34 @@ class _HomeScreenState extends State<HomeScreen> {
                 border: Border.all(color: colors.nightBorder),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: StarHeatmap(countsByDay: dayCounts, intensityByDay: dayIntensities, onDayTap: _openDayDetail),
+              child: StarHeatmap(
+                countsByDay: dayCounts,
+                intensityByDay: dayIntensities,
+                onDayTap: _openDayDetail,
+              ),
             ),
             const SizedBox(height: 24),
             Text(
               strings.totalStarsLabel,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.muted),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: colors.muted,
+              ),
             ),
             const SizedBox(height: 10),
-            _TotalStarsBanner(value: wins.length, onTap: _openTotalStarsDetail),
+            _TotalStarsBanner(
+              value: achievedStars.length,
+              onTap: _openTotalStarsDetail,
+            ),
             const SizedBox(height: 24),
             Text(
               strings.streaksSectionLabel,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.muted),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: colors.muted,
+              ),
             ),
             const SizedBox(height: 10),
             Row(
@@ -299,8 +417,6 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Only on Home — not worth chasing down from every tab, and this
-          // is the natural landing screen anyway.
           FloatingActionButton.small(
             heroTag: 'admireStarsFab',
             onPressed: _openAdmireStars,
@@ -312,30 +428,24 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Icon(Icons.auto_awesome),
           ),
           const SizedBox(height: 12),
-          GestureDetector(
-            // Hold for a choice between logging a star or starting a whole
-            // new constellation, instead of only ever landing on the
-            // single-star flow.
-            onLongPress: _showCreateMenu,
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: colors.gold.withValues(alpha: 0.35),
-                    blurRadius: 20,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: FloatingActionButton(
-                heroTag: 'addWinFab',
-                onPressed: _openAddWinScreen,
-                backgroundColor: colors.gold,
-                elevation: 0,
-                shape: const CircleBorder(),
-                child: Icon(Icons.add, color: colors.onGold),
-              ),
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: colors.gold.withValues(alpha: 0.35),
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: FloatingActionButton(
+              heroTag: 'addStarFab',
+              onPressed: _showCreateMenu,
+              backgroundColor: colors.gold,
+              elevation: 0,
+              shape: const CircleBorder(),
+              child: Icon(Icons.add, color: colors.onGold),
             ),
           ),
         ],
@@ -345,7 +455,11 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _StatCard extends StatelessWidget {
-  const _StatCard({required this.label, required this.value, required this.onTap});
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
 
   final String label;
   final String value;
@@ -373,7 +487,14 @@ class _StatCard extends StatelessWidget {
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: colors.gold)),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: colors.gold,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     label,
@@ -382,10 +503,6 @@ class _StatCard extends StatelessWidget {
                   ),
                 ],
               ),
-              // A small affordance hinting these cards open a detail
-              // screen, rather than being purely decorative stats. A plain
-              // info glyph rather than a chevron, since a chevron implies
-              // "more content this way" which reads oddly on a square card.
               Positioned(
                 top: -2,
                 right: -2,
@@ -426,7 +543,10 @@ class _TotalStarsBanner extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [colors.gold.withValues(alpha: 0.22), colors.gold.withValues(alpha: 0.05)],
+              colors: [
+                colors.gold.withValues(alpha: 0.22),
+                colors.gold.withValues(alpha: 0.05),
+              ],
             ),
             border: Border.all(color: colors.gold.withValues(alpha: 0.45)),
             borderRadius: borderRadius,
@@ -441,7 +561,12 @@ class _TotalStarsBanner extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       '$value',
-                      style: TextStyle(fontSize: 38, fontWeight: FontWeight.w800, color: colors.text, height: 1),
+                      style: TextStyle(
+                        fontSize: 38,
+                        fontWeight: FontWeight.w800,
+                        color: colors.text,
+                        height: 1,
+                      ),
                     ),
                   ],
                 ),
@@ -465,10 +590,8 @@ class _TotalStarsBanner extends StatelessWidget {
 /// breathes in and out, next to a two-line congratulatory message.
 ///
 /// Unlit: the same star, cold and static, with a status caption below it,
-/// and below that a normal pill-shaped gold button sized to its own text
-/// (not a big disc) — same gold and drop shadow as the '+' FAB, plus a
-/// breathing glow instead of a static one. Tapping anywhere opens today's
-/// wins if there are any, or the add-win flow if not.
+/// and below that a normal pill-shaped gold button. Tapping anywhere opens
+/// today's stars if there are any, or the add-star flow if not.
 class _TodayStarHero extends StatefulWidget {
   const _TodayStarHero({required this.litToday, required this.onTap});
 
@@ -479,17 +602,21 @@ class _TodayStarHero extends StatefulWidget {
   State<_TodayStarHero> createState() => _TodayStarHeroState();
 }
 
-class _TodayStarHeroState extends State<_TodayStarHero> with TickerProviderStateMixin {
-  // Breathes continuously in both states — it drives the star's glow when
-  // lit and the button's glow when unlit — while the spin is star-only.
-  late final _glowController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))
-    ..repeat(reverse: true);
-  late final _spinController = AnimationController(vsync: this, duration: const Duration(seconds: 18));
+class _TodayStarHeroState extends State<_TodayStarHero>
+    with TickerProviderStateMixin {
+  late final _glowController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2200),
+  )..repeat(reverse: true);
+  late final _spinController = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 18),
+  );
 
-  // A short, decaying wiggle on the unlit star, replayed on its own timer —
-  // just enough motion every so often to draw the eye back to this corner
-  // of the dashboard without being distracting the rest of the time.
-  late final _shakeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+  late final _shakeController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 500),
+  );
   Timer? _shakeTimer;
 
   @override
@@ -555,7 +682,9 @@ class _TodayStarHeroState extends State<_TodayStarHero> with TickerProviderState
         borderRadius: BorderRadius.circular(20),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
-          child: widget.litToday ? _buildLit(colors, strings, width) : _buildUnlit(colors, strings, width),
+          child: widget.litToday
+              ? _buildLit(colors, strings, width)
+              : _buildUnlit(colors, strings, width),
         ),
       ),
     );
@@ -570,8 +699,14 @@ class _TodayStarHeroState extends State<_TodayStarHero> with TickerProviderState
           animation: Listenable.merge([_glowController, _spinController]),
           builder: (context, child) {
             return Container(
-              decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: _glow(colors.gold, starSize)),
-              child: Transform.rotate(angle: _spinController.value * 2 * pi, child: child),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: _glow(colors.gold, starSize),
+              ),
+              child: Transform.rotate(
+                angle: _spinController.value * 2 * pi,
+                child: child,
+              ),
             );
           },
           child: Icon(Icons.star, size: starSize, color: colors.gold),
@@ -581,14 +716,24 @@ class _TodayStarHeroState extends State<_TodayStarHero> with TickerProviderState
           text: strings.litTodayTitle,
           highlight: strings.litTodayTitleHighlight,
           highlightColor: colors.gold,
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: colors.text, height: 1.25),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: colors.text,
+            height: 1.25,
+          ),
         ),
         const SizedBox(height: 6),
         _highlightedText(
           text: strings.litTodaySubtitle,
           highlight: strings.litTodaySubtitleHighlight,
           highlightColor: colors.gold,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colors.text, height: 1.35),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: colors.text,
+            height: 1.35,
+          ),
         ),
       ],
     );
@@ -613,9 +758,11 @@ class _TodayStarHeroState extends State<_TodayStarHero> with TickerProviderState
           text: strings.notLitTodayLabel,
           highlight: strings.notLitTodayHighlight,
           highlightColor: colors.muted,
-          // Same size as the lit version's first line, so the two states
-          // don't jump around in scale when the star gets lit or unlit.
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: colors.text),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: colors.text,
+          ),
         ),
         const SizedBox(height: 18),
         AnimatedBuilder(
@@ -626,9 +773,11 @@ class _TodayStarHeroState extends State<_TodayStarHero> with TickerProviderState
                 color: colors.gold,
                 borderRadius: BorderRadius.circular(30),
                 boxShadow: [
-                  // The same static drop shadow the '+' FAB uses, plus the
-                  // breathing glow layered on top of it.
-                  BoxShadow(color: colors.gold.withValues(alpha: 0.35), blurRadius: 20, offset: const Offset(0, 6)),
+                  BoxShadow(
+                    color: colors.gold.withValues(alpha: 0.35),
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
+                  ),
                   ..._glow(colors.gold, 44),
                 ],
               ),
@@ -639,11 +788,11 @@ class _TodayStarHeroState extends State<_TodayStarHero> with TickerProviderState
           child: Text(
             strings.lightStarCta,
             textAlign: TextAlign.center,
-            // Same size as the lit version's second line, for the same
-            // reason as the caption above. Colored with the page's own
-            // background instead of white, so it reads as cut out of the
-            // gold pill rather than printed on it.
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: colors.night),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: colors.night,
+            ),
           ),
         ),
       ],
@@ -652,8 +801,8 @@ class _TodayStarHeroState extends State<_TodayStarHero> with TickerProviderState
 }
 
 /// Renders [text] centered with [highlight] (its first occurrence) recolored
-/// to [highlightColor] — used to pick out one word (e.g. "star", "light")
-/// within an otherwise single-colored sentence, per language.
+/// to [highlightColor] — used to pick out one word within an otherwise
+/// single-colored sentence, per language.
 Widget _highlightedText({
   required String text,
   required String highlight,
@@ -680,23 +829,22 @@ Widget _highlightedText({
   );
 }
 
-/// The day-detail bottom sheet's content — a date heading, a search field
-/// (filtering [wins] by title/description like every other win list in the
-/// app), a button to log a new star already dated to [day], and either the
-/// matching wins or an empty-state message.
+/// The day-detail bottom sheet's content — a date heading, a search field, a
+/// button to log a new victory already dated to [day], and either the
+/// matching achieved stars or an empty-state message.
 class _DayDetailSheet extends StatefulWidget {
   const _DayDetailSheet({
     required this.day,
-    required this.wins,
+    required this.stars,
     required this.projectsById,
-    required this.onWinTap,
+    required this.onStarTap,
     required this.onAddForDay,
   });
 
   final DateTime day;
-  final List<Win> wins;
+  final List<Star> stars;
   final Map<int, Project> projectsById;
-  final void Function(List<Win> wins, int index) onWinTap;
+  final void Function(List<Star> stars, int index) onStarTap;
   final VoidCallback onAddForDay;
 
   @override
@@ -708,17 +856,18 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
 
   Text _emptyStateText(AppStrings strings, AppColors colors) {
     return Text(
-      widget.wins.isEmpty ? strings.dayDetailEmpty : strings.noSearchResults,
+      widget.stars.isEmpty ? strings.dayDetailEmpty : strings.noSearchResults,
       textAlign: TextAlign.center,
       style: TextStyle(color: colors.muted, fontSize: 14),
     );
   }
 
-  List<Win> get _filtered {
+  List<Star> get _filtered {
     final query = _query.trim().toLowerCase();
-    if (query.isEmpty) return widget.wins;
-    return widget.wins.where((w) {
-      return w.title.toLowerCase().contains(query) || (w.description?.toLowerCase().contains(query) ?? false);
+    if (query.isEmpty) return widget.stars;
+    return widget.stars.where((s) {
+      return s.title.toLowerCase().contains(query) ||
+          (s.description?.toLowerCase().contains(query) ?? false);
     }).toList();
   }
 
@@ -727,21 +876,22 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
     final colors = context.colors;
     final strings = context.strings;
     final filtered = _filtered;
-    // Whether the day has any stars at all — not whether the current search
-    // still matches any, which is what decides the sheet's own height (see
-    // the constraints picked in _openDayDetail).
-    final hasWinsForDay = widget.wins.isNotEmpty;
+    final hasStarsForDay = widget.stars.isNotEmpty;
 
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
         child: Column(
-          mainAxisSize: hasWinsForDay ? MainAxisSize.max : MainAxisSize.min,
+          mainAxisSize: hasStarsForDay ? MainAxisSize.max : MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               formatDisplayDate(widget.day, strings),
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: colors.text),
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+                color: colors.text,
+              ),
             ),
             const SizedBox(height: 14),
             TextField(
@@ -753,8 +903,6 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
               ),
             ),
             const SizedBox(height: 12),
-            // Experimental — seeing how it feels day-to-day before deciding
-            // whether it earns a permanent spot here.
             InkWell(
               onTap: widget.onAddForDay,
               borderRadius: BorderRadius.circular(10),
@@ -773,7 +921,11 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
                     const SizedBox(width: 8),
                     Text(
                       strings.addStarForDayLabel,
-                      style: TextStyle(color: colors.gold, fontWeight: FontWeight.w600, fontSize: 15),
+                      style: TextStyle(
+                        color: colors.gold,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
                     ),
                   ],
                 ),
@@ -781,8 +933,10 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
             ),
             const SizedBox(height: 16),
             if (filtered.isEmpty)
-              hasWinsForDay
-                  ? Expanded(child: Center(child: _emptyStateText(strings, colors)))
+              hasStarsForDay
+                  ? Expanded(
+                      child: Center(child: _emptyStateText(strings, colors)),
+                    )
                   : Padding(
                       padding: const EdgeInsets.symmetric(vertical: 24),
                       child: Center(child: _emptyStateText(strings, colors)),
@@ -793,11 +947,11 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
                   itemCount: filtered.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
-                    final win = filtered[index];
-                    return WinCard(
-                      win: win,
-                      project: widget.projectsById[win.projectId],
-                      onTap: () => widget.onWinTap(filtered, index),
+                    final star = filtered[index];
+                    return StarCard(
+                      star: star,
+                      project: widget.projectsById[star.projectId],
+                      onTap: () => widget.onStarTap(filtered, index),
                     );
                   },
                 ),

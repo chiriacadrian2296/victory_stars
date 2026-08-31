@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'data/habit_completion_repository.dart';
+import 'data/habit_repository.dart';
 import 'data/project_repository.dart';
-import 'data/win_repository.dart';
+import 'data/star_repository.dart';
 import 'l10n/strings_scope.dart';
 import 'notifications/reminder_service.dart';
-import 'screens/add_win_screen.dart';
+import 'screens/add_star_screen.dart';
 import 'screens/root_screen.dart';
 import 'settings/settings_controller.dart';
 import 'theme/app_theme.dart';
@@ -25,8 +27,10 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
 
   SettingsController? _settings;
-  WinRepository? _winRepository;
+  StarRepository? _starRepository;
   ProjectRepository? _projectRepository;
+  HabitRepository? _habitRepository;
+  HabitCompletionRepository? _habitCompletionRepository;
   ReminderService? _reminderService;
 
   /// Set only if [_load] throws. A blank splash that silently never
@@ -45,13 +49,16 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
     try {
       final settings = await SettingsController.create();
       settings.addListener(() => setState(() {}));
-      final winRepository = await WinRepository.create();
+      final starRepository = await StarRepository.create();
       final projectRepository = await ProjectRepository.create();
+      final habitRepository = await HabitRepository.create();
+      final habitCompletionRepository =
+          await HabitCompletionRepository.create();
       // Wired here (not per-screen) since a second `initialize()` call from
       // another ReminderService instance would silently steal this tap
       // callback out from under the app-level navigation handler.
       final reminderService = await ReminderService.create(
-        onNotificationTap: (_) => _openAddWinFromNotification(),
+        onNotificationTap: (_) => _openAddStarFromNotification(),
       );
 
       // scheduleUpcoming only ever arms the next few days (see its own doc
@@ -70,36 +77,46 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
 
       setState(() {
         _settings = settings;
-        _winRepository = winRepository;
+        _starRepository = starRepository;
         _projectRepository = projectRepository;
+        _habitRepository = habitRepository;
+        _habitCompletionRepository = habitCompletionRepository;
         _reminderService = reminderService;
       });
 
       if (await reminderService.launchedFromNotification()) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _openAddWinFromNotification());
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _openAddStarFromNotification(),
+        );
       }
     } catch (error) {
       setState(() => _loadError = error);
     }
   }
 
-  Future<void> _openAddWinFromNotification() async {
-    final winRepository = _winRepository;
+  Future<void> _openAddStarFromNotification() async {
+    final starRepository = _starRepository;
     final projectRepository = _projectRepository;
     final navigator = _navigatorKey.currentState;
-    if (winRepository == null || projectRepository == null || navigator == null) return;
+    if (starRepository == null ||
+        projectRepository == null ||
+        navigator == null)
+      return;
 
-    final result = await navigator.push<AddWinResult>(
-      MaterialPageRoute(builder: (_) => AddWinScreen(projectRepository: projectRepository)),
+    final result = await navigator.push<AddStarResult>(
+      MaterialPageRoute(
+        builder: (_) => AddStarScreen(projectRepository: projectRepository),
+      ),
     );
     if (result == null) return;
 
-    await winRepository.add(
+    await starRepository.add(
       title: result.title,
       description: result.description,
       projectId: result.projectId,
+      targetDate: result.targetDate,
+      achievedDate: result.achievedDate,
       intensity: result.intensity,
-      date: result.date,
       photoPath: result.photoPath,
     );
   }
@@ -107,8 +124,10 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
   @override
   Widget build(BuildContext context) {
     final settings = _settings;
-    final winRepository = _winRepository;
+    final starRepository = _starRepository;
     final projectRepository = _projectRepository;
+    final habitRepository = _habitRepository;
+    final habitCompletionRepository = _habitCompletionRepository;
     final reminderService = _reminderService;
     final loadError = _loadError;
     if (loadError != null) {
@@ -130,7 +149,12 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
         ),
       );
     }
-    if (settings == null || winRepository == null || projectRepository == null || reminderService == null) {
+    if (settings == null ||
+        starRepository == null ||
+        projectRepository == null ||
+        habitRepository == null ||
+        habitCompletionRepository == null ||
+        reminderService == null) {
       // Nothing is known yet — a neutral, static splash rather than
       // guessing defaults that might flash-swap once everything loads.
       return const MaterialApp(
@@ -159,8 +183,10 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
       ),
       home: RootScreen(
         settings: settings,
-        winRepository: winRepository,
+        starRepository: starRepository,
         projectRepository: projectRepository,
+        habitRepository: habitRepository,
+        habitCompletionRepository: habitCompletionRepository,
         reminderService: reminderService,
       ),
     );

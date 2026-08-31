@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../data/habit_completion_repository.dart';
+import '../data/habit_repository.dart';
 import '../data/project_repository.dart';
-import '../data/win_repository.dart';
+import '../data/star_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../notifications/reminder_service.dart';
 import '../settings/settings_controller.dart';
@@ -12,21 +14,25 @@ import 'sky_screen.dart';
 
 /// The app's root scaffold: a bottom nav bar switching between the
 /// dashboard (Home), the life-areas hub (Sky — constellations and the flat
-/// searchable win list live together there now, switched per-area), and
+/// searchable star list live together there now, switched per-area), and
 /// app Settings. Repositories and the reminder service are owned by the
 /// app root (see `main.dart`) and just threaded through here.
 class RootScreen extends StatefulWidget {
   const RootScreen({
     super.key,
     required this.settings,
-    required this.winRepository,
+    required this.starRepository,
     required this.projectRepository,
+    required this.habitRepository,
+    required this.habitCompletionRepository,
     required this.reminderService,
   });
 
   final SettingsController settings;
-  final WinRepository winRepository;
+  final StarRepository starRepository;
   final ProjectRepository projectRepository;
+  final HabitRepository habitRepository;
+  final HabitCompletionRepository habitCompletionRepository;
   final ReminderService reminderService;
 
   @override
@@ -45,12 +51,24 @@ class _RootScreenState extends State<RootScreen> {
       body: IndexedStack(
         index: _tabIndex,
         children: [
-          HomeScreen(winRepository: widget.winRepository, projectRepository: widget.projectRepository),
-          SkyScreen(projectRepository: widget.projectRepository, winRepository: widget.winRepository),
+          HomeScreen(
+            starRepository: widget.starRepository,
+            projectRepository: widget.projectRepository,
+            habitRepository: widget.habitRepository,
+            habitCompletionRepository: widget.habitCompletionRepository,
+          ),
+          SkyScreen(
+            projectRepository: widget.projectRepository,
+            starRepository: widget.starRepository,
+            habitRepository: widget.habitRepository,
+            habitCompletionRepository: widget.habitCompletionRepository,
+          ),
           SettingsScreen(
             settings: widget.settings,
-            winRepository: widget.winRepository,
+            starRepository: widget.starRepository,
             projectRepository: widget.projectRepository,
+            habitRepository: widget.habitRepository,
+            habitCompletionRepository: widget.habitCompletionRepository,
             reminderService: widget.reminderService,
           ),
         ],

@@ -2,20 +2,24 @@ import 'package:flutter/material.dart';
 
 import '../l10n/strings_scope.dart';
 import '../models/project.dart';
-import '../models/win.dart';
+import '../models/star.dart';
 import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
 import 'area_tag.dart';
 import 'intensity_bolts.dart';
 import 'project_tag.dart';
 
-class WinCard extends StatelessWidget {
-  const WinCard({super.key, required this.win, this.onTap, this.project});
+/// A single achieved star (victory) in a flat list — [star] is always
+/// expected to satisfy [Star.isAchieved]; every list this card appears in
+/// (Home's day detail, an area's flat Stars list) already filters to
+/// achieved-only before building these.
+class StarCard extends StatelessWidget {
+  const StarCard({super.key, required this.star, this.onTap, this.project});
 
-  final Win win;
+  final Star star;
   final VoidCallback? onTap;
 
-  /// The win's project, resolved by the caller. Null when it can't be
+  /// The star's project, resolved by the caller. Null when it can't be
   /// resolved (e.g. stale data) — the card still renders fine without the
   /// project/area rows.
   final Project? project;
@@ -49,11 +53,19 @@ class WinCard extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            formatDisplayDateTime(win.date, context.strings),
+                            formatDisplayDateTime(
+                              star.achievedDate!,
+                              context.strings,
+                            ),
                             style: TextStyle(fontSize: 12, color: colors.muted),
                           ),
                         ),
-                        IntensityBolts(intensity: win.intensity, size: 13, spacing: 2, emphasizeLast: true),
+                        IntensityBolts(
+                          intensity: star.intensity!,
+                          size: 13,
+                          spacing: 2,
+                          emphasizeLast: true,
+                        ),
                       ],
                     ),
                     if (project != null) ...[
@@ -64,22 +76,33 @@ class WinCard extends StatelessWidget {
                     ],
                     const SizedBox(height: 8),
                     Text(
-                      win.title,
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 19, color: colors.text),
+                      star.title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 19,
+                        color: colors.text,
+                      ),
                     ),
-                    if (win.description != null) ...[
+                    if (star.description != null) ...[
                       const SizedBox(height: 6),
-                      Text(win.description!, style: TextStyle(fontSize: 14, color: colors.muted, height: 1.4)),
+                      Text(
+                        star.description!,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: colors.muted,
+                          height: 1.4,
+                        ),
+                      ),
                     ],
                   ],
                 ),
               ),
-              // A corner badge rather than inline with the other (small,
-              // muted) meta icons — a photo is a bigger deal than a date or
-              // intensity rating, so it gets the same gold-accent treatment
-              // as the info glyphs on the dashboard's own cards.
-              if (win.photoPath != null)
-                Positioned(bottom: 10, right: 10, child: Icon(Icons.photo_camera, size: 22, color: colors.gold)),
+              if (star.photoPath != null)
+                Positioned(
+                  bottom: 10,
+                  right: 10,
+                  child: Icon(Icons.photo_camera, size: 22, color: colors.gold),
+                ),
             ],
           ),
         ),

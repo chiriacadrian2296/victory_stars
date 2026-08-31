@@ -104,6 +104,7 @@ abstract class AppStrings {
   String get newStarEyebrow;
   String get editStarEyebrow;
   String get addWinQuestion;
+  String get addGoalQuestion;
   String get projectLabel;
   String get selectAProject;
   String get dateLabel;
@@ -132,6 +133,52 @@ abstract class AppStrings {
   String get discardChangesConfirmBody;
   String get discardChangesAction;
 
+  // Add/edit star — achieved vs. goal toggle
+  String get achievedToggleOn;
+  String get achievedToggleOff;
+  String get targetDateLabel;
+  String get selectATargetDateHint;
+
+  // Star reader — goal/dead states
+  String goalTargetLabel(String date);
+  String get markAchievedAction;
+  String get markAchievedSheetTitle;
+  String get markAchievedConfirm;
+  String get undoAchievedAction;
+  String get deadStarTitle;
+  String get deadStarBody;
+  String get resurrectAction;
+
+  // Add/edit habit
+  String get newHabitEyebrow;
+  String get editHabitEyebrow;
+  String get addHabitQuestion;
+  String get habitFrequencyLabel;
+  String get habitFrequencyDaily;
+  String get customReminderToggleLabel;
+  String get deleteHabitConfirmTitle;
+  String get deleteHabitConfirmBody;
+  String get deleteHabitAction;
+
+  // Habit reader
+  String get habitCurrentStreakLabel;
+  String get markHabitDoneAction;
+  String get habitDoneTodayLabel;
+  String get undoHabitTodayAction;
+
+  // Project card badges (goals/habits, alongside the existing star count)
+  String openGoalsBadge(int count);
+  String activeHabitsBadge(int count);
+
+  // Area "Stars" flat list — kind filter chips (plural, shown next to a
+  // count) and per-card kind tags (singular, shown on the goal/dead/pulsar
+  // cards themselves).
+  String get starKindVictoryLabel;
+  String get starKindGoalLabel;
+  String get starKindDeadLabel;
+  String get starKindPulsarChipLabel;
+  String get starKindPulsarTagLabel;
+
   // Admire Your Stars (random reflection, filterable by area)
   String get admireTagline;
   String get allAreasLabel;
@@ -139,8 +186,10 @@ abstract class AppStrings {
   String get noStarsInSelection;
   String get viewYourStars;
 
-  // Home FAB + its long-press "create" menu
+  // Home FAB + its "create" menu
   String get addWinFabLabel;
+  String get addGoalFabLabel;
+  String get addHabitFabLabel;
   String get newConstellationOption;
 
   /// A fixed set of short, hand-written uplifting phrases — cycled through
@@ -149,7 +198,7 @@ abstract class AppStrings {
   /// list; each language's phrasing is its own.
   List<String> get upliftingQuotes;
 
-  // Win reader
+  // Star reader
   String indexOfCount(int index, int total);
   String get shareStarLabel;
   String get shareStarError;

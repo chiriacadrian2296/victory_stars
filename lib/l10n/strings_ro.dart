@@ -35,7 +35,8 @@ class StringsRo implements AppStrings {
   @override
   String get homeTitle => 'Panoul tău';
   @override
-  String get homeSubtitle => 'Fiecare stea e o victorie, aprinsă atunci când aveai nevoie de lumină.';
+  String get homeSubtitle =>
+      'Fiecare stea e o victorie, aprinsă atunci când aveai nevoie de lumină.';
   @override
   String get admireYourStars => 'Admiră-ți stelele';
   @override
@@ -87,14 +88,15 @@ class StringsRo implements AppStrings {
   String get starsLoggedLabel => 'Stele notate';
   @override
   @override
-  String get noCurrentStreakBody => 'Nicio serie activă acum. Aprinde o stea azi ca să începi una.';
+  String get noCurrentStreakBody =>
+      'Nicio serie activă acum. Aprinde o stea azi ca să începi una.';
 
   @override
   String get searchHint => 'Caută după titlu sau descriere';
   @override
   String get noSearchResults => 'Nicio stea nu corespunde căutării.';
   @override
-  String get areaWinsEmpty => 'Nicio stea aprinsă încă în această supernovă.';
+  String get areaWinsEmpty => 'Încă nicio stea în această supernovă.';
   @override
   String intensityCount(int value) => '$value intensitate';
   @override
@@ -111,7 +113,8 @@ class StringsRo implements AppStrings {
   @override
   String get seedSampleData => 'Generează date de exemplu';
   @override
-  String seedSampleDataResult(int count) => 'S-au adăugat $count stele la fiecare constelație de exemplu.';
+  String seedSampleDataResult(int count) =>
+      'S-au adăugat $count stele la fiecare constelație de exemplu.';
   @override
   String get resetAllData => 'Resetează toate datele';
   @override
@@ -126,7 +129,8 @@ class StringsRo implements AppStrings {
   @override
   String get allDataCleared => 'Toate datele au fost șterse.';
   @override
-  String get archiveEmpty => 'Arhiva ta e încă goală. Aprinde prima ta stea, chiar și una mică.';
+  String get archiveEmpty =>
+      'Arhiva ta e încă goală. Aprinde prima ta stea, chiar și una mică.';
 
   @override
   String get skyEyebrow => 'CERUL TĂU';
@@ -141,7 +145,8 @@ class StringsRo implements AppStrings {
       'Încă nicio constelație în $areaName. Începe una pentru a aprinde primele stele aici.';
 
   @override
-  String get constellationShapeMissing => 'Forma acestei constelații nu a fost găsită.';
+  String get constellationShapeMissing =>
+      'Forma acestei constelații nu a fost găsită.';
 
   @override
   String get newProjectEyebrow => 'CONSTELAȚIE NOUĂ';
@@ -167,6 +172,8 @@ class StringsRo implements AppStrings {
   @override
   String get addWinQuestion => 'Ce ai reușit să depășești?';
   @override
+  String get addGoalQuestion => 'Ce vrei să atingi?';
+  @override
   String get projectLabel => 'Constelație';
   @override
   String get selectAProject => 'Selectează o constelație';
@@ -185,7 +192,8 @@ class StringsRo implements AppStrings {
   @override
   String get detailsLabel => 'Detalii (opțional)';
   @override
-  String get detailsHint => 'Ce a făcut acest moment dificil și cum ai trecut peste el';
+  String get detailsHint =>
+      'Ce a făcut acest moment dificil și cum ai trecut peste el';
   @override
   String get intensityLabel => 'Intensitate';
   @override
@@ -197,13 +205,15 @@ class StringsRo implements AppStrings {
   @override
   String get choosePhotoOption => 'Alege din galerie';
   @override
-  String get photoPickError => 'Nu am putut obține fotografia. Încerci din nou?';
+  String get photoPickError =>
+      'Nu am putut obține fotografia. Încerci din nou?';
   @override
   String get cropPhotoTitle => 'Ajustează fotografia';
   @override
   String get cropPhotoConfirm => 'Gata';
   @override
-  String get cropPhotoHint => 'Ciupește și trage pentru a încadra fotografia în cadru';
+  String get cropPhotoHint =>
+      'Ciupește și trage pentru a încadra fotografia în cadru';
   @override
   String get saveChanges => 'Salvează modificările';
   @override
@@ -212,58 +222,141 @@ class StringsRo implements AppStrings {
   String get deleteStarConfirmTitle => 'Ștergi această stea?';
   @override
   String get deleteStarConfirmBody =>
-      'Aceasta elimină definitiv steaua și tot ce ai scris pentru ea. Nu poate fi anulat.';
+      'Steaua va deveni o stea stinsă: dispare de aici, dar rămâne la locul ei pe cer și o poți reînvia mai târziu.';
   @override
   String get deleteStarAction => 'Șterge';
   @override
   String get discardChangesConfirmTitle => 'Renunți la modificări?';
   @override
-  String get discardChangesConfirmBody => 'Vei pierde modificările făcute acestei stele.';
+  String get discardChangesConfirmBody =>
+      'Vei pierde modificările făcute acestei stele.';
   @override
   String get discardChangesAction => 'Renunță la modificări';
 
   @override
-  String get admireTagline => 'Pentru când ești în întuneric și ai nevoie de puțină lumină.';
+  String get achievedToggleOn => 'Deja atins';
+  @override
+  String get achievedToggleOff => 'Obiectiv viitor';
+  @override
+  String get targetDateLabel => 'Dată țintă (opțional)';
+  @override
+  String get selectATargetDateHint => 'Selectează o dată';
+
+  @override
+  String goalTargetLabel(String date) => 'Obiectiv pentru $date';
+  @override
+  String get markAchievedAction => 'Marchează ca atins';
+  @override
+  String get markAchievedSheetTitle => 'Cât efort te-a costat să ajungi aici?';
+  @override
+  String get markAchievedConfirm => 'Aprinde această stea';
+  @override
+  String get undoAchievedAction => 'Marchează ca neatins';
+  @override
+  String get deadStarTitle => 'Stea stinsă';
+  @override
+  String get deadStarBody =>
+      'Această stea a fost ștearsă. O poți readuce la viață ca o stea complet nouă, în același loc pe cer.';
+  @override
+  String get resurrectAction => 'Reînvie această stea';
+
+  @override
+  String get newHabitEyebrow => 'PULSAR NOU';
+  @override
+  String get editHabitEyebrow => 'EDITEAZĂ PULSARUL';
+  @override
+  String get addHabitQuestion => 'Ce pulsar vrei să aprinzi?';
+  @override
+  String get habitFrequencyLabel => 'Frecvență';
+  @override
+  String get habitFrequencyDaily => 'În fiecare zi';
+  @override
+  String get customReminderToggleLabel => 'Oră de memento personalizată';
+  @override
+  String get deleteHabitConfirmTitle => 'Ștergi acest pulsar?';
+  @override
+  String get deleteHabitConfirmBody =>
+      'Aceasta elimină definitiv pulsarul și tot istoricul lui. Nu poate fi anulat.';
+  @override
+  String get deleteHabitAction => 'Șterge';
+
+  @override
+  String get habitCurrentStreakLabel => 'Serie curentă';
+  @override
+  String get markHabitDoneAction => 'Marchează azi ca făcut';
+  @override
+  String get habitDoneTodayLabel => 'Făcut azi';
+  @override
+  String get undoHabitTodayAction => 'Anulează';
+
+  @override
+  String openGoalsBadge(int count) =>
+      count == 1 ? '1 obiectiv deschis' : '$count obiective deschise';
+  @override
+  String activeHabitsBadge(int count) =>
+      count == 1 ? '1 pulsar activ' : '$count pulsari activi';
+
+  @override
+  String get starKindVictoryLabel => 'Victorii';
+  @override
+  String get starKindGoalLabel => 'Obiective';
+  @override
+  String get starKindDeadLabel => 'Stele stinse';
+  @override
+  String get starKindPulsarChipLabel => 'Pulsari';
+  @override
+  String get starKindPulsarTagLabel => 'Pulsar';
+
+  @override
+  String get admireTagline =>
+      'Pentru când ești în întuneric și ai nevoie de puțină lumină.';
   @override
   String get allAreasLabel => 'Toate supernovele';
   @override
-  String get pickAtLeastOneArea => 'Alege cel puțin o supernovă pentru a continua.';
+  String get pickAtLeastOneArea =>
+      'Alege cel puțin o supernovă pentru a continua.';
   @override
-  String get noStarsInSelection => 'Nicio stea aprinsă încă în supernovele alese.';
+  String get noStarsInSelection =>
+      'Nicio stea aprinsă încă în supernovele alese.';
   @override
   String get viewYourStars => 'Privește-ți stelele';
 
   @override
-  String get addWinFabLabel => 'Stea nouă';
+  String get addWinFabLabel => 'Victorie nouă';
+  @override
+  String get addGoalFabLabel => 'Obiectiv nou';
+  @override
+  String get addHabitFabLabel => 'Pulsar nou';
   @override
   String get newConstellationOption => 'Constelație nouă';
 
   @override
   List<String> get upliftingQuotes => const [
-        'Nu trebuie să vezi toată scara, doar primul pas.',
-        'Și pașii mici te duc mai departe.',
-        'Ai trecut prin fiecare zi grea de până acum. Un record perfect.',
-        'Odihna nu înseamnă renunțare.',
-        'Poți fi în același timp o lucrare în desfășurare și demn de iubire.',
-        'Acest sentiment e real, dar nu e permanent.',
-        'Nu trebuie să ai totul clar ca să mergi mai departe.',
-        'Progres, nu perfecțiune.',
-        'Unele zile, e suficient să fii încă aici. Și contează.',
-        'Ai trecut prin 100% din cele mai grele zile ale tale, până acum.',
-        'Fii răbdător cu tine. Nimic în natură nu înflorește tot anul.',
-        'E în regulă să nu fii bine — doar nu rămâne acolo singur.',
-        'O respirație pe rând. Atât îți cere acest moment.',
-        'Ești mai puternic decât crezi și mai iubit decât știi.',
-        'Chiar și cea mai întunecată noapte se termină, iar soarele răsare din nou.',
-        'Vindecarea nu e liniară, și e în regulă așa.',
-      ];
+    'Nu trebuie să vezi toată scara, doar primul pas.',
+    'Și pașii mici te duc mai departe.',
+    'Ai trecut prin fiecare zi grea de până acum. Un record perfect.',
+    'Odihna nu înseamnă renunțare.',
+    'Poți fi în același timp o lucrare în desfășurare și demn de iubire.',
+    'Acest sentiment e real, dar nu e permanent.',
+    'Nu trebuie să ai totul clar ca să mergi mai departe.',
+    'Progres, nu perfecțiune.',
+    'Unele zile, e suficient să fii încă aici. Și contează.',
+    'Ai trecut prin 100% din cele mai grele zile ale tale, până acum.',
+    'Fii răbdător cu tine. Nimic în natură nu înflorește tot anul.',
+    'E în regulă să nu fii bine — doar nu rămâne acolo singur.',
+    'O respirație pe rând. Atât îți cere acest moment.',
+    'Ești mai puternic decât crezi și mai iubit decât știi.',
+    'Chiar și cea mai întunecată noapte se termină, iar soarele răsare din nou.',
+    'Vindecarea nu e liniară, și e în regulă așa.',
+  ];
 
   @override
   String indexOfCount(int index, int total) => '$index din $total';
   @override
   String get shareStarLabel => 'Distribuie această Stea';
   @override
-  String get shareStarError => 'Nu am putut distribui această stea. Încerci din nou?';
+  String get shareStarError =>
+      'Nu am putut distribui această stea. Încerci din nou?';
 
   @override
   String get settingsEyebrow => 'SETĂRI';
@@ -299,33 +392,63 @@ class StringsRo implements AppStrings {
 
   @override
   List<String> get reminderNotificationBodies => const [
-        'Ce te-a ajutat să treci peste ziua de azi, chiar și puțin?',
-        'Și cel mai mic pas aprinde o stea.',
-        'Un moment — ce a mers bine azi?',
-        'Cerul tău așteaptă steaua din seara asta.',
-        'Ai trecut peste ceva azi? Notează-l.',
-      ];
+    'Ce te-a ajutat să treci peste ziua de azi, chiar și puțin?',
+    'Și cel mai mic pas aprinde o stea.',
+    'Un moment — ce a mers bine azi?',
+    'Cerul tău așteaptă steaua din seara asta.',
+    'Ai trecut peste ceva azi? Notează-l.',
+  ];
   @override
   String get aboutSection => 'Despre';
   @override
   String aboutVersion(String version) => 'Versiunea $version';
   @override
-  String get aboutTagline => 'O aplicație de dezvoltare personală pentru a nota momentele pe care le-ai depășit.';
+  String get aboutTagline =>
+      'O aplicație de dezvoltare personală pentru a nota momentele pe care le-ai depășit.';
 
   @override
   List<String> get monthAbbreviations => const [
-        'Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun',
-        'Iul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-      ];
+    'Ian',
+    'Feb',
+    'Mar',
+    'Apr',
+    'Mai',
+    'Iun',
+    'Iul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
 
   @override
-  List<String> get weekdayAbbreviations => const ['Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm', 'Dum'];
+  List<String> get weekdayAbbreviations => const [
+    'Lun',
+    'Mar',
+    'Mie',
+    'Joi',
+    'Vin',
+    'Sâm',
+    'Dum',
+  ];
 
   @override
-  String monthTitle(DateTime month) => '${_fullMonths[month.month - 1]} ${month.year}';
+  String monthTitle(DateTime month) =>
+      '${_fullMonths[month.month - 1]} ${month.year}';
 }
 
 const _fullMonths = [
-  'Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie',
-  'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie',
+  'Ianuarie',
+  'Februarie',
+  'Martie',
+  'Aprilie',
+  'Mai',
+  'Iunie',
+  'Iulie',
+  'August',
+  'Septembrie',
+  'Octombrie',
+  'Noiembrie',
+  'Decembrie',
 ];

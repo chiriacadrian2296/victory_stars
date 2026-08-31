@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_strings.dart';
 
-/// The 8 fixed areas of life a [Project] (and, through it, every [Win]) can
+/// The 8 fixed areas of life a [Project] (and, through it, every [Star]) can
 /// belong to. Fixed and closed — not user-extensible.
 enum LifeArea {
   physical,

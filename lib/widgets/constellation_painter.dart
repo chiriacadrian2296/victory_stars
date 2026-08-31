@@ -2,13 +2,30 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-/// One lit star: which win it represents, and where it sits in the
-/// constellation's normalized (0..1) coordinate space.
-class ConstellationStar {
-  const ConstellationStar({required this.winId, required this.position});
+/// Which visual family a [ConstellationStar] belongs to. [victory] and
+/// [goal] share the exact same sparkle/glow treatment when lit — a goal
+/// that's been achieved is drawn by the very same code path as a victory
+/// (see [ConstellationPainter.paint]) — differing only in [ConstellationStar.lit]
+/// while still unachieved. [dead] is a tombstoned star: still occupying its
+/// slot, drawn as a spent husk. [habit] is its own smaller, separately
+/// scattered family with a different sparkle and tint.
+enum StarKind { victory, goal, dead, habit }
 
-  final int winId;
+/// One star: which entity it represents, where it sits in the
+/// constellation's normalized (0..1) coordinate space, its [kind], and
+/// whether it's currently lit.
+class ConstellationStar {
+  const ConstellationStar({
+    required this.entityId,
+    required this.position,
+    required this.kind,
+    required this.lit,
+  });
+
+  final int entityId;
   final Offset position;
+  final StarKind kind;
+  final bool lit;
 }
 
 /// Renders a small white radial-gradient glow once and caches it as a
@@ -38,8 +55,10 @@ class ConstellationPainter extends CustomPainter {
     required this.revision,
     required this.starColor,
     required this.coreColor,
+    required this.habitColor,
     this.edges = const [],
     this.linkThreshold = 0,
+    required this.shapeStarCount,
   });
 
   final List<ConstellationStar> stars;
@@ -51,42 +70,130 @@ class ConstellationPainter extends CustomPainter {
   final Color starColor;
   final Color coreColor;
 
-  /// Which pairs of [stars] (by index) get a connecting line — built by
+  /// Tints a habit's own sparkle/glow — distinct from [starColor]/[coreColor]
+  /// so habits read as a separate star family before their smaller size or
+  /// different twinkle shape even register.
+  final Color habitColor;
+
+  /// Which pairs of [stars] (by index into the victory/goal/dead subset —
+  /// see `ConstellationScreen._buildStars`) get a connecting line — built by
   /// `buildConstellationLayout`, so this can branch (a figure's arms and
   /// legs, a teapot's handle) instead of being a single path or loop.
   final List<(int, int)> edges;
 
-  /// No lines are drawn at all until [stars] reaches this many — a
-  /// project's constellation shows loose, unlinked stars until its full
-  /// base graph (the shape's keypoints) is lit.
+  /// No lines are drawn at all until the shape's own graph (victories, goals
+  /// and dead stars — never habits) reaches this many stars.
   final int linkThreshold;
 
-  /// Bumped by the caller whenever [stars] actually changes (a win was
-  /// added/edited or the screen reloaded) — deliberately NOT a deep list
-  /// comparison, so pan/zoom gesture frames never trigger a repaint.
+  /// How many of [stars] belong to the shape's own point/edge graph
+  /// (victory + goal + dead) — used instead of `stars.length` for the
+  /// [linkThreshold] comparison, so a project's habits (appended after,
+  /// scattered separately) never prematurely trigger the shape's connecting
+  /// lines on a barely-started constellation.
+  final int shapeStarCount;
+
+  /// Bumped by the caller whenever [stars] actually changes in a way that
+  /// affects rendering (a star added/achieved/deleted/resurrected, a habit
+  /// completed) — deliberately NOT a deep list comparison, so pan/zoom
+  /// gesture frames never trigger a repaint. Since a star's [ConstellationStar.lit]
+  /// can now flip without [stars.length] changing at all (an achieved goal,
+  /// a tombstoned star, a habit's streak breaking), correctness here depends
+  /// entirely on the caller bumping this — the painter has no cheap way to
+  /// detect that change itself.
   final int revision;
 
   static const _sparkleRadius = 5.5;
+  static const _habitSparkleRadius = 3.5;
+  static const _dimAlpha = 0.35;
+  static const _deadAlpha = 0.15;
 
   @override
   void paint(Canvas canvas, Size size) {
     final sprite = glowSprite;
     if (sprite == null || stars.isEmpty) return;
 
-    if (stars.length >= linkThreshold && linkThreshold > 0) {
+    if (shapeStarCount >= linkThreshold && linkThreshold > 0) {
       final linePaint = Paint()
         ..color = starColor.withValues(alpha: 0.35)
         ..strokeWidth = 1.2
         ..style = PaintingStyle.stroke;
+      final shapeStars = stars.where((s) => s.kind != StarKind.habit).toList();
       for (final (a, b) in edges) {
-        if (a >= stars.length || b >= stars.length) continue;
+        if (a >= shapeStars.length || b >= shapeStars.length) continue;
         canvas.drawLine(
-          _toCanvas(stars[a].position, size),
-          _toCanvas(stars[b].position, size),
+          _toCanvas(shapeStars[a].position, size),
+          _toCanvas(shapeStars[b].position, size),
           linePaint,
         );
       }
     }
+
+    final lit = stars.where((s) => s.kind != StarKind.habit && s.lit).toList();
+    final unlitGoals = stars
+        .where((s) => s.kind == StarKind.goal && !s.lit)
+        .toList();
+    final dead = stars.where((s) => s.kind == StarKind.dead).toList();
+    final litHabits = stars
+        .where((s) => s.kind == StarKind.habit && s.lit)
+        .toList();
+    final unlitHabits = stars
+        .where((s) => s.kind == StarKind.habit && !s.lit)
+        .toList();
+
+    _drawGlowAndSparkle(
+      canvas,
+      size,
+      sprite,
+      lit,
+      tint: starColor,
+      sparkleColor: coreColor,
+      sparkleRadius: _sparkleRadius,
+    );
+    _drawSparkleOnly(
+      canvas,
+      size,
+      unlitGoals,
+      color: coreColor.withValues(alpha: _dimAlpha),
+      radius: _sparkleRadius,
+    );
+    _drawSparkleOnly(
+      canvas,
+      size,
+      dead,
+      color: coreColor.withValues(alpha: _deadAlpha),
+      radius: _sparkleRadius,
+      outlineOnly: true,
+    );
+    _drawGlowAndSparkle(
+      canvas,
+      size,
+      sprite,
+      litHabits,
+      tint: habitColor,
+      sparkleColor: habitColor,
+      sparkleRadius: _habitSparkleRadius,
+      spriteScale: 0.55,
+    );
+    _drawSparkleOnly(
+      canvas,
+      size,
+      unlitHabits,
+      color: habitColor.withValues(alpha: _deadAlpha),
+      radius: _habitSparkleRadius,
+    );
+  }
+
+  void _drawGlowAndSparkle(
+    Canvas canvas,
+    Size size,
+    ui.Image sprite,
+    List<ConstellationStar> group, {
+    required Color tint,
+    required Color sparkleColor,
+    required double sparkleRadius,
+    double spriteScale = 1,
+  }) {
+    if (group.isEmpty) return;
 
     final srcRect = Rect.fromLTWH(
       0,
@@ -98,12 +205,12 @@ class ConstellationPainter extends CustomPainter {
     final srcRects = <Rect>[];
     final colors = <Color>[];
 
-    for (final star in stars) {
+    for (final star in group) {
       final center = _toCanvas(star.position, size);
       transforms.add(
         RSTransform.fromComponents(
           rotation: 0,
-          scale: 1,
+          scale: spriteScale,
           anchorX: sprite.width / 2,
           anchorY: sprite.height / 2,
           translateX: center.dx,
@@ -111,7 +218,7 @@ class ConstellationPainter extends CustomPainter {
         ),
       );
       srcRects.add(srcRect);
-      colors.add(starColor);
+      colors.add(tint);
     }
 
     canvas.drawAtlas(
@@ -124,13 +231,38 @@ class ConstellationPainter extends CustomPainter {
       Paint(),
     );
 
-    final sparkle = _sparklePath(_sparkleRadius);
-    final corePaint = Paint()..color = coreColor;
-    for (final star in stars) {
+    final sparkle = _sparklePath(sparkleRadius);
+    final corePaint = Paint()..color = sparkleColor;
+    for (final star in group) {
       final center = _toCanvas(star.position, size);
       canvas.save();
       canvas.translate(center.dx, center.dy);
       canvas.drawPath(sparkle, corePaint);
+      canvas.restore();
+    }
+  }
+
+  void _drawSparkleOnly(
+    Canvas canvas,
+    Size size,
+    List<ConstellationStar> group, {
+    required Color color,
+    required double radius,
+    bool outlineOnly = false,
+  }) {
+    if (group.isEmpty) return;
+    final sparkle = _sparklePath(radius);
+    final paint = outlineOnly
+        ? (Paint()
+            ..color = color
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1)
+        : (Paint()..color = color);
+    for (final star in group) {
+      final center = _toCanvas(star.position, size);
+      canvas.save();
+      canvas.translate(center.dx, center.dy);
+      canvas.drawPath(sparkle, paint);
       canvas.restore();
     }
   }
@@ -141,6 +273,7 @@ class ConstellationPainter extends CustomPainter {
         glowSprite != oldDelegate.glowSprite ||
         starColor != oldDelegate.starColor ||
         coreColor != oldDelegate.coreColor ||
+        habitColor != oldDelegate.habitColor ||
         stars.length != oldDelegate.stars.length;
   }
 }
@@ -163,9 +296,12 @@ Offset _toCanvas(Offset normalized, Size size) {
   return Offset(normalized.dx * size.width, normalized.dy * size.height);
 }
 
-/// Finds the lit star nearest a tap, within [hitRadius] logical pixels, in
-/// the same normalized-to-canvas coordinate space [ConstellationPainter]
-/// paints in.
+/// Finds the star nearest a tap, within [hitRadius] logical pixels, in the
+/// same normalized-to-canvas coordinate space [ConstellationPainter] paints
+/// in. Works regardless of [ConstellationStar.kind]/[ConstellationStar.lit] —
+/// a dead star or an unlit goal is just as tappable as a lit victory, since
+/// tapping any of them opens something useful (resurrect, "mark achieved",
+/// or just viewing).
 ConstellationStar? hitTestStar(
   Offset localPosition,
   Size canvasSize,

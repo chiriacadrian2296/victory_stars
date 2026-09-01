@@ -50,16 +50,16 @@ class StarCard extends StatelessWidget {
                     Row(
                       children: [
                         Icon(Icons.star, size: 13, color: colors.gold),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            formatDisplayDateTime(
-                              star.achievedDate!,
-                              context.strings,
-                            ),
-                            style: TextStyle(fontSize: 12, color: colors.muted),
+                        const SizedBox(width: 6),
+                        Text(
+                          context.strings.starKindVictoryTagLabel,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: colors.gold,
                           ),
                         ),
+                        const Spacer(),
                         IntensityBolts(
                           intensity: star.intensity!,
                           size: 13,
@@ -82,6 +82,14 @@ class StarCard extends StatelessWidget {
                         fontSize: 19,
                         color: colors.text,
                       ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      formatDisplayDateTime(
+                        star.achievedDate!,
+                        context.strings,
+                      ),
+                      style: TextStyle(fontSize: 12, color: colors.muted),
                     ),
                     if (star.description != null) ...[
                       const SizedBox(height: 6),

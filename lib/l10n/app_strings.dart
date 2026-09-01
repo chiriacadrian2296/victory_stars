@@ -21,9 +21,14 @@ abstract class AppStrings {
   // Bottom navigation
   String get navHome;
   String get navSky;
+  String get navStats;
   String get navSettings;
   String get collapseSidebarAction;
   String get expandSidebarAction;
+
+  // Statistics tab
+  String get statsEyebrow;
+  String get statsTitle;
 
   // Home dashboard
   String get homeEyebrow;
@@ -206,9 +211,11 @@ abstract class AppStrings {
   String activeHabitsBadge(int count);
 
   // Area "Stars" flat list — kind filter chips (plural, shown next to a
-  // count) and per-card kind tags (singular, shown on the goal/dead/pulsar
-  // cards themselves).
+  // count) and per-card kind tags (singular, shown on every card's own
+  // badge — goal/dead reuse achievedToggleOff/deadStarTitle instead of a
+  // second string, since those already are the singular form).
   String get starKindVictoryLabel;
+  String get starKindVictoryTagLabel;
   String get starKindGoalLabel;
   String get starKindDeadLabel;
   String get starKindPulsarChipLabel;

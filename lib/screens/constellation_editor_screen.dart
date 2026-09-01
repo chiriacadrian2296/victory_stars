@@ -58,8 +58,7 @@ class _EditorSnapshot {
   final List<(int, int)> edges;
 }
 
-class _ConstellationEditorScreenState
-    extends State<ConstellationEditorScreen> {
+class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
   /// Working coordinates, relative to the canvas's own size (roughly 0..1,
   /// same convention a saved [ConstellationShape] uses — but not clamped:
   /// dragging a point past the visible canvas edge just pushes it slightly
@@ -136,9 +135,7 @@ class _ConstellationEditorScreenState
   }
 
   List<Offset> get _pixelPoints => _points
-      .map(
-        (p) => Offset(p.dx * _canvasSize.width, p.dy * _canvasSize.height),
-      )
+      .map((p) => Offset(p.dx * _canvasSize.width, p.dy * _canvasSize.height))
       .toList();
 
   /// Snaps a raw pixel position to the nearest grid vertex when the grid is
@@ -335,8 +332,9 @@ class _ConstellationEditorScreenState
       _pushUndoSnapshot();
     }
     setState(
-      () => _points[downIndex] =
-          _toRelative(_snapIfGridEnabled(event.localPosition)),
+      () => _points[downIndex] = _toRelative(
+        _snapIfGridEnabled(event.localPosition),
+      ),
     );
   }
 
@@ -454,7 +452,10 @@ class _ConstellationEditorScreenState
     if (name == null || name.isEmpty || !mounted) return;
 
     final normalized = normalizeEditorPoints(_points);
-    final shape = ConstellationShape(points: normalized, edges: List.of(_edges));
+    final shape = ConstellationShape(
+      points: normalized,
+      edges: List.of(_edges),
+    );
     final existing = widget.existing;
     final saved = existing == null
         ? await widget.customConstellationRepository.add(
@@ -524,114 +525,134 @@ class _ConstellationEditorScreenState
                 ),
               ],
             ),
-            if (widget.existing != null) _ExistingConstellationHeader(
-              constellation: widget.existing!,
-            ),
             Expanded(
-              // Top-anchored, not Center: the canvas (a square, so usually
-              // narrower than this Expanded region is tall) would
-              // otherwise float in the middle of the leftover vertical
-              // space, opening up a big gap between it and whatever's
-              // directly above it (the title, when there is one) — pushing
-              // all of that leftover space to the bottom instead keeps the
-              // canvas right under the title.
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: AspectRatio(
-                  aspectRatio: 1,
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      _canvasSize = constraints.biggest;
-                      return Listener(
-                        behavior: HitTestBehavior.opaque,
-                        onPointerDown: _handlePointerDown,
-                        onPointerMove: _handlePointerMove,
-                        onPointerUp: _handlePointerUp,
-                        child: Container(
-                          clipBehavior: Clip.antiAlias,
-                          decoration: BoxDecoration(
-                            color: colors.nightPanel,
-                            border: Border.all(color: colors.nightBorder),
-                            borderRadius: BorderRadius.circular(12),
+              // Split into two equal-flex regions around the fixed-size
+              // canvas, rather than centering the canvas (or a title+canvas
+              // group) as one block — that only balances the space *outside*
+              // the group, not the title's own position within it. Equal
+              // flex above and below puts the canvas in the true middle of
+              // this area; centering the title inside the top region alone
+              // (which spans exactly from the toolbar to the canvas) puts it
+              // equidistant from both, however tall that region ends up
+              // being.
+              child: Column(
+                children: [
+                  Expanded(
+                    child: widget.existing == null
+                        ? const SizedBox()
+                        : Center(
+                            child: _ExistingConstellationHeader(
+                              constellation: widget.existing!,
+                            ),
                           ),
-                          child: Stack(
-                            children: [
-                              if (_gridEnabled)
-                                Positioned.fill(
-                                  child: CustomPaint(
-                                    painter: _GridPainter(
-                                      divisions: _gridDivisions,
-                                      color: colors.nightBorder,
-                                      // Just a touch brighter than the
-                                      // regular grid lines — a small blend
-                                      // toward `muted` rather than jumping
-                                      // straight to it, so the center reads
-                                      // as "the same grid, slightly lifted"
-                                      // rather than a visually distinct line.
-                                      centerColor: Color.lerp(
-                                        colors.nightBorder,
-                                        colors.muted,
-                                        0.3,
-                                      )!,
-                                    ),
-                                  ),
-                                ),
-                              if (_points.isEmpty)
-                                Center(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(24),
-                                    child: Text(
-                                      strings.constellationEditorEmptyHint,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(color: colors.muted),
-                                    ),
-                                  ),
-                                )
-                              else
-                                CustomPaint(
-                                  size: constraints.biggest,
-                                  painter: ConstellationEditorPainter(
-                                    points: _pixelPoints,
-                                    edges: _edges,
-                                    highlightedIndex:
-                                        _armedIndex ?? _draggingIndex,
-                                    pointColor: colors.text,
-                                    highlightColor: colors.gold,
-                                    lineColor: colors.gold.withValues(
-                                      alpha: 0.5,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
                   ),
-                ),
+                  AspectRatio(
+                    aspectRatio: 1,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        _canvasSize = constraints.biggest;
+                        return Listener(
+                          behavior: HitTestBehavior.opaque,
+                          onPointerDown: _handlePointerDown,
+                          onPointerMove: _handlePointerMove,
+                          onPointerUp: _handlePointerUp,
+                          child: Container(
+                            clipBehavior: Clip.antiAlias,
+                            decoration: BoxDecoration(
+                              color: colors.nightPanel,
+                              border: Border.all(color: colors.nightBorder),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Stack(
+                              children: [
+                                if (_gridEnabled)
+                                  Positioned.fill(
+                                    child: CustomPaint(
+                                      painter: _GridPainter(
+                                        divisions: _gridDivisions,
+                                        color: colors.nightBorder,
+                                        // Just a touch brighter than the
+                                        // regular grid lines — a small blend
+                                        // toward `muted` rather than jumping
+                                        // straight to it, so the center reads
+                                        // as "the same grid, slightly lifted"
+                                        // rather than a visually distinct line.
+                                        centerColor: Color.lerp(
+                                          colors.nightBorder,
+                                          colors.muted,
+                                          0.3,
+                                        )!,
+                                      ),
+                                    ),
+                                  ),
+                                if (_points.isEmpty)
+                                  Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(24),
+                                      child: Text(
+                                        strings.constellationEditorEmptyHint,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(color: colors.muted),
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  CustomPaint(
+                                    size: constraints.biggest,
+                                    painter: ConstellationEditorPainter(
+                                      points: _pixelPoints,
+                                      edges: _edges,
+                                      highlightedIndex:
+                                          _armedIndex ?? _draggingIndex,
+                                      pointColor: colors.text,
+                                      highlightColor: colors.gold,
+                                      lineColor: colors.gold.withValues(
+                                        alpha: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-              child: Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 12,
-                runSpacing: 8,
+              // A Row of Flexible buttons, not a Wrap — a Wrap drops to a
+              // second line once the three pills stop fitting (which a
+              // longer translation, e.g. Romanian, hits easily), while
+              // Flexible instead lets each pill's own label ellipsize so
+              // all three always stay on one row.
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _EditorActionButton(
-                    icon: Icons.undo,
-                    label: strings.undoAction,
-                    onTap: _undoStack.isEmpty ? null : _undo,
+                  Flexible(
+                    child: _EditorActionButton(
+                      icon: Icons.undo,
+                      label: strings.undoAction,
+                      onTap: _undoStack.isEmpty ? null : _undo,
+                    ),
                   ),
-                  _EditorActionButton(
-                    icon: Icons.redo,
-                    label: strings.redoAction,
-                    onTap: _redoStack.isEmpty ? null : _redo,
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: _EditorActionButton(
+                      icon: Icons.redo,
+                      label: strings.redoAction,
+                      onTap: _redoStack.isEmpty ? null : _redo,
+                    ),
                   ),
-                  _EditorActionButton(
-                    icon: Icons.delete_outline,
-                    label: strings.deletePointAction,
-                    onTap: _armedIndex == null ? null : _deleteArmedPoint,
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: _EditorActionButton(
+                      icon: Icons.delete_outline,
+                      label: strings.deletePointAction,
+                      onTap: _armedIndex == null ? null : _deleteArmedPoint,
+                    ),
                   ),
                 ],
               ),
@@ -1036,7 +1057,10 @@ class _GestureDiagramPainter extends CustomPainter {
 }
 
 const _addPointDiagram = _GestureDiagram(
-  dots: [_DiagramDot(Offset(0.28, 0.5), ghost: true), _DiagramDot(Offset(0.75, 0.5))],
+  dots: [
+    _DiagramDot(Offset(0.28, 0.5), ghost: true),
+    _DiagramDot(Offset(0.75, 0.5)),
+  ],
   showArrow: true,
   icon: Icons.touch_app,
   iconAt: Offset(0.28, 0.15),

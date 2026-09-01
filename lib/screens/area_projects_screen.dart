@@ -289,9 +289,14 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
                   if (_mode == _ViewMode.list)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                      // A Row, not a Wrap — with 4 chips a label+count Wrap
+                      // easily drops to a second line (worse on longer IT/RO
+                      // translations), so the label was dropped in favor of
+                      // just icon+count (see _KindFilterChip), which always
+                      // fits four-across on one line; the full kind name is
+                      // still available via each chip's tooltip.
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           _KindFilterChip(
                             icon: Icons.star,
@@ -582,32 +587,39 @@ class _KindFilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? color.withValues(alpha: 0.14) : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: selected ? color.withValues(alpha: 0.5) : colors.nightBorder,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: selected ? color : colors.muted),
-            const SizedBox(width: 6),
-            Text(
-              '$label $count',
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: selected ? colors.text : colors.muted,
-              ),
+    return Tooltip(
+      message: '$label · $count',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected
+                ? color.withValues(alpha: 0.14)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected
+                  ? color.withValues(alpha: 0.5)
+                  : colors.nightBorder,
             ),
-          ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: selected ? color : colors.muted),
+              const SizedBox(width: 6),
+              Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: selected ? colors.text : colors.muted,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

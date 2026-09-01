@@ -28,11 +28,18 @@ class StringsIt implements AppStrings {
   @override
   String get navSky => 'Cielo';
   @override
+  String get navStats => 'Statistiche';
+  @override
   String get navSettings => 'Impostazioni';
   @override
   String get collapseSidebarAction => 'Comprimi la barra laterale';
   @override
   String get expandSidebarAction => 'Espandi la barra laterale';
+
+  @override
+  String get statsEyebrow => 'I TUOI NUMERI';
+  @override
+  String get statsTitle => 'Statistiche';
 
   @override
   String get homeEyebrow => 'I TUOI PROGRESSI';
@@ -374,6 +381,8 @@ class StringsIt implements AppStrings {
 
   @override
   String get starKindVictoryLabel => 'Vittorie';
+  @override
+  String get starKindVictoryTagLabel => 'Vittoria';
   @override
   String get starKindGoalLabel => 'Obbiettivi';
   @override

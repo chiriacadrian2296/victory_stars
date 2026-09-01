@@ -16,6 +16,7 @@ class AreaTag extends StatelessWidget {
     this.iconSize = 16,
     this.fontSize = 15,
     this.textColor,
+    this.iconColor,
   });
 
   final LifeArea area;
@@ -28,13 +29,18 @@ class AreaTag extends StatelessWidget {
   /// tone (e.g. the reflection-screen gradient).
   final Color? textColor;
 
+  /// Defaults to gold. Overridable for a card that deliberately shows no
+  /// gold anywhere (e.g. [DeadStarCard]'s fully-muted look), so it can still
+  /// reuse this widget instead of a bespoke plain-text fallback.
+  final Color? iconColor;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(area.icon, size: iconSize, color: colors.gold),
+        Icon(area.icon, size: iconSize, color: iconColor ?? colors.gold),
         const SizedBox(width: 6),
         Text(
           area.displayName(context.strings),

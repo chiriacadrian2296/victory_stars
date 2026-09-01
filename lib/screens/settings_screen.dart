@@ -112,6 +112,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _sendTestNotification() async {
     final strings = context.strings;
+
+    // The reminder toggle being on doesn't guarantee the permission still
+    // holds — Android can auto-revoke an unused permission, or the user can
+    // turn it off again in system settings, without the app finding out.
+    // Re-checking here (same as _setReminderEnabled does) is what actually
+    // makes this button reliable instead of silently doing nothing.
+    final granted = await widget.reminderService.requestPermission();
+    if (!granted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(strings.notificationPermissionDenied)),
+        );
+      }
+      return;
+    }
+
     final bodies = strings.reminderNotificationBodies;
     final body = bodies[DateTime.now().millisecondsSinceEpoch % bodies.length];
 

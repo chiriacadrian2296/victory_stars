@@ -13,6 +13,7 @@ import '../utils/responsive.dart';
 import 'home_screen.dart';
 import 'settings_screen.dart';
 import 'sky_screen.dart';
+import 'stats_screen.dart';
 
 /// The app's root scaffold: switches between the dashboard (Home), the
 /// life-areas hub (Sky — constellations and the flat searchable star list
@@ -71,6 +72,11 @@ class _RootScreenState extends State<RootScreen> {
         label: strings.navSky,
       ),
       (
+        icon: Icons.bar_chart_outlined,
+        selected: Icons.bar_chart,
+        label: strings.navStats,
+      ),
+      (
         icon: Icons.settings_outlined,
         selected: Icons.settings,
         label: strings.navSettings,
@@ -93,6 +99,10 @@ class _RootScreenState extends State<RootScreen> {
           habitRepository: widget.habitRepository,
           habitCompletionRepository: widget.habitCompletionRepository,
           customConstellationRepository: widget.customConstellationRepository,
+        ),
+        StatsScreen(
+          starRepository: widget.starRepository,
+          projectRepository: widget.projectRepository,
         ),
         SettingsScreen(
           settings: widget.settings,

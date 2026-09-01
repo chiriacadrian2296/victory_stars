@@ -16,6 +16,7 @@ class ProjectTag extends StatelessWidget {
     this.iconSize = 13,
     this.fontSize = 13,
     this.textColor,
+    this.iconColor,
   });
 
   final Project project;
@@ -23,18 +24,31 @@ class ProjectTag extends StatelessWidget {
   final double fontSize;
   final Color? textColor;
 
+  /// Defaults to gold. Overridable for a card that deliberately shows no
+  /// gold anywhere (e.g. [DeadStarCard]'s fully-muted look), so it can still
+  /// reuse this widget instead of a bespoke plain-text fallback.
+  final Color? iconColor;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(iconForSlug(project.iconSlug), size: iconSize, color: colors.gold),
+        Icon(
+          iconForSlug(project.iconSlug),
+          size: iconSize,
+          color: iconColor ?? colors.gold,
+        ),
         const SizedBox(width: 6),
         Flexible(
           child: Text(
             project.name,
-            style: TextStyle(fontSize: fontSize, color: textColor ?? colors.muted, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              fontSize: fontSize,
+              color: textColor ?? colors.muted,
+              fontWeight: FontWeight.w500,
+            ),
             overflow: TextOverflow.ellipsis,
           ),
         ),

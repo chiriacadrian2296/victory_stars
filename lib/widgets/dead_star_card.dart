@@ -4,6 +4,8 @@ import '../l10n/strings_scope.dart';
 import '../models/project.dart';
 import '../models/star.dart';
 import '../theme/app_colors.dart';
+import 'area_tag.dart';
+import 'project_tag.dart';
 
 /// A tombstoned star in a flat star list — [star] is always expected to
 /// satisfy `star.dead`. Rendered entirely in muted tones (no gold anywhere,
@@ -57,9 +59,16 @@ class DeadStarCard extends StatelessWidget {
                 ),
                 if (project != null) ...[
                   const SizedBox(height: 8),
-                  Text(
-                    project!.name,
-                    style: TextStyle(fontSize: 12.5, color: colors.muted),
+                  AreaTag(
+                    area: project!.area,
+                    textColor: colors.muted,
+                    iconColor: colors.muted,
+                  ),
+                  const SizedBox(height: 4),
+                  ProjectTag(
+                    project: project!,
+                    textColor: colors.muted,
+                    iconColor: colors.muted,
                   ),
                 ],
                 const SizedBox(height: 8),

@@ -28,11 +28,18 @@ class StringsEn implements AppStrings {
   @override
   String get navSky => 'Sky';
   @override
+  String get navStats => 'Stats';
+  @override
   String get navSettings => 'Settings';
   @override
   String get collapseSidebarAction => 'Collapse sidebar';
   @override
   String get expandSidebarAction => 'Expand sidebar';
+
+  @override
+  String get statsEyebrow => 'YOUR NUMBERS';
+  @override
+  String get statsTitle => 'Statistics';
 
   @override
   String get homeEyebrow => 'YOUR PROGRESS';
@@ -204,8 +211,7 @@ class StringsEn implements AppStrings {
   String get constellationEditorHelpDeletePoint =>
       'Select a star, then tap the delete icon to remove it';
   @override
-  String get constellationEditorHelpDontShowAgain =>
-      "Don't show this again";
+  String get constellationEditorHelpDontShowAgain => "Don't show this again";
   @override
   String get constellationEditorHelpClose => 'Got it';
 
@@ -371,6 +377,8 @@ class StringsEn implements AppStrings {
 
   @override
   String get starKindVictoryLabel => 'Victories';
+  @override
+  String get starKindVictoryTagLabel => 'Victory';
   @override
   String get starKindGoalLabel => 'Goals';
   @override

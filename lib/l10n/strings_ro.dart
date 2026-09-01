@@ -28,11 +28,18 @@ class StringsRo implements AppStrings {
   @override
   String get navSky => 'Cer';
   @override
+  String get navStats => 'Statistici';
+  @override
   String get navSettings => 'Setări';
   @override
   String get collapseSidebarAction => 'Restrânge bara laterală';
   @override
   String get expandSidebarAction => 'Extinde bara laterală';
+
+  @override
+  String get statsEyebrow => 'NUMERELE TALE';
+  @override
+  String get statsTitle => 'Statistici';
 
   @override
   String get homeEyebrow => 'PROGRESUL TĂU';
@@ -174,7 +181,7 @@ class StringsRo implements AppStrings {
   @override
   String get redoAction => 'Refă';
   @override
-  String get deletePointAction => 'Șterge steaua';
+  String get deletePointAction => 'Șterge';
   @override
   String get saveConstellationAction => 'Salvează';
   @override
@@ -373,6 +380,8 @@ class StringsRo implements AppStrings {
 
   @override
   String get starKindVictoryLabel => 'Victorii';
+  @override
+  String get starKindVictoryTagLabel => 'Victorie';
   @override
   String get starKindGoalLabel => 'Obiective';
   @override

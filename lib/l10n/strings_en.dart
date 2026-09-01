@@ -149,6 +149,63 @@ class StringsEn implements AppStrings {
       "This constellation's shape couldn't be found.";
 
   @override
+  String get drawYourOwnConstellation => 'Draw your own constellation';
+  @override
+  String get drawYourOwnShort => 'Draw your own';
+  @override
+  String get constellationEditorTitle => 'Draw your constellation';
+  @override
+  String get constellationEditorEditTitle => 'Edit your constellation';
+  @override
+  String get constellationEditorEmptyHint =>
+      'Tap anywhere to place your first star';
+  @override
+  String constellationEditorDisconnectedWarning(int count) =>
+      '$count star${count == 1 ? '' : 's'} not connected yet';
+  @override
+  String get constellationEditorPointCapReached =>
+      "You've reached the maximum number of stars";
+  @override
+  String get undoAction => 'Undo';
+  @override
+  String get redoAction => 'Redo';
+  @override
+  String get deletePointAction => 'Delete star';
+  @override
+  String get saveConstellationAction => 'Save';
+  @override
+  String get nameYourConstellationTitle => 'Name your constellation';
+  @override
+  String get constellationNameHint => 'E.g. My own path';
+  @override
+  String get yourConstellationsLabel => 'Your constellations';
+  @override
+  String get constellationEditorGridToggleLabel => 'Grid';
+  @override
+  String get constellationEditorHelpAction => 'How this works';
+  @override
+  String get constellationEditorHelpTitle => 'How this works';
+  @override
+  String get constellationEditorHelpAddPoint => 'Tap empty space to add a star';
+  @override
+  String get constellationEditorHelpConnectPoint =>
+      'Tap a star, then tap another to connect them with a line';
+  @override
+  String get constellationEditorHelpDisarmPoint =>
+      'Tap the same star again to deselect it without connecting';
+  @override
+  String get constellationEditorHelpMovePoint =>
+      'Press and drag a star to move it';
+  @override
+  String get constellationEditorHelpDeletePoint =>
+      'Select a star, then tap the delete icon to remove it';
+  @override
+  String get constellationEditorHelpDontShowAgain =>
+      "Don't show this again";
+  @override
+  String get constellationEditorHelpClose => 'Got it';
+
+  @override
   String get newProjectEyebrow => 'NEW CONSTELLATION';
   @override
   String get newProjectQuestion => 'What constellation is this?';
@@ -159,7 +216,17 @@ class StringsEn implements AppStrings {
   @override
   String get newProjectNameHint => 'E.g. Build this app';
   @override
+  String get projectDescriptionLabel => 'Description (optional)';
+  @override
+  String get projectDescriptionHint => "What's this project about?";
+  @override
   String get iconLabel => 'Icon';
+  @override
+  String get chooseIconTitle => 'Choose an icon';
+  @override
+  String get pickerConfirmAction => 'OK';
+  @override
+  String get closeAction => 'Close';
   @override
   String get createProject => 'Create constellation';
   @override
@@ -216,6 +283,10 @@ class StringsEn implements AppStrings {
   String get saveChanges => 'Save changes';
   @override
   String get lightThisStar => 'Light this star';
+  @override
+  String get cannotSaveMissingInfo => "Can't save yet — some info is missing";
+  @override
+  String get gotIt => 'Got it';
   @override
   String get deleteStarConfirmTitle => 'Delete this star?';
   @override

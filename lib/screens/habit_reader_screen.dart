@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/custom_constellation_repository.dart';
 import '../data/habit_completion_repository.dart';
 import '../data/habit_repository.dart';
 import '../data/project_repository.dart';
@@ -26,6 +27,7 @@ class HabitReaderScreen extends StatefulWidget {
     required this.habitRepository,
     required this.habitCompletionRepository,
     required this.projectRepository,
+    required this.customConstellationRepository,
   });
 
   final Habit habit;
@@ -33,6 +35,7 @@ class HabitReaderScreen extends StatefulWidget {
   final HabitRepository habitRepository;
   final HabitCompletionRepository habitCompletionRepository;
   final ProjectRepository projectRepository;
+  final CustomConstellationRepository customConstellationRepository;
 
   @override
   State<HabitReaderScreen> createState() => _HabitReaderScreenState();
@@ -62,6 +65,7 @@ class _HabitReaderScreenState extends State<HabitReaderScreen> {
           existingHabit: _habit,
           contextProject: widget.project,
           projectRepository: widget.projectRepository,
+          customConstellationRepository: widget.customConstellationRepository,
         ),
       ),
     );
@@ -175,6 +179,7 @@ class _HabitReaderScreenState extends State<HabitReaderScreen> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
+              clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
                 color: colors.nightPanel,
                 border: Border.all(color: colors.nightBorder),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/custom_constellation_repository.dart';
 import '../data/project_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../models/life_area.dart';
@@ -27,6 +28,7 @@ class _GoBackToAreaPicker {
 Future<Project?> pickProject(
   BuildContext context,
   ProjectRepository repository,
+  CustomConstellationRepository customConstellationRepository,
 ) async {
   while (context.mounted) {
     final area = await _pickArea(context);
@@ -40,8 +42,11 @@ Future<Project?> pickProject(
     if (result is _CreateNewProject) {
       final created = await Navigator.of(context).push<Project>(
         MaterialPageRoute(
-          builder: (_) =>
-              NewProjectScreen(projectRepository: repository, presetArea: area),
+          builder: (_) => NewProjectScreen(
+            projectRepository: repository,
+            customConstellationRepository: customConstellationRepository,
+            presetArea: area,
+          ),
         ),
       );
       return created;

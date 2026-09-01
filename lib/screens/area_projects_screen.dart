@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/custom_constellation_repository.dart';
 import '../data/habit_completion_repository.dart';
 import '../data/habit_repository.dart';
 import '../data/project_repository.dart';
@@ -71,6 +72,7 @@ class AreaProjectsScreen extends StatefulWidget {
     required this.starRepository,
     required this.habitRepository,
     required this.habitCompletionRepository,
+    required this.customConstellationRepository,
   });
 
   final LifeArea area;
@@ -78,6 +80,7 @@ class AreaProjectsScreen extends StatefulWidget {
   final StarRepository starRepository;
   final HabitRepository habitRepository;
   final HabitCompletionRepository habitCompletionRepository;
+  final CustomConstellationRepository customConstellationRepository;
 
   @override
   State<AreaProjectsScreen> createState() => _AreaProjectsScreenState();
@@ -170,6 +173,7 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
           projectRepository: widget.projectRepository,
           habitRepository: widget.habitRepository,
           habitCompletionRepository: widget.habitCompletionRepository,
+          customConstellationRepository: widget.customConstellationRepository,
         ),
       ),
     );
@@ -187,6 +191,7 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
           allowEdit: true,
           projectsById: _projectsById,
           projectRepository: widget.projectRepository,
+          customConstellationRepository: widget.customConstellationRepository,
           refreshStars: _filteredStarsOnly,
         ),
       ),
@@ -203,6 +208,7 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
           habitRepository: widget.habitRepository,
           habitCompletionRepository: widget.habitCompletionRepository,
           projectRepository: widget.projectRepository,
+          customConstellationRepository: widget.customConstellationRepository,
         ),
       ),
     );

@@ -149,6 +149,63 @@ class StringsIt implements AppStrings {
       'La forma di questa costellazione non è stata trovata.';
 
   @override
+  String get drawYourOwnConstellation => 'Disegna la tua costellazione';
+  @override
+  String get drawYourOwnShort => 'Disegna la tua';
+  @override
+  String get constellationEditorTitle => 'Disegna la tua costellazione';
+  @override
+  String get constellationEditorEditTitle => 'Modifica la tua costellazione';
+  @override
+  String get constellationEditorEmptyHint =>
+      'Tocca ovunque per posizionare la prima stella';
+  @override
+  String constellationEditorDisconnectedWarning(int count) =>
+      '$count stell${count == 1 ? 'a non ancora collegata' : 'e non ancora collegate'}';
+  @override
+  String get constellationEditorPointCapReached =>
+      'Hai raggiunto il numero massimo di stelle';
+  @override
+  String get undoAction => 'Annulla';
+  @override
+  String get redoAction => 'Ripeti';
+  @override
+  String get deletePointAction => 'Elimina stella';
+  @override
+  String get saveConstellationAction => 'Salva';
+  @override
+  String get nameYourConstellationTitle => 'Dai un nome alla tua costellazione';
+  @override
+  String get constellationNameHint => 'Es. Il mio percorso';
+  @override
+  String get yourConstellationsLabel => 'Le tue costellazioni';
+  @override
+  String get constellationEditorGridToggleLabel => 'Griglia';
+  @override
+  String get constellationEditorHelpAction => 'Come funziona';
+  @override
+  String get constellationEditorHelpTitle => 'Come funziona';
+  @override
+  String get constellationEditorHelpAddPoint =>
+      'Tocca uno spazio vuoto per aggiungere una stella';
+  @override
+  String get constellationEditorHelpConnectPoint =>
+      'Tocca una stella, poi toccane un\'altra per collegarle con un segmento';
+  @override
+  String get constellationEditorHelpDisarmPoint =>
+      'Tocca di nuovo la stessa stella per deselezionarla senza collegare';
+  @override
+  String get constellationEditorHelpMovePoint =>
+      'Premi e trascina una stella per spostarla';
+  @override
+  String get constellationEditorHelpDeletePoint =>
+      'Seleziona una stella, poi tocca l\'icona elimina per rimuoverla';
+  @override
+  String get constellationEditorHelpDontShowAgain => 'Non mostrarlo più';
+  @override
+  String get constellationEditorHelpClose => 'Ho capito';
+
+  @override
   String get newProjectEyebrow => 'NUOVA COSTELLAZIONE';
   @override
   String get newProjectQuestion => 'Di che costellazione si tratta?';
@@ -159,7 +216,17 @@ class StringsIt implements AppStrings {
   @override
   String get newProjectNameHint => 'Es. Costruire questa app';
   @override
+  String get projectDescriptionLabel => 'Descrizione (opzionale)';
+  @override
+  String get projectDescriptionHint => 'Di cosa parla questo progetto?';
+  @override
   String get iconLabel => 'Icona';
+  @override
+  String get chooseIconTitle => 'Scegli un\'icona';
+  @override
+  String get pickerConfirmAction => 'OK';
+  @override
+  String get closeAction => 'Chiudi';
   @override
   String get createProject => 'Crea costellazione';
   @override
@@ -218,6 +285,11 @@ class StringsIt implements AppStrings {
   String get saveChanges => 'Salva modifiche';
   @override
   String get lightThisStar => 'Accendi questa stella';
+  @override
+  String get cannotSaveMissingInfo =>
+      'Impossibile salvare: mancano delle informazioni';
+  @override
+  String get gotIt => 'Ho capito';
   @override
   String get deleteStarConfirmTitle => 'Eliminare questa stella?';
   @override

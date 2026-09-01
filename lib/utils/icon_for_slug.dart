@@ -69,3 +69,10 @@ const Map<String, IconData> _iconsBySlug = {
 };
 
 IconData iconForSlug(String slug) => _iconsBySlug[slug] ?? Icons.star_border;
+
+/// Every slug a project's badge icon can be — the canonical list for
+/// `NewProjectScreen`'s icon grid, independent of constellation shapes
+/// (badge icon and constellation are unrelated concepts; this list used to
+/// piggyback on `constellationShapes.keys` in constellation_shapes_v2.dart
+/// purely because that map happened to have the right keys).
+final Set<String> availableIconSlugs = _iconsBySlug.keys.toSet();

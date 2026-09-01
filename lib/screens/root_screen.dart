@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/custom_constellation_repository.dart';
 import '../data/habit_completion_repository.dart';
 import '../data/habit_repository.dart';
 import '../data/project_repository.dart';
@@ -25,6 +26,7 @@ class RootScreen extends StatefulWidget {
     required this.projectRepository,
     required this.habitRepository,
     required this.habitCompletionRepository,
+    required this.customConstellationRepository,
     required this.reminderService,
   });
 
@@ -33,6 +35,7 @@ class RootScreen extends StatefulWidget {
   final ProjectRepository projectRepository;
   final HabitRepository habitRepository;
   final HabitCompletionRepository habitCompletionRepository;
+  final CustomConstellationRepository customConstellationRepository;
   final ReminderService reminderService;
 
   @override
@@ -56,12 +59,14 @@ class _RootScreenState extends State<RootScreen> {
             projectRepository: widget.projectRepository,
             habitRepository: widget.habitRepository,
             habitCompletionRepository: widget.habitCompletionRepository,
+            customConstellationRepository: widget.customConstellationRepository,
           ),
           SkyScreen(
             projectRepository: widget.projectRepository,
             starRepository: widget.starRepository,
             habitRepository: widget.habitRepository,
             habitCompletionRepository: widget.habitCompletionRepository,
+            customConstellationRepository: widget.customConstellationRepository,
           ),
           SettingsScreen(
             settings: widget.settings,
@@ -69,6 +74,7 @@ class _RootScreenState extends State<RootScreen> {
             projectRepository: widget.projectRepository,
             habitRepository: widget.habitRepository,
             habitCompletionRepository: widget.habitCompletionRepository,
+            customConstellationRepository: widget.customConstellationRepository,
             reminderService: widget.reminderService,
           ),
         ],

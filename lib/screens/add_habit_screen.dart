@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/custom_constellation_repository.dart';
 import '../data/project_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../models/habit.dart';
@@ -44,15 +45,23 @@ class AddHabitScreen extends StatefulWidget {
     this.existingHabit,
     this.lockedProject,
     this.projectRepository,
+    this.customConstellationRepository,
     this.contextProject,
   }) : assert(
-         lockedProject != null || projectRepository != null,
-         'Provide lockedProject (pre-scoped, no picker) or projectRepository (picker, for add or edit).',
+         lockedProject != null ||
+             (projectRepository != null &&
+                 customConstellationRepository != null),
+         'Provide lockedProject (pre-scoped, no picker) or both projectRepository and customConstellationRepository (picker, for add or edit).',
        );
 
   final Habit? existingHabit;
   final Project? lockedProject;
   final ProjectRepository? projectRepository;
+
+  /// Required alongside [projectRepository] whenever [lockedProject] isn't
+  /// given — the project picker offers an inline "create new project"
+  /// action that needs it (see [pickProject]).
+  final CustomConstellationRepository? customConstellationRepository;
   final Project? contextProject;
 
   bool get isEditing => existingHabit != null;
@@ -174,6 +183,28 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
     );
   }
 
+  void _showCannotSaveMessage() {
+    final colors = context.colors;
+    final strings = context.strings;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: colors.nightPanel,
+        content: Text(
+          strings.cannotSaveMissingInfo,
+          style: TextStyle(color: colors.text),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(strings.gotIt, style: TextStyle(color: colors.gold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _pickReminderTime() async {
     final picked = await showTimePicker(
       context: context,
@@ -188,8 +219,13 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
 
   Future<void> _openProjectPicker() async {
     final repository = widget.projectRepository;
-    if (repository == null) return;
-    final picked = await pickProject(context, repository);
+    final customConstellationRepository = widget.customConstellationRepository;
+    if (repository == null || customConstellationRepository == null) return;
+    final picked = await pickProject(
+      context,
+      repository,
+      customConstellationRepository,
+    );
     if (picked != null && mounted) {
       setState(() => _selectedProject = picked);
     }
@@ -428,7 +464,9 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
                           ),
                           child: FloatingActionButton(
                             heroTag: 'saveHabitFab',
-                            onPressed: canSave ? _save : null,
+                            onPressed: canSave
+                                ? _save
+                                : _showCannotSaveMessage,
                             backgroundColor: canSave
                                 ? colors.gold
                                 : colors.muted,

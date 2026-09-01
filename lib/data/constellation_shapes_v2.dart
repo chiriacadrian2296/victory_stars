@@ -1,14 +1,23 @@
 // Hand-built real constellations — v2.
 //
+// SUPERSEDED as a live feature by the in-app hand-drawn constellation
+// editor (see `constellation_editor_screen.dart`/`CustomConstellationRepository`)
+// — every project now gets its own drawn-by-the-user shape instead of one
+// of these 20 assigned automatically by icon. `constellationShapes` below
+// is kept only as one-time migration/seed data: `legacy_constellation_migration.dart`
+// reads it to backfill a real `CustomConstellation` for any project that
+// predates the editor (or was created by the debug seed tool), so it's
+// still real, load-bearing data — just no longer read by
+// `ConstellationScreen` or exposed as a user-facing choice. Don't delete it
+// without migrating anything that still depends on it.
+//
 // Not icon silhouettes: each shape below is one of a small set of
 // well-known real constellations (Orion, Cassiopeia, the Dippers, ...),
 // built from scratch as a graph of keypoints (`points`) and the line
 // segments connecting them (`edges`, index pairs into `points`) — real
 // constellations branch (a figure's arms and legs, a teapot's handle),
 // so this isn't restricted to a single path or closed loop the way the
-// old icon-outline shapes were. `constellationShapes` rotates this set
-// across every project icon slug; the pairing is cosmetic; a project's
-// icon and its constellation's namesake aren't meant to match.
+// old icon-outline shapes were.
 //
 // Overflow stars beyond `points.length` are NOT stored here:
 // `buildConstellationLayout` (constellation_layout.dart) grows the graph
@@ -122,9 +131,12 @@ const _scorpius = ConstellationShape(
   edges: [(0, 2), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9)],
 );
 
-/// Every icon slug a project can pick, mapped to one of the 20
-/// constellations above (round-robin — the assignment carries no
-/// meaning beyond giving each icon a fixed, deterministic shape).
+/// Every icon slug a legacy project could carry, mapped to one of the 20
+/// constellations above (round-robin — the assignment carried no meaning
+/// beyond giving each icon a fixed, deterministic shape). Migration-only
+/// now — see the file-level comment above. The live, user-facing set of
+/// icon-badge slugs is `availableIconSlugs` in `icon_for_slug.dart`, not
+/// this map's keys.
 const Map<String, ConstellationShape> constellationShapes = {
   'account_balance': _orion,
   'account_balance_wallet': _ursaMajor,
@@ -187,6 +199,9 @@ const Map<String, ConstellationShape> constellationShapes = {
   'work_history': _canisMajor,
 };
 
+/// Still fully live (unlike [constellationShapes] above) — per-area icon
+/// suggestions for `NewProjectScreen`'s badge picker, unrelated to
+/// constellation shapes.
 const Map<String, List<String>> suggestedIconsByArea = {
   'physical': ['bolt', 'favorite', 'fitness_center', 'monitor_heart', 'pool', 'sports_gymnastics'],
   'psychological': ['air', 'brightness_5', 'healing', 'mood', 'nightlight', 'psychology', 'psychology_alt', 'spa'],

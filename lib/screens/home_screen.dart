@@ -3,6 +3,7 @@ import 'dart:math' show pi, sin;
 
 import 'package:flutter/material.dart';
 
+import '../data/custom_constellation_repository.dart';
 import '../data/habit_completion_repository.dart';
 import '../data/habit_repository.dart';
 import '../data/project_repository.dart';
@@ -40,12 +41,14 @@ class HomeScreen extends StatefulWidget {
     required this.projectRepository,
     required this.habitRepository,
     required this.habitCompletionRepository,
+    required this.customConstellationRepository,
   });
 
   final StarRepository starRepository;
   final ProjectRepository projectRepository;
   final HabitRepository habitRepository;
   final HabitCompletionRepository habitCompletionRepository;
+  final CustomConstellationRepository customConstellationRepository;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -54,6 +57,30 @@ class HomeScreen extends StatefulWidget {
 enum _CreateChoice { victory, goal, habit, constellation }
 
 class _HomeScreenState extends State<HomeScreen> {
+  /// The month the activity calendar is currently showing — always the 1st,
+  /// so it can be compared/offset by month without caring what day it was
+  /// created on. Defaults to the current month; [_changeDisplayedMonth]
+  /// moves it, capped so the user can never page past the present month.
+  DateTime _displayedMonth = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+  );
+
+  bool get _isCurrentMonthDisplayed {
+    final now = DateTime.now();
+    return _displayedMonth.year == now.year &&
+        _displayedMonth.month == now.month;
+  }
+
+  void _changeDisplayedMonth(int delta) {
+    final now = DateTime.now();
+    final currentMonth = DateTime(now.year, now.month);
+    final next = DateTime(_displayedMonth.year, _displayedMonth.month + delta);
+    setState(() {
+      _displayedMonth = next.isAfter(currentMonth) ? currentMonth : next;
+    });
+  }
+
   Map<int, Project> _projectsById() {
     return {
       for (final project in widget.projectRepository.getAll())
@@ -69,6 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (_) => AddStarScreen(
           projectRepository: widget.projectRepository,
+          customConstellationRepository: widget.customConstellationRepository,
           initialDate: initialDate,
           initialAchieved: initialAchieved,
         ),
@@ -91,8 +119,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _openAddHabitScreen() async {
     final result = await Navigator.of(context).push<AddHabitResult>(
       MaterialPageRoute(
-        builder: (_) =>
-            AddHabitScreen(projectRepository: widget.projectRepository),
+        builder: (_) => AddHabitScreen(
+          projectRepository: widget.projectRepository,
+          customConstellationRepository: widget.customConstellationRepository,
+        ),
       ),
     );
     if (result == null) return;
@@ -150,8 +180,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _openNewProjectScreen() async {
     await Navigator.of(context).push<Project>(
       MaterialPageRoute(
-        builder: (_) =>
-            NewProjectScreen(projectRepository: widget.projectRepository),
+        builder: (_) => NewProjectScreen(
+          projectRepository: widget.projectRepository,
+          customConstellationRepository: widget.customConstellationRepository,
+        ),
       ),
     );
     setState(() {});
@@ -248,6 +280,7 @@ class _HomeScreenState extends State<HomeScreen> {
           allowEdit: true,
           projectsById: _projectsById(),
           projectRepository: widget.projectRepository,
+          customConstellationRepository: widget.customConstellationRepository,
           refreshStars: () => _achievedStarsOnDay(day),
         ),
       ),
@@ -357,15 +390,21 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
+              clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
                 color: colors.nightPanel,
                 border: Border.all(color: colors.nightBorder),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: StarHeatmap(
+                month: _displayedMonth,
                 countsByDay: dayCounts,
                 intensityByDay: dayIntensities,
                 onDayTap: _openDayDetail,
+                onPreviousMonth: () => _changeDisplayedMonth(-1),
+                onNextMonth: _isCurrentMonthDisplayed
+                    ? null
+                    : () => _changeDisplayedMonth(1),
               ),
             ),
             const SizedBox(height: 24),

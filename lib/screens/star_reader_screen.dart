@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../data/custom_constellation_repository.dart';
 import '../data/photo_storage.dart';
 import '../data/project_repository.dart';
 import '../data/star_repository.dart';
@@ -43,10 +44,14 @@ class StarReaderScreen extends StatefulWidget {
     required this.projectsById,
     this.allowEdit = false,
     this.projectRepository,
+    this.customConstellationRepository,
     this.refreshStars,
   }) : assert(
-         !allowEdit || (projectRepository != null && refreshStars != null),
-         'projectRepository and refreshStars are required when allowEdit is true.',
+         !allowEdit ||
+             (projectRepository != null &&
+                 customConstellationRepository != null &&
+                 refreshStars != null),
+         'projectRepository, customConstellationRepository, and refreshStars are required when allowEdit is true.',
        );
 
   final StarRepository repository;
@@ -60,6 +65,7 @@ class StarReaderScreen extends StatefulWidget {
   final bool allowEdit;
 
   final ProjectRepository? projectRepository;
+  final CustomConstellationRepository? customConstellationRepository;
 
   /// Re-derives this reader's star list the same way [initialStars] was
   /// originally scoped — called after an edit/achieve/delete/resurrect so
@@ -141,6 +147,7 @@ class _StarReaderScreenState extends State<StarReaderScreen> {
             existingStar: current,
             contextProject: widget.projectsById[current.projectId],
             projectRepository: widget.projectRepository,
+            customConstellationRepository: widget.customConstellationRepository,
             hideDelete: true,
           ),
         ),
@@ -166,6 +173,7 @@ class _StarReaderScreenState extends State<StarReaderScreen> {
           existingStar: current,
           contextProject: widget.projectsById[current.projectId],
           projectRepository: widget.projectRepository,
+          customConstellationRepository: widget.customConstellationRepository,
         ),
       ),
     );

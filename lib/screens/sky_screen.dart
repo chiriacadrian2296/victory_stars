@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/custom_constellation_repository.dart';
 import '../data/habit_completion_repository.dart';
 import '../data/habit_repository.dart';
 import '../data/project_repository.dart';
@@ -23,12 +24,14 @@ class SkyScreen extends StatefulWidget {
     required this.starRepository,
     required this.habitRepository,
     required this.habitCompletionRepository,
+    required this.customConstellationRepository,
   });
 
   final ProjectRepository projectRepository;
   final StarRepository starRepository;
   final HabitRepository habitRepository;
   final HabitCompletionRepository habitCompletionRepository;
+  final CustomConstellationRepository customConstellationRepository;
 
   @override
   State<SkyScreen> createState() => _SkyScreenState();
@@ -44,6 +47,7 @@ class _SkyScreenState extends State<SkyScreen> {
           starRepository: widget.starRepository,
           habitRepository: widget.habitRepository,
           habitCompletionRepository: widget.habitCompletionRepository,
+          customConstellationRepository: widget.customConstellationRepository,
         ),
       ),
     );

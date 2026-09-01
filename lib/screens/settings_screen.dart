@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../data/custom_constellation_repository.dart';
 import '../data/habit_completion_repository.dart';
 import '../data/habit_repository.dart';
+import '../data/legacy_constellation_migration.dart';
 import '../data/project_repository.dart';
 import '../data/star_repository.dart';
 import '../debug/seed_data.dart';
@@ -24,6 +26,7 @@ class SettingsScreen extends StatefulWidget {
     required this.projectRepository,
     required this.habitRepository,
     required this.habitCompletionRepository,
+    required this.customConstellationRepository,
     required this.reminderService,
   });
 
@@ -32,6 +35,7 @@ class SettingsScreen extends StatefulWidget {
   final ProjectRepository projectRepository;
   final HabitRepository habitRepository;
   final HabitCompletionRepository habitCompletionRepository;
+  final CustomConstellationRepository customConstellationRepository;
   final ReminderService reminderService;
 
   @override
@@ -126,6 +130,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       habitRepository: widget.habitRepository,
       habitCompletionRepository: widget.habitCompletionRepository,
     );
+    // seedSampleData still creates projects the old way (iconSlug only) —
+    // this backfills them with a real constellation immediately, instead of
+    // leaving them shapeless until the next app launch.
+    await backfillMissingConstellations(
+      projectRepository: widget.projectRepository,
+      customConstellationRepository: widget.customConstellationRepository,
+    );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(strings.seedSampleDataResult(winsPerSeedTap))),
@@ -170,6 +181,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await widget.projectRepository.clear();
     await widget.habitRepository.clear();
     await widget.habitCompletionRepository.clear();
+    await widget.customConstellationRepository.clear();
     if (mounted) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(strings.allDataCleared)));

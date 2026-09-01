@@ -149,6 +149,63 @@ class StringsRo implements AppStrings {
       'Forma acestei constelații nu a fost găsită.';
 
   @override
+  String get drawYourOwnConstellation => 'Desenează-ți propria constelație';
+  @override
+  String get drawYourOwnShort => 'Desenează-o singur';
+  @override
+  String get constellationEditorTitle => 'Desenează-ți constelația';
+  @override
+  String get constellationEditorEditTitle => 'Editează-ți constelația';
+  @override
+  String get constellationEditorEmptyHint =>
+      'Atinge oriunde pentru a plasa prima stea';
+  @override
+  String constellationEditorDisconnectedWarning(int count) =>
+      '$count ${count == 1 ? 'stea neconectată' : 'stele neconectate'} încă';
+  @override
+  String get constellationEditorPointCapReached =>
+      'Ai atins numărul maxim de stele';
+  @override
+  String get undoAction => 'Anulează';
+  @override
+  String get redoAction => 'Refă';
+  @override
+  String get deletePointAction => 'Șterge steaua';
+  @override
+  String get saveConstellationAction => 'Salvează';
+  @override
+  String get nameYourConstellationTitle => 'Dă un nume constelației tale';
+  @override
+  String get constellationNameHint => 'Ex. Drumul meu';
+  @override
+  String get yourConstellationsLabel => 'Constelațiile tale';
+  @override
+  String get constellationEditorGridToggleLabel => 'Grilă';
+  @override
+  String get constellationEditorHelpAction => 'Cum funcționează';
+  @override
+  String get constellationEditorHelpTitle => 'Cum funcționează';
+  @override
+  String get constellationEditorHelpAddPoint =>
+      'Atinge un spațiu gol pentru a adăuga o stea';
+  @override
+  String get constellationEditorHelpConnectPoint =>
+      'Atinge o stea, apoi atinge alta pentru a le conecta cu o linie';
+  @override
+  String get constellationEditorHelpDisarmPoint =>
+      'Atinge din nou aceeași stea pentru a o deselecta fără a o conecta';
+  @override
+  String get constellationEditorHelpMovePoint =>
+      'Apasă și trage o stea pentru a o muta';
+  @override
+  String get constellationEditorHelpDeletePoint =>
+      'Selectează o stea, apoi atinge iconița de ștergere pentru a o elimina';
+  @override
+  String get constellationEditorHelpDontShowAgain => 'Nu mai arăta asta';
+  @override
+  String get constellationEditorHelpClose => 'Am înțeles';
+
+  @override
   String get newProjectEyebrow => 'CONSTELAȚIE NOUĂ';
   @override
   String get newProjectQuestion => 'Despre ce constelație e vorba?';
@@ -159,7 +216,17 @@ class StringsRo implements AppStrings {
   @override
   String get newProjectNameHint => 'Ex. Construiesc această aplicație';
   @override
+  String get projectDescriptionLabel => 'Descriere (opțional)';
+  @override
+  String get projectDescriptionHint => 'Despre ce este acest proiect?';
+  @override
   String get iconLabel => 'Pictogramă';
+  @override
+  String get chooseIconTitle => 'Alege o pictogramă';
+  @override
+  String get pickerConfirmAction => 'OK';
+  @override
+  String get closeAction => 'Închide';
   @override
   String get createProject => 'Creează constelație';
   @override
@@ -218,6 +285,10 @@ class StringsRo implements AppStrings {
   String get saveChanges => 'Salvează modificările';
   @override
   String get lightThisStar => 'Aprinde această stea';
+  @override
+  String get cannotSaveMissingInfo => 'Nu se poate salva: lipsesc informații';
+  @override
+  String get gotIt => 'Am înțeles';
   @override
   String get deleteStarConfirmTitle => 'Ștergi această stea?';
   @override

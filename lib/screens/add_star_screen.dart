@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../data/custom_constellation_repository.dart';
 import '../data/photo_storage.dart';
 import '../data/project_repository.dart';
 import '../l10n/strings_scope.dart';
@@ -78,18 +79,26 @@ class AddStarScreen extends StatefulWidget {
     this.existingStar,
     this.lockedProject,
     this.projectRepository,
+    this.customConstellationRepository,
     this.contextProject,
     this.initialDate,
     this.initialAchieved = true,
     this.hideDelete = false,
   }) : assert(
-         lockedProject != null || projectRepository != null,
-         'Provide lockedProject (pre-scoped, no picker) or projectRepository (picker, for add or edit).',
+         lockedProject != null ||
+             (projectRepository != null &&
+                 customConstellationRepository != null),
+         'Provide lockedProject (pre-scoped, no picker) or both projectRepository and customConstellationRepository (picker, for add or edit).',
        );
 
   final Star? existingStar;
   final Project? lockedProject;
   final ProjectRepository? projectRepository;
+
+  /// Required alongside [projectRepository] whenever [lockedProject] isn't
+  /// given — the project picker offers an inline "create new project"
+  /// action that needs it (see [pickProject]).
+  final CustomConstellationRepository? customConstellationRepository;
 
   /// The existing star's current project, resolved by the caller — seeds
   /// the picker's initial selection when editing.
@@ -259,6 +268,28 @@ class _AddStarScreenState extends State<AddStarScreen> {
     );
   }
 
+  void _showCannotSaveMessage() {
+    final colors = context.colors;
+    final strings = context.strings;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: colors.nightPanel,
+        content: Text(
+          strings.cannotSaveMissingInfo,
+          style: TextStyle(color: colors.text),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(strings.gotIt, style: TextStyle(color: colors.gold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Offers camera vs. gallery, sends whatever's picked through
   /// [PhotoCropScreen] to force it into 9:16, and copies the cropped result
   /// into app-private storage (see [PhotoStorage]).
@@ -386,8 +417,13 @@ class _AddStarScreenState extends State<AddStarScreen> {
 
   Future<void> _openProjectPicker() async {
     final repository = widget.projectRepository;
-    if (repository == null) return;
-    final picked = await pickProject(context, repository);
+    final customConstellationRepository = widget.customConstellationRepository;
+    if (repository == null || customConstellationRepository == null) return;
+    final picked = await pickProject(
+      context,
+      repository,
+      customConstellationRepository,
+    );
     if (picked != null && mounted) {
       setState(() => _selectedProject = picked);
     }
@@ -425,17 +461,31 @@ class _AddStarScreenState extends State<AddStarScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              _AchievedToggle(
-                achieved: _achieved,
-                onChanged: (value) => setState(() => _achieved = value),
+              Center(
+                child: _AchievedToggle(
+                  achieved: _achieved,
+                  onChanged: (value) => setState(() => _achieved = value),
+                ),
               ),
               const SizedBox(height: 20),
-              Text(
-                _achieved ? strings.addWinQuestion : strings.addGoalQuestion,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 24,
-                  color: colors.text,
+              // A fixed minimum height, not just a Text — the goal question
+              // is much longer than the victory one and wraps to 2 lines,
+              // so without this the constellation field (and everything
+              // below it) starts at a different Y depending on which
+              // question is showing. minHeight (not a fixed height) so an
+              // unexpectedly long translation still isn't clipped. Centered
+              // within that reserved space so the shorter, 1-line victory
+              // question doesn't sit stuck to the top of it.
+              Container(
+                constraints: const BoxConstraints(minHeight: 76),
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _achieved ? strings.addWinQuestion : strings.addGoalQuestion,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 24,
+                    color: colors.text,
+                  ),
                 ),
               ),
               if (_selectedProject != null) ...[
@@ -650,7 +700,9 @@ class _AddStarScreenState extends State<AddStarScreen> {
                           ),
                           child: FloatingActionButton(
                             heroTag: 'saveStarFab',
-                            onPressed: canSave ? _save : null,
+                            onPressed: canSave
+                                ? _save
+                                : _showCannotSaveMessage,
                             backgroundColor: canSave
                                 ? colors.gold
                                 : colors.muted,

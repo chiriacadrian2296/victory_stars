@@ -90,13 +90,44 @@ abstract class AppStrings {
   // Constellation
   String get constellationShapeMissing;
 
+  // Constellation editor (hand-drawn custom shapes)
+  String get drawYourOwnConstellation;
+  String get drawYourOwnShort;
+  String get constellationEditorTitle;
+  String get constellationEditorEditTitle;
+  String get constellationEditorEmptyHint;
+  String constellationEditorDisconnectedWarning(int count);
+  String get constellationEditorPointCapReached;
+  String get undoAction;
+  String get redoAction;
+  String get deletePointAction;
+  String get saveConstellationAction;
+  String get nameYourConstellationTitle;
+  String get constellationNameHint;
+  String get yourConstellationsLabel;
+  String get constellationEditorGridToggleLabel;
+  String get constellationEditorHelpAction;
+  String get constellationEditorHelpTitle;
+  String get constellationEditorHelpAddPoint;
+  String get constellationEditorHelpConnectPoint;
+  String get constellationEditorHelpDisarmPoint;
+  String get constellationEditorHelpMovePoint;
+  String get constellationEditorHelpDeletePoint;
+  String get constellationEditorHelpDontShowAgain;
+  String get constellationEditorHelpClose;
+
   // New project
   String get newProjectEyebrow;
   String get newProjectQuestion;
   String get areaLabel;
   String get nameLabel;
   String get newProjectNameHint;
+  String get projectDescriptionLabel;
+  String get projectDescriptionHint;
   String get iconLabel;
+  String get chooseIconTitle;
+  String get pickerConfirmAction;
+  String get closeAction;
   String get createProject;
   String get newProject;
 
@@ -126,6 +157,8 @@ abstract class AppStrings {
   String get cropPhotoHint;
   String get saveChanges;
   String get lightThisStar;
+  String get cannotSaveMissingInfo;
+  String get gotIt;
   String get deleteStarConfirmTitle;
   String get deleteStarConfirmBody;
   String get deleteStarAction;

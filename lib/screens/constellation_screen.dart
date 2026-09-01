@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../data/constellation_layout.dart';
 import '../data/constellation_shapes_v2.dart';
+import '../data/custom_constellation_repository.dart';
 import '../data/habit_completion_repository.dart';
 import '../data/habit_repository.dart';
 import '../data/project_repository.dart';
@@ -21,7 +22,8 @@ import 'habit_reader_screen.dart';
 import 'star_reader_screen.dart';
 
 /// A single project's constellation: a pannable/zoomable star field shaped
-/// like [Project.iconSlug]'s precomputed silhouette. Victories, goals, and
+/// like the project's own hand-drawn [Project.customConstellationId]
+/// shape. Victories, goals, and
 /// dead (tombstoned) stars share the shape's own point/edge graph, ordered
 /// by [Star.slotSequence]; habits are separate, smaller stars scattered
 /// around/inside/outside the shape (see [seededHabitPosition]), never part
@@ -37,6 +39,7 @@ class ConstellationScreen extends StatefulWidget {
     required this.projectRepository,
     required this.habitRepository,
     required this.habitCompletionRepository,
+    required this.customConstellationRepository,
   });
 
   final Project project;
@@ -44,6 +47,7 @@ class ConstellationScreen extends StatefulWidget {
   final ProjectRepository projectRepository;
   final HabitRepository habitRepository;
   final HabitCompletionRepository habitCompletionRepository;
+  final CustomConstellationRepository customConstellationRepository;
 
   @override
   State<ConstellationScreen> createState() => _ConstellationScreenState();
@@ -52,8 +56,18 @@ class ConstellationScreen extends StatefulWidget {
 class _ConstellationScreenState extends State<ConstellationScreen> {
   static const _canvasSize = Size(1000, 1000);
 
+  // Every project is expected to carry a customConstellationId — either set
+  // directly at creation (NewProjectScreen requires it) or backfilled by
+  // backfillMissingConstellations for anything older. Falling back to null
+  // (rather than the old constellationShapes[iconSlug] lookup) is purely a
+  // defensive guard for that in-between moment, not a live feature — it
+  // reuses the existing "shape missing" empty state below.
   late final ConstellationShape? _shape =
-      constellationShapes[widget.project.iconSlug];
+      widget.project.customConstellationId != null
+      ? widget.customConstellationRepository
+            .getById(widget.project.customConstellationId!)
+            ?.shape
+      : null;
   late final Rect _shapeBounds = _shape == null
       ? Rect.zero
       : boundingBoxOf(_shape.points);
@@ -205,6 +219,7 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
             habitRepository: widget.habitRepository,
             habitCompletionRepository: widget.habitCompletionRepository,
             projectRepository: widget.projectRepository,
+            customConstellationRepository: widget.customConstellationRepository,
           ),
         ),
       );
@@ -223,6 +238,7 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
           allowEdit: true,
           projectsById: {widget.project.id: widget.project},
           projectRepository: widget.projectRepository,
+          customConstellationRepository: widget.customConstellationRepository,
           refreshStars: () =>
               widget.starRepository.getAllForProject(widget.project.id),
         ),
@@ -249,14 +265,28 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
                   icon: Icon(Icons.arrow_back, color: colors.muted),
                 ),
                 Expanded(
-                  child: Text(
-                    widget.project.name,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                      color: colors.text,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        widget.project.name,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          color: colors.text,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (widget.project.description case final description?
+                          when description.isNotEmpty)
+                        Text(
+                          description,
+                          style: TextStyle(fontSize: 12, color: colors.muted),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
                   ),
                 ),
               ],

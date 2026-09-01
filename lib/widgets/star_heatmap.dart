@@ -16,6 +16,9 @@ class StarHeatmap extends StatelessWidget {
     required this.countsByDay,
     required this.intensityByDay,
     this.onDayTap,
+    this.month,
+    this.onPreviousMonth,
+    this.onNextMonth,
   });
 
   final Map<DateTime, int> countsByDay;
@@ -27,17 +30,32 @@ class StarHeatmap extends StatelessWidget {
 
   final void Function(DateTime day)? onDayTap;
 
+  /// The month being shown — any day within it works, only year/month are
+  /// read. Defaults to the current month (via [build]) when omitted, so
+  /// existing callers that don't care about month navigation still work.
+  final DateTime? month;
+
+  /// Paging arrows shown beside the month title. Null greys the arrow out
+  /// (used by the caller to stop paging past the current month) rather than
+  /// removing it, so the header's width stays stable as months change.
+  final VoidCallback? onPreviousMonth;
+  final VoidCallback? onNextMonth;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final strings = context.strings;
     final today = DateTime.now();
     final todayDate = DateTime(today.year, today.month, today.day);
-    final firstOfMonth = DateTime(todayDate.year, todayDate.month, 1);
-    final daysInMonth = DateTime(todayDate.year, todayDate.month + 1, 0).day;
+    final shownMonth = month ?? DateTime(todayDate.year, todayDate.month);
+    final firstOfMonth = DateTime(shownMonth.year, shownMonth.month, 1);
+    final daysInMonth = DateTime(shownMonth.year, shownMonth.month + 1, 0).day;
     final leadingBlanks = firstOfMonth.weekday - DateTime.monday;
-    final totalCells = leadingBlanks + daysInMonth;
-    final rows = (totalCells / 7).ceil();
+    // Always 6 — the most any month can need — rather than the 5 or 6 a
+    // given month's actual layout happens to require, so the grid (and the
+    // panel around it) is exactly as tall for every month instead of
+    // shrinking by a row for months that fit in 5.
+    const rows = 6;
 
     // The min/max that calibrate glow intensity, taken only from days that
     // actually have a star lit — an all-zero day never glows, so it
@@ -49,9 +67,17 @@ class StarHeatmap extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          strings.monthTitle(todayDate),
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.text),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                strings.monthTitle(firstOfMonth),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.text),
+              ),
+            ),
+            _MonthArrowButton(icon: Icons.chevron_left, onTap: onPreviousMonth),
+            _MonthArrowButton(icon: Icons.chevron_right, onTap: onNextMonth),
+          ],
         ),
         const SizedBox(height: 12),
         Row(
@@ -76,7 +102,7 @@ class StarHeatmap extends StatelessWidget {
                       child: _DayCell(
                         dayNumber: row * 7 + col - leadingBlanks + 1,
                         daysInMonth: daysInMonth,
-                        month: todayDate,
+                        month: shownMonth,
                         today: todayDate,
                         countsByDay: countsByDay,
                         intensityByDay: intensityByDay,
@@ -90,6 +116,28 @@ class StarHeatmap extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _MonthArrowButton extends StatelessWidget {
+  const _MonthArrowButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return IconButton(
+      onPressed: onTap,
+      icon: Icon(icon),
+      iconSize: 20,
+      color: colors.text,
+      disabledColor: colors.muted.withValues(alpha: 0.3),
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
     );
   }
 }
@@ -117,18 +165,28 @@ class _DayCell extends StatelessWidget {
   final int maxIntensity;
   final void Function(DateTime day)? onTap;
 
+  // The star glyph itself, unchanged regardless of lit state.
+  static const _starSize = 22.0;
+  // The reserved footprint around it — bigger than the star so a lit day's
+  // glow (up to 25px blur + 4px spread, see below) has room to render
+  // without bleeding into neighboring cells or the panel's edge, which is
+  // what previously made the calendar's apparent size shift between months
+  // depending on which rows happened to have glowing days. Fixed for every
+  // cell regardless of whether that day is actually lit, so an unlit day
+  // just reads as extra breathing room around its star instead.
+  static const _slotSize = 34.0;
+
   @override
   Widget build(BuildContext context) {
-    const cellSize = 22.0;
     if (dayNumber < 1 || dayNumber > daysInMonth) {
-      return const SizedBox(width: cellSize, height: cellSize);
+      return const SizedBox(width: _slotSize, height: _slotSize);
     }
 
     final day = DateTime(month.year, month.month, dayNumber);
     if (day.isAfter(today)) {
       return SizedBox(
-        width: cellSize,
-        height: cellSize,
+        width: _slotSize,
+        height: _slotSize,
         child: Center(
           child: Text('$dayNumber', style: TextStyle(fontSize: 10, color: context.colors.muted.withValues(alpha: 0.4))),
         ),
@@ -155,30 +213,36 @@ class _DayCell extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap == null ? null : () => onTap!(day),
-      child: Container(
-        width: cellSize,
-        height: cellSize,
-        decoration: dayIntensity <= 0
-            ? null
-            : BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: colors.gold.withValues(alpha: 0.1 + 0.65 * glowStrength),
-                    blurRadius: 1 + 25 * glowStrength,
-                    spreadRadius: 4 * glowStrength,
+      child: SizedBox(
+        width: _slotSize,
+        height: _slotSize,
+        child: Center(
+          child: Container(
+            width: _starSize,
+            height: _starSize,
+            decoration: dayIntensity <= 0
+                ? null
+                : BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: colors.gold.withValues(alpha: 0.1 + 0.65 * glowStrength),
+                        blurRadius: 1 + 25 * glowStrength,
+                        spreadRadius: 4 * glowStrength,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-        // The star itself is always the same solid gold, lit or not —
-        // only the glow (above) carries how many/how intense that day's
-        // wins were. It used to also fade the star's own opacity down for
-        // low counts, which just made a light day look like a rendering
-        // glitch rather than a deliberate "less glow" day.
-        child: Icon(
-          isLit ? Icons.star : Icons.star_border,
-          size: cellSize,
-          color: isLit ? colors.gold : colors.gold.withValues(alpha: 0.16),
+            // The star itself is always the same solid gold, lit or not —
+            // only the glow (above) carries how many/how intense that
+            // day's wins were. It used to also fade the star's own opacity
+            // down for low counts, which just made a light day look like a
+            // rendering glitch rather than a deliberate "less glow" day.
+            child: Icon(
+              isLit ? Icons.star : Icons.star_border,
+              size: _starSize,
+              color: isLit ? colors.gold : colors.gold.withValues(alpha: 0.16),
+            ),
+          ),
         ),
       ),
     );

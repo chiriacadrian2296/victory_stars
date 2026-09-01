@@ -24,6 +24,32 @@ void main() {
     expect(project.iconSlug, 'rocket_launch');
   });
 
+  test('add() persists a description, or null if left blank', () async {
+    final repo = await ProjectRepository.create();
+
+    final withDescription = await repo.add(
+      name: 'Build this app',
+      area: LifeArea.professional,
+      iconSlug: 'rocket_launch',
+      description: 'A personal-growth app',
+    );
+    final withoutDescription = await repo.add(
+      name: 'Bare',
+      area: LifeArea.professional,
+      iconSlug: 'work',
+    );
+    final withBlankDescription = await repo.add(
+      name: 'Blank',
+      area: LifeArea.professional,
+      iconSlug: 'badge',
+      description: '   ',
+    );
+
+    expect(withDescription.description, 'A personal-growth app');
+    expect(withoutDescription.description, isNull);
+    expect(withBlankDescription.description, isNull);
+  });
+
   test('getProjectsForArea() only returns projects in that area', () async {
     final repo = await ProjectRepository.create();
 
@@ -45,6 +71,39 @@ void main() {
     expect(reloaded.getAll(), hasLength(1));
     expect(reloaded.getAll().first.name, 'Build this app');
     expect(reloaded.getAll().first.area, LifeArea.professional);
+  });
+
+  test('assignCustomConstellation() sets the id and persists it', () async {
+    final repo = await ProjectRepository.create();
+    final project = await repo.add(name: 'Build this app', area: LifeArea.professional, iconSlug: 'rocket_launch');
+    expect(project.customConstellationId, isNull);
+
+    final updated = await repo.assignCustomConstellation(
+      projectId: project.id,
+      customConstellationId: 42,
+    );
+
+    expect(updated.customConstellationId, 42);
+    expect(repo.getAll().single.customConstellationId, 42);
+  });
+
+  test('assignCustomConstellation() keeps the project in the same position in the list', () async {
+    final repo = await ProjectRepository.create();
+    final first = await repo.add(name: 'First', area: LifeArea.professional, iconSlug: 'rocket_launch');
+    await repo.add(name: 'Second', area: LifeArea.professional, iconSlug: 'work');
+
+    await repo.assignCustomConstellation(projectId: first.id, customConstellationId: 1);
+
+    expect(repo.getAll().map((p) => p.name), ['Second', 'First']);
+  });
+
+  test('assignCustomConstellation() throws for an id that does not exist', () async {
+    final repo = await ProjectRepository.create();
+
+    expect(
+      () => repo.assignCustomConstellation(projectId: -1, customConstellationId: 1),
+      throwsStateError,
+    );
   });
 
   test('clear() deletes every project, including from a repository reloaded afterward', () async {

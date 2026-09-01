@@ -18,6 +18,7 @@ import '../widgets/constellation_painter.dart' show StarKind;
 import '../widgets/dead_star_card.dart';
 import '../widgets/goal_card.dart';
 import '../widgets/habit_card.dart';
+import '../widgets/responsive_content.dart';
 import '../widgets/star_card.dart';
 import 'constellation_screen.dart';
 import 'habit_reader_screen.dart';
@@ -238,105 +239,119 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            Row(
-              children: [
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: Icon(Icons.arrow_back, color: colors.muted),
-                ),
-                Expanded(
-                  child: Text(
-                    areaName,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 20,
-                      color: colors.text,
+            // Only the fixed header chrome is width-capped here — the
+            // Expanded list below stays full width so its own scrollbar
+            // sits at the true page edge on wide viewports rather than
+            // hugging a centered column (see ResponsiveContent's doc).
+            ResponsiveContent(
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: Icon(Icons.arrow_back, color: colors.muted),
+                      ),
+                      Expanded(
+                        child: Text(
+                          areaName,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 20,
+                            color: colors.text,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                    child: SegmentedButton<_ViewMode>(
+                      style: _segmentedButtonStyle(colors),
+                      segments: [
+                        ButtonSegment(
+                          value: _ViewMode.constellations,
+                          icon: const Icon(Icons.auto_awesome, size: 16),
+                          label: Text(strings.constellationsModeLabel),
+                        ),
+                        ButtonSegment(
+                          value: _ViewMode.list,
+                          icon: const Icon(Icons.star, size: 16),
+                          label: Text(strings.listModeLabel),
+                        ),
+                      ],
+                      selected: {_mode},
+                      onSelectionChanged: (selection) =>
+                          setState(() => _mode = selection.first),
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-              child: SegmentedButton<_ViewMode>(
-                style: _segmentedButtonStyle(colors),
-                segments: [
-                  ButtonSegment(
-                    value: _ViewMode.constellations,
-                    icon: const Icon(Icons.auto_awesome, size: 16),
-                    label: Text(strings.constellationsModeLabel),
-                  ),
-                  ButtonSegment(
-                    value: _ViewMode.list,
-                    icon: const Icon(Icons.star, size: 16),
-                    label: Text(strings.listModeLabel),
+                  if (_mode == _ViewMode.list)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _KindFilterChip(
+                            icon: Icons.star,
+                            label: strings.starKindVictoryLabel,
+                            count: allEntries
+                                .where((e) => e.kind == StarKind.victory)
+                                .length,
+                            selected: _kindFilter.contains(StarKind.victory),
+                            color: colors.gold,
+                            onTap: () => _toggleKind(StarKind.victory),
+                          ),
+                          _KindFilterChip(
+                            icon: Icons.flag_outlined,
+                            label: strings.starKindGoalLabel,
+                            count: allEntries
+                                .where((e) => e.kind == StarKind.goal)
+                                .length,
+                            selected: _kindFilter.contains(StarKind.goal),
+                            color: colors.goldDim,
+                            onTap: () => _toggleKind(StarKind.goal),
+                          ),
+                          _KindFilterChip(
+                            icon: Icons.star_outline,
+                            label: strings.starKindDeadLabel,
+                            count: allEntries
+                                .where((e) => e.kind == StarKind.dead)
+                                .length,
+                            selected: _kindFilter.contains(StarKind.dead),
+                            color: colors.muted,
+                            onTap: () => _toggleKind(StarKind.dead),
+                          ),
+                          _KindFilterChip(
+                            icon: Icons.repeat,
+                            label: strings.starKindPulsarChipLabel,
+                            count: allEntries
+                                .where((e) => e.kind == StarKind.habit)
+                                .length,
+                            selected: _kindFilter.contains(StarKind.habit),
+                            color: colors.crisisMuted,
+                            onTap: () => _toggleKind(StarKind.habit),
+                          ),
+                        ],
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                    child: TextField(
+                      onChanged: (value) => setState(() => _query = value),
+                      style: TextStyle(color: colors.text, fontSize: 15),
+                      decoration: InputDecoration(
+                        hintText: strings.searchHint,
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: colors.muted,
+                          size: 20,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
-                selected: {_mode},
-                onSelectionChanged: (selection) =>
-                    setState(() => _mode = selection.first),
-              ),
-            ),
-            if (_mode == _ViewMode.list)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _KindFilterChip(
-                      icon: Icons.star,
-                      label: strings.starKindVictoryLabel,
-                      count: allEntries
-                          .where((e) => e.kind == StarKind.victory)
-                          .length,
-                      selected: _kindFilter.contains(StarKind.victory),
-                      color: colors.gold,
-                      onTap: () => _toggleKind(StarKind.victory),
-                    ),
-                    _KindFilterChip(
-                      icon: Icons.flag_outlined,
-                      label: strings.starKindGoalLabel,
-                      count: allEntries
-                          .where((e) => e.kind == StarKind.goal)
-                          .length,
-                      selected: _kindFilter.contains(StarKind.goal),
-                      color: colors.goldDim,
-                      onTap: () => _toggleKind(StarKind.goal),
-                    ),
-                    _KindFilterChip(
-                      icon: Icons.star_outline,
-                      label: strings.starKindDeadLabel,
-                      count: allEntries
-                          .where((e) => e.kind == StarKind.dead)
-                          .length,
-                      selected: _kindFilter.contains(StarKind.dead),
-                      color: colors.muted,
-                      onTap: () => _toggleKind(StarKind.dead),
-                    ),
-                    _KindFilterChip(
-                      icon: Icons.repeat,
-                      label: strings.starKindPulsarChipLabel,
-                      count: allEntries
-                          .where((e) => e.kind == StarKind.habit)
-                          .length,
-                      selected: _kindFilter.contains(StarKind.habit),
-                      color: colors.crisisMuted,
-                      onTap: () => _toggleKind(StarKind.habit),
-                    ),
-                  ],
-                ),
-              ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              child: TextField(
-                onChanged: (value) => setState(() => _query = value),
-                style: TextStyle(color: colors.text, fontSize: 15),
-                decoration: InputDecoration(
-                  hintText: strings.searchHint,
-                  prefixIcon: Icon(Icons.search, color: colors.muted, size: 20),
-                ),
               ),
             ),
             Expanded(
@@ -426,21 +441,23 @@ class _ConstellationsList extends StatelessWidget {
         final achievedStars = stars.where((s) => s.isAchieved).toList();
         final openGoals = stars.where((s) => s.isGoal).length;
         final activeHabits = activeHabitCountForProject(project.id);
-        return _ProjectCard(
-          project: project,
-          starCount: achievedStars.length,
-          lastStarDate: achievedStars.isEmpty
-              ? null
-              : achievedStars
-                    .map((s) => s.achievedDate!)
-                    .reduce((a, b) => a.isAfter(b) ? a : b),
-          combinedIntensity: achievedStars.fold<int>(
-            0,
-            (sum, s) => sum + s.intensity!,
+        return ResponsiveContent(
+          child: _ProjectCard(
+            project: project,
+            starCount: achievedStars.length,
+            lastStarDate: achievedStars.isEmpty
+                ? null
+                : achievedStars
+                      .map((s) => s.achievedDate!)
+                      .reduce((a, b) => a.isAfter(b) ? a : b),
+            combinedIntensity: achievedStars.fold<int>(
+              0,
+              (sum, s) => sum + s.intensity!,
+            ),
+            openGoals: openGoals,
+            activeHabits: activeHabits,
+            onTap: () => onTap(project),
           ),
-          openGoals: openGoals,
-          activeHabits: activeHabits,
-          onTap: () => onTap(project),
         );
       },
     );
@@ -505,21 +522,22 @@ class _FlatList extends StatelessWidget {
         final project =
             projectsById[entry.star?.projectId ?? entry.habit?.projectId];
 
+        final Widget card;
         switch (entry.kind) {
           case StarKind.victory:
-            return StarCard(
+            card = StarCard(
               star: entry.star!,
               project: project,
               onTap: () => onOpenStar(entry),
             );
           case StarKind.goal:
-            return GoalCard(
+            card = GoalCard(
               star: entry.star!,
               project: project,
               onTap: () => onOpenStar(entry),
             );
           case StarKind.dead:
-            return DeadStarCard(
+            card = DeadStarCard(
               star: entry.star!,
               project: project,
               onTap: () => onOpenStar(entry),
@@ -527,7 +545,7 @@ class _FlatList extends StatelessWidget {
           case StarKind.habit:
             final habit = entry.habit!;
             final completedDays = completedDaysFor(habit.id);
-            return HabitCard(
+            card = HabitCard(
               habit: habit,
               project: project,
               currentStreak: habitCurrentStreak(completedDays),
@@ -535,6 +553,7 @@ class _FlatList extends StatelessWidget {
               onTap: () => onOpenHabit(habit),
             );
         }
+        return ResponsiveContent(child: card);
       },
     );
   }

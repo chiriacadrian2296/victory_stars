@@ -29,6 +29,10 @@ class StringsRo implements AppStrings {
   String get navSky => 'Cer';
   @override
   String get navSettings => 'Setări';
+  @override
+  String get collapseSidebarAction => 'Restrânge bara laterală';
+  @override
+  String get expandSidebarAction => 'Extinde bara laterală';
 
   @override
   String get homeEyebrow => 'PROGRESUL TĂU';

@@ -9,6 +9,7 @@ import '../theme/app_colors.dart';
 import '../widgets/area_tag.dart';
 import '../widgets/project_picker.dart';
 import '../widgets/project_tag.dart';
+import '../widgets/responsive_content.dart';
 
 /// What the user entered, handed back to whoever pushed this screen.
 class AddHabitResult {
@@ -240,248 +241,256 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: _handleBack,
-                    icon: Icon(Icons.arrow_back, color: colors.muted),
-                  ),
-                  Text(
-                    widget.isEditing
-                        ? strings.editHabitEyebrow
-                        : strings.newHabitEyebrow,
-                    style: TextStyle(
-                      fontSize: 12,
-                      letterSpacing: 1.4,
-                      fontWeight: FontWeight.w600,
-                      color: colors.gold,
+          child: ResponsiveContent(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: _handleBack,
+                      icon: Icon(Icons.arrow_back, color: colors.muted),
                     ),
+                    Text(
+                      widget.isEditing
+                          ? strings.editHabitEyebrow
+                          : strings.newHabitEyebrow,
+                      style: TextStyle(
+                        fontSize: 12,
+                        letterSpacing: 1.4,
+                        fontWeight: FontWeight.w600,
+                        color: colors.gold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  strings.addHabitQuestion,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 24,
+                    color: colors.text,
+                  ),
+                ),
+                if (_selectedProject != null) ...[
+                  const SizedBox(height: 14),
+                  AreaTag(
+                    area: _selectedProject!.area,
+                    iconSize: 22,
+                    fontSize: 20,
                   ),
                 ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                strings.addHabitQuestion,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 24,
-                  color: colors.text,
-                ),
-              ),
-              if (_selectedProject != null) ...[
-                const SizedBox(height: 14),
-                AreaTag(
-                  area: _selectedProject!.area,
-                  iconSize: 22,
-                  fontSize: 20,
-                ),
-              ],
-              const SizedBox(height: 24),
-              if (widget.lockedProject == null) ...[
+                const SizedBox(height: 24),
+                if (widget.lockedProject == null) ...[
+                  Text(
+                    strings.projectLabel,
+                    style: TextStyle(fontSize: 13, color: colors.muted),
+                  ),
+                  const SizedBox(height: 6),
+                  InkWell(
+                    onTap: _openProjectPicker,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colors.nightPanel,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: colors.nightBorder),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _selectedProject != null
+                                ? ProjectTag(
+                                    project: _selectedProject!,
+                                    iconSize: 18,
+                                    fontSize: 15,
+                                    textColor: colors.text,
+                                  )
+                                : Text(
+                                    strings.selectAProject,
+                                    style: TextStyle(
+                                      color: colors.muted,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                          ),
+                          Icon(Icons.expand_more, color: colors.muted),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
                 Text(
-                  strings.projectLabel,
+                  strings.titleFieldLabel,
                   style: TextStyle(fontSize: 13, color: colors.muted),
                 ),
                 const SizedBox(height: 6),
-                InkWell(
-                  onTap: _openProjectPicker,
-                  borderRadius: BorderRadius.circular(8),
+                TextField(
+                  controller: _titleController,
+                  textInputAction: TextInputAction.next,
+                  style: TextStyle(color: colors.text, fontSize: 15),
+                  decoration: InputDecoration(hintText: strings.titleHint),
+                  onChanged: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  strings.detailsLabel,
+                  style: TextStyle(fontSize: 13, color: colors.muted),
+                ),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _descriptionController,
+                  minLines: 3,
+                  maxLines: 5,
+                  style: TextStyle(color: colors.text, fontSize: 15),
+                  decoration: InputDecoration(hintText: strings.detailsHint),
+                  onChanged: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  strings.habitFrequencyLabel,
+                  style: TextStyle(fontSize: 13, color: colors.muted),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.nightPanel,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: colors.nightBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.repeat, size: 16, color: colors.gold),
+                      const SizedBox(width: 10),
+                      Text(
+                        strings.habitFrequencyDaily,
+                        style: TextStyle(color: colors.text, fontSize: 15),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Material(
+                  color: colors.nightPanel,
+                  borderRadius: BorderRadius.circular(12),
                   child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
                     decoration: BoxDecoration(
-                      color: colors.nightPanel,
-                      borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: colors.nightBorder),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Row(
+                    child: Column(
                       children: [
-                        Expanded(
-                          child: _selectedProject != null
-                              ? ProjectTag(
-                                  project: _selectedProject!,
-                                  iconSize: 18,
-                                  fontSize: 15,
-                                  textColor: colors.text,
-                                )
-                              : Text(
-                                  strings.selectAProject,
-                                  style: TextStyle(
-                                    color: colors.muted,
-                                    fontSize: 15,
-                                  ),
-                                ),
+                        SwitchListTile(
+                          value: _customReminder,
+                          onChanged: (value) =>
+                              setState(() => _customReminder = value),
+                          activeThumbColor: colors.gold,
+                          title: Text(
+                            strings.customReminderToggleLabel,
+                            style: TextStyle(color: colors.text, fontSize: 14),
+                          ),
                         ),
-                        Icon(Icons.expand_more, color: colors.muted),
+                        if (_customReminder)
+                          ListTile(
+                            onTap: _pickReminderTime,
+                            title: Text(
+                              strings.reminderTimeLabel,
+                              style: TextStyle(
+                                color: colors.muted,
+                                fontSize: 13,
+                              ),
+                            ),
+                            trailing: Text(
+                              TimeOfDay(
+                                hour: _reminderHour,
+                                minute: _reminderMinute,
+                              ).format(context),
+                              style: TextStyle(
+                                color: colors.gold,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 20),
-              ],
-              Text(
-                strings.titleFieldLabel,
-                style: TextStyle(fontSize: 13, color: colors.muted),
-              ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _titleController,
-                textInputAction: TextInputAction.next,
-                style: TextStyle(color: colors.text, fontSize: 15),
-                decoration: InputDecoration(hintText: strings.titleHint),
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                strings.detailsLabel,
-                style: TextStyle(fontSize: 13, color: colors.muted),
-              ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _descriptionController,
-                minLines: 3,
-                maxLines: 5,
-                style: TextStyle(color: colors.text, fontSize: 15),
-                decoration: InputDecoration(hintText: strings.detailsHint),
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                strings.habitFrequencyLabel,
-                style: TextStyle(fontSize: 13, color: colors.muted),
-              ),
-              const SizedBox(height: 6),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: colors.nightPanel,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: colors.nightBorder),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.repeat, size: 16, color: colors.gold),
-                    const SizedBox(width: 10),
-                    Text(
-                      strings.habitFrequencyDaily,
-                      style: TextStyle(color: colors.text, fontSize: 15),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              Material(
-                color: colors.nightPanel,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: colors.nightBorder),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
+                Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      SwitchListTile(
-                        value: _customReminder,
-                        onChanged: (value) =>
-                            setState(() => _customReminder = value),
-                        activeThumbColor: colors.gold,
-                        title: Text(
-                          strings.customReminderToggleLabel,
-                          style: TextStyle(color: colors.text, fontSize: 14),
-                        ),
-                      ),
-                      if (_customReminder)
-                        ListTile(
-                          onTap: _pickReminderTime,
-                          title: Text(
-                            strings.reminderTimeLabel,
-                            style: TextStyle(color: colors.muted, fontSize: 13),
+                      if (widget.isEditing) ...[
+                        FloatingActionButton(
+                          heroTag: 'deleteHabitFab',
+                          onPressed: _confirmAndDelete,
+                          backgroundColor: colors.danger,
+                          elevation: 0,
+                          shape: const CircleBorder(),
+                          tooltip: strings.deleteHabitAction,
+                          child: Icon(
+                            Icons.delete_outline,
+                            color: colors.night,
                           ),
-                          trailing: Text(
-                            TimeOfDay(
-                              hour: _reminderHour,
-                              minute: _reminderMinute,
-                            ).format(context),
-                            style: TextStyle(
-                              color: colors.gold,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 15,
+                        ),
+                        const SizedBox(width: 20),
+                      ],
+                      ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _titleController,
+                        builder: (context, value, child) {
+                          final canSave =
+                              value.text.trim().isNotEmpty &&
+                              _selectedProject != null &&
+                              (!widget.isEditing || _hasUnsavedChanges);
+                          return Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              boxShadow: canSave
+                                  ? [
+                                      BoxShadow(
+                                        color: colors.gold.withValues(
+                                          alpha: 0.35,
+                                        ),
+                                        blurRadius: 20,
+                                        offset: const Offset(0, 6),
+                                      ),
+                                    ]
+                                  : null,
                             ),
-                          ),
-                        ),
+                            child: FloatingActionButton(
+                              heroTag: 'saveHabitFab',
+                              onPressed: canSave
+                                  ? _save
+                                  : _showCannotSaveMessage,
+                              backgroundColor: canSave
+                                  ? colors.gold
+                                  : colors.muted,
+                              elevation: 0,
+                              shape: const CircleBorder(),
+                              tooltip: strings.saveChanges,
+                              child: Icon(Icons.check, color: colors.night),
+                            ),
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (widget.isEditing) ...[
-                      FloatingActionButton(
-                        heroTag: 'deleteHabitFab',
-                        onPressed: _confirmAndDelete,
-                        backgroundColor: colors.danger,
-                        elevation: 0,
-                        shape: const CircleBorder(),
-                        tooltip: strings.deleteHabitAction,
-                        child: Icon(Icons.delete_outline, color: colors.night),
-                      ),
-                      const SizedBox(width: 20),
-                    ],
-                    ValueListenableBuilder<TextEditingValue>(
-                      valueListenable: _titleController,
-                      builder: (context, value, child) {
-                        final canSave =
-                            value.text.trim().isNotEmpty &&
-                            _selectedProject != null &&
-                            (!widget.isEditing || _hasUnsavedChanges);
-                        return Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: canSave
-                                ? [
-                                    BoxShadow(
-                                      color: colors.gold.withValues(
-                                        alpha: 0.35,
-                                      ),
-                                      blurRadius: 20,
-                                      offset: const Offset(0, 6),
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: FloatingActionButton(
-                            heroTag: 'saveHabitFab',
-                            onPressed: canSave
-                                ? _save
-                                : _showCannotSaveMessage,
-                            backgroundColor: canSave
-                                ? colors.gold
-                                : colors.muted,
-                            elevation: 0,
-                            shape: const CircleBorder(),
-                            tooltip: strings.saveChanges,
-                            child: Icon(Icons.check, color: colors.night),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

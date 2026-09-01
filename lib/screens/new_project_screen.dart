@@ -10,6 +10,7 @@ import '../models/life_area.dart';
 import '../theme/app_colors.dart';
 import '../utils/icon_for_slug.dart';
 import '../widgets/constellation_editor_painter.dart';
+import '../widgets/responsive_content.dart';
 import 'constellation_editor_screen.dart';
 
 /// Creates a project: a name, a [LifeArea], a hand-drawn constellation
@@ -248,7 +249,10 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
     final area = _selectedArea;
     final iconSlug = _selectedIconSlug;
     final constellation = _selectedCustomConstellation;
-    if (name.isEmpty || area == null || iconSlug == null || constellation == null) {
+    if (name.isEmpty ||
+        area == null ||
+        iconSlug == null ||
+        constellation == null) {
       return;
     }
     assert(
@@ -297,176 +301,185 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: _handleBack,
-                    icon: Icon(Icons.arrow_back, color: colors.muted),
-                  ),
-                  Text(
-                    strings.newProjectEyebrow,
-                    style: TextStyle(
-                      fontSize: 12,
-                      letterSpacing: 1.4,
-                      fontWeight: FontWeight.w600,
-                      color: colors.gold,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                strings.newProjectQuestion,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 24,
-                  color: colors.text,
-                ),
-              ),
-              const SizedBox(height: 24),
-              if (widget.presetArea == null)
+          child: ResponsiveContent(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(flex: 3, child: _buildAreaField(colors, strings)),
-                    const SizedBox(width: 12),
-                    Expanded(flex: 1, child: _buildIconField(colors, strings)),
+                    IconButton(
+                      onPressed: _handleBack,
+                      icon: Icon(Icons.arrow_back, color: colors.muted),
+                    ),
+                    Text(
+                      strings.newProjectEyebrow,
+                      style: TextStyle(
+                        fontSize: 12,
+                        letterSpacing: 1.4,
+                        fontWeight: FontWeight.w600,
+                        color: colors.gold,
+                      ),
+                    ),
                   ],
-                )
-              else
-                _buildIconField(colors, strings),
-              const SizedBox(height: 20),
-              Text(
-                strings.nameLabel,
-                style: TextStyle(fontSize: 13, color: colors.muted),
-              ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _nameController,
-                autofocus: widget.presetArea != null,
-                style: TextStyle(color: colors.text, fontSize: 15),
-                decoration: InputDecoration(
-                  hintText: strings.newProjectNameHint,
                 ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                strings.projectDescriptionLabel,
-                style: TextStyle(fontSize: 13, color: colors.muted),
-              ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _descriptionController,
-                maxLines: 3,
-                style: TextStyle(color: colors.text, fontSize: 15),
-                decoration: InputDecoration(
-                  hintText: strings.projectDescriptionHint,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                strings.yourConstellationsLabel,
-                style: TextStyle(fontSize: 13, color: colors.muted),
-              ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: OutlinedButton(
-                  onPressed: _openConstellationEditor,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: colors.gold,
-                    side: BorderSide(color: colors.gold),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 22,
-                      vertical: 18,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                const SizedBox(height: 16),
+                Text(
+                  strings.newProjectQuestion,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 24,
+                    color: colors.text,
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                ),
+                const SizedBox(height: 24),
+                if (widget.presetArea == null)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.gesture, size: 32),
-                      const SizedBox(height: 8),
-                      Text(
-                        strings.drawYourOwnShort,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
+                      Expanded(
+                        flex: 3,
+                        child: _buildAreaField(colors, strings),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 1,
+                        child: _buildIconField(colors, strings),
                       ),
                     ],
+                  )
+                else
+                  _buildIconField(colors, strings),
+                const SizedBox(height: 20),
+                Text(
+                  strings.nameLabel,
+                  style: TextStyle(fontSize: 13, color: colors.muted),
+                ),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _nameController,
+                  autofocus: widget.presetArea != null,
+                  style: TextStyle(color: colors.text, fontSize: 15),
+                  decoration: InputDecoration(
+                    hintText: strings.newProjectNameHint,
                   ),
                 ),
-              ),
-              if (widget.customConstellationRepository.getAll().isNotEmpty) ...[
                 const SizedBox(height: 20),
-                Divider(color: colors.nightBorder, height: 1),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final custom
-                        in widget.customConstellationRepository.getAll())
-                      _CustomConstellationOption(
-                        constellation: custom,
-                        selected: _selectedCustomConstellation?.id == custom.id,
-                        onTap: () => setState(
-                          () => _selectedCustomConstellation = custom,
-                        ),
-                        onEdit: () =>
-                            _openConstellationEditor(existing: custom),
+                Text(
+                  strings.projectDescriptionLabel,
+                  style: TextStyle(fontSize: 13, color: colors.muted),
+                ),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _descriptionController,
+                  maxLines: 3,
+                  style: TextStyle(color: colors.text, fontSize: 15),
+                  decoration: InputDecoration(
+                    hintText: strings.projectDescriptionHint,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  strings.yourConstellationsLabel,
+                  style: TextStyle(fontSize: 13, color: colors.muted),
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton(
+                    onPressed: _openConstellationEditor,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.gold,
+                      side: BorderSide(color: colors.gold),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 22,
+                        vertical: 18,
                       ),
-                  ],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.gesture, size: 32),
+                        const SizedBox(height: 8),
+                        Text(
+                          strings.drawYourOwnShort,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (widget.customConstellationRepository
+                    .getAll()
+                    .isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  Divider(color: colors.nightBorder, height: 1),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final custom
+                          in widget.customConstellationRepository.getAll())
+                        _CustomConstellationOption(
+                          constellation: custom,
+                          selected:
+                              _selectedCustomConstellation?.id == custom.id,
+                          onTap: () => setState(
+                            () => _selectedCustomConstellation = custom,
+                          ),
+                          onEdit: () =>
+                              _openConstellationEditor(existing: custom),
+                        ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 28),
+                Center(
+                  child: ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: _nameController,
+                    builder: (context, value, child) {
+                      final canSave =
+                          value.text.trim().isNotEmpty &&
+                          _selectedArea != null &&
+                          _selectedIconSlug != null &&
+                          _selectedCustomConstellation != null;
+                      // Same "lit disc" treatment as AddStarScreen's own save
+                      // FAB — on (gold, glowing) once everything required is
+                      // filled in, off (muted, flat) otherwise.
+                      return Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: canSave
+                              ? [
+                                  BoxShadow(
+                                    color: colors.gold.withValues(alpha: 0.35),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 6),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: FloatingActionButton(
+                          heroTag: 'createProjectFab',
+                          onPressed: canSave ? _save : _showCannotSaveMessage,
+                          backgroundColor: canSave ? colors.gold : colors.muted,
+                          elevation: 0,
+                          shape: const CircleBorder(),
+                          tooltip: strings.createProject,
+                          child: Icon(Icons.check, color: colors.night),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ],
-              const SizedBox(height: 28),
-              Center(
-                child: ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: _nameController,
-                  builder: (context, value, child) {
-                    final canSave =
-                        value.text.trim().isNotEmpty &&
-                        _selectedArea != null &&
-                        _selectedIconSlug != null &&
-                        _selectedCustomConstellation != null;
-                    // Same "lit disc" treatment as AddStarScreen's own save
-                    // FAB — on (gold, glowing) once everything required is
-                    // filled in, off (muted, flat) otherwise.
-                    return Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: canSave
-                            ? [
-                                BoxShadow(
-                                  color: colors.gold.withValues(alpha: 0.35),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: FloatingActionButton(
-                        heroTag: 'createProjectFab',
-                        onPressed: canSave
-                            ? _save
-                            : _showCannotSaveMessage,
-                        backgroundColor: canSave ? colors.gold : colors.muted,
-                        elevation: 0,
-                        shape: const CircleBorder(),
-                        tooltip: strings.createProject,
-                        child: Icon(Icons.check, color: colors.night),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -680,8 +693,9 @@ class _CustomConstellationOption extends StatelessWidget {
                 highlightedIndex: null,
                 pointColor: selected ? colors.gold : colors.text,
                 highlightColor: colors.gold,
-                lineColor: (selected ? colors.gold : colors.muted)
-                    .withValues(alpha: 0.6),
+                lineColor: (selected ? colors.gold : colors.muted).withValues(
+                  alpha: 0.6,
+                ),
                 pointRadius: 2.5,
               ),
             ),
@@ -760,9 +774,7 @@ class _PickerField extends StatelessWidget {
               ),
             ),
             child: iconOnlyWhenSelected && selected
-                ? Center(
-                    child: Icon(icon, size: 22, color: colors.gold),
-                  )
+                ? Center(child: Icon(icon, size: 22, color: colors.gold))
                 : Row(
                     children: [
                       Icon(
@@ -857,8 +869,7 @@ class _SearchablePickerSheet<T> extends StatefulWidget {
       _SearchablePickerSheetState<T>();
 }
 
-class _SearchablePickerSheetState<T>
-    extends State<_SearchablePickerSheet<T>> {
+class _SearchablePickerSheetState<T> extends State<_SearchablePickerSheet<T>> {
   String _query = '';
   late T? _selected = widget.initialSelection;
 

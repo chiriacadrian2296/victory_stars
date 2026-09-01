@@ -21,6 +21,7 @@ import '../widgets/area_tag.dart';
 import '../widgets/intensity_bolts.dart';
 import '../widgets/photo_picker.dart';
 import '../widgets/project_tag.dart';
+import '../widgets/responsive_content.dart';
 import 'add_star_screen.dart';
 import 'photo_crop_screen.dart';
 
@@ -290,33 +291,35 @@ class _StarReaderScreenState extends State<StarReaderScreen> {
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 28),
               child: Column(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: Icon(Icons.close, color: colors.crisisMuted),
-                      ),
-                      Text(
-                        strings.indexOfCount(_index + 1, _stars.length),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: colors.crisisMuted,
-                        ),
-                      ),
-                      if (widget.allowEdit)
+                  ResponsiveContent(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
                         IconButton(
-                          onPressed: _editOrResurrectCurrent,
-                          icon: Icon(
-                            star.dead
-                                ? Icons.auto_fix_high
-                                : Icons.edit_outlined,
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: Icon(Icons.close, color: colors.crisisMuted),
+                        ),
+                        Text(
+                          strings.indexOfCount(_index + 1, _stars.length),
+                          style: TextStyle(
+                            fontSize: 12,
                             color: colors.crisisMuted,
                           ),
-                        )
-                      else
-                        const SizedBox(width: 48),
-                    ],
+                        ),
+                        if (widget.allowEdit)
+                          IconButton(
+                            onPressed: _editOrResurrectCurrent,
+                            icon: Icon(
+                              star.dead
+                                  ? Icons.auto_fix_high
+                                  : Icons.edit_outlined,
+                              color: colors.crisisMuted,
+                            ),
+                          )
+                        else
+                          const SizedBox(width: 48),
+                      ],
+                    ),
                   ),
                   Expanded(
                     child: GestureDetector(
@@ -332,52 +335,56 @@ class _StarReaderScreenState extends State<StarReaderScreen> {
                       child: Center(
                         child: SingleChildScrollView(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 260),
-                            switchInCurve: Curves.easeOut,
-                            switchOutCurve: Curves.easeIn,
-                            transitionBuilder: (child, animation) {
-                              final scale = Tween<double>(
-                                begin: 0.94,
-                                end: 1.0,
-                              ).animate(animation);
-                              return FadeTransition(
-                                opacity: animation,
-                                child: ScaleTransition(
-                                  scale: scale,
-                                  child: child,
-                                ),
-                              );
-                            },
-                            child: _StarContent(
-                              key: ValueKey(_index),
-                              star: star,
-                              project: project,
+                          child: ResponsiveContent(
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 260),
+                              switchInCurve: Curves.easeOut,
+                              switchOutCurve: Curves.easeIn,
+                              transitionBuilder: (child, animation) {
+                                final scale = Tween<double>(
+                                  begin: 0.94,
+                                  end: 1.0,
+                                ).animate(animation);
+                                return FadeTransition(
+                                  opacity: animation,
+                                  child: ScaleTransition(
+                                    scale: scale,
+                                    child: child,
+                                  ),
+                                );
+                              },
+                              child: _StarContent(
+                                key: ValueKey(_index),
+                                star: star,
+                                project: project,
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _NavCircleButton(
-                        icon: Icons.chevron_left,
-                        onTap: _showPrevious,
-                      ),
-                      _MiddleAction(
-                        star: star,
-                        sharing: _sharing,
-                        onShare: _shareCurrent,
-                        onMarkAchieved: _markAchieved,
-                        onResurrect: _editOrResurrectCurrent,
-                      ),
-                      _NavCircleButton(
-                        icon: Icons.chevron_right,
-                        onTap: _showNext,
-                      ),
-                    ],
+                  ResponsiveContent(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _NavCircleButton(
+                          icon: Icons.chevron_left,
+                          onTap: _showPrevious,
+                        ),
+                        _MiddleAction(
+                          star: star,
+                          sharing: _sharing,
+                          onShare: _shareCurrent,
+                          onMarkAchieved: _markAchieved,
+                          onResurrect: _editOrResurrectCurrent,
+                        ),
+                        _NavCircleButton(
+                          icon: Icons.chevron_right,
+                          onTap: _showNext,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

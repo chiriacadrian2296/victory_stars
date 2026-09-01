@@ -15,6 +15,7 @@ import '../models/star.dart';
 import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
 import '../utils/star_stats.dart';
+import '../widgets/responsive_content.dart';
 import '../widgets/star_card.dart';
 import '../widgets/star_heatmap.dart';
 import 'add_habit_screen.dart';
@@ -337,118 +338,128 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 32, 20, 100),
+          // The scrollable itself spans the full window width (so its
+          // auto-attached Scrollbar sits at the true page edge on wide
+          // viewports); only its content is capped/centered.
           children: [
-            Text(
-              strings.homeEyebrow,
-              style: TextStyle(
-                fontSize: 12,
-                letterSpacing: 2,
-                fontWeight: FontWeight.w600,
-                color: colors.goldDim,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              strings.homeTitle,
-              style: TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.w700,
-                color: colors.text,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              strings.homeSubtitle,
-              style: TextStyle(fontSize: 14, color: colors.muted),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              strings.todayStarSectionLabel,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: colors.muted,
-              ),
-            ),
-            const SizedBox(height: 10),
-            _TodayStarHero(
-              litToday: litToday,
-              onTap: litToday
-                  ? () => _openDayDetail(today)
-                  : () => _openAddStarScreen(),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              strings.activityLabel,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: colors.muted,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: colors.nightPanel,
-                border: Border.all(color: colors.nightBorder),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: StarHeatmap(
-                month: _displayedMonth,
-                countsByDay: dayCounts,
-                intensityByDay: dayIntensities,
-                onDayTap: _openDayDetail,
-                onPreviousMonth: () => _changeDisplayedMonth(-1),
-                onNextMonth: _isCurrentMonthDisplayed
-                    ? null
-                    : () => _changeDisplayedMonth(1),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              strings.totalStarsLabel,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: colors.muted,
-              ),
-            ),
-            const SizedBox(height: 10),
-            _TotalStarsBanner(
-              value: achievedStars.length,
-              onTap: _openTotalStarsDetail,
-            ),
-            const SizedBox(height: 24),
-            Text(
-              strings.streaksSectionLabel,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: colors.muted,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _StatCard(
-                    label: strings.currentStreakLabel,
-                    value: '${currentStreak(dayCounts)}',
-                    onTap: _openCurrentStreakDetail,
+            ResponsiveContent(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    strings.homeEyebrow,
+                    style: TextStyle(
+                      fontSize: 12,
+                      letterSpacing: 2,
+                      fontWeight: FontWeight.w600,
+                      color: colors.goldDim,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _StatCard(
-                    label: strings.longestStreakLabel,
-                    value: '${longestStreak(dayCounts)}',
-                    onTap: _openLongestStreakDetail,
+                  const SizedBox(height: 6),
+                  Text(
+                    strings.homeTitle,
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w700,
+                      color: colors.text,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 6),
+                  Text(
+                    strings.homeSubtitle,
+                    style: TextStyle(fontSize: 14, color: colors.muted),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    strings.todayStarSectionLabel,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: colors.muted,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _TodayStarHero(
+                    litToday: litToday,
+                    onTap: litToday
+                        ? () => _openDayDetail(today)
+                        : () => _openAddStarScreen(),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    strings.activityLabel,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: colors.muted,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: colors.nightPanel,
+                      border: Border.all(color: colors.nightBorder),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: StarHeatmap(
+                      month: _displayedMonth,
+                      countsByDay: dayCounts,
+                      intensityByDay: dayIntensities,
+                      onDayTap: _openDayDetail,
+                      onPreviousMonth: () => _changeDisplayedMonth(-1),
+                      onNextMonth: _isCurrentMonthDisplayed
+                          ? null
+                          : () => _changeDisplayedMonth(1),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    strings.totalStarsLabel,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: colors.muted,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _TotalStarsBanner(
+                    value: achievedStars.length,
+                    onTap: _openTotalStarsDetail,
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    strings.streaksSectionLabel,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: colors.muted,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _StatCard(
+                          label: strings.currentStreakLabel,
+                          value: '${currentStreak(dayCounts)}',
+                          onTap: _openCurrentStreakDetail,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _StatCard(
+                          label: strings.longestStreakLabel,
+                          value: '${longestStreak(dayCounts)}',
+                          onTap: _openLongestStreakDetail,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),

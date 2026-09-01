@@ -9,6 +9,7 @@ import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
 import '../utils/star_stats.dart';
 import '../widgets/area_tag.dart';
+import '../widgets/responsive_content.dart';
 
 /// The dashboard's three stat cards (Total Stars, Current Streak, Longest
 /// Streak) each open one of these — a closer look, in the same reflective,
@@ -283,46 +284,48 @@ class _StatDetailScaffold extends StatelessWidget {
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(28, 4, 28, 32),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 84,
-                        height: 84,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: colors.gold.withValues(alpha: 0.12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: colors.gold.withValues(alpha: 0.4),
-                              blurRadius: 28,
-                            ),
-                          ],
+                  child: ResponsiveContent(
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 84,
+                          height: 84,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: colors.gold.withValues(alpha: 0.12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: colors.gold.withValues(alpha: 0.4),
+                                blurRadius: 28,
+                              ),
+                            ],
+                          ),
+                          child: Icon(icon, size: 38, color: colors.gold),
                         ),
-                        child: Icon(icon, size: 38, color: colors.gold),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        value,
-                        style: TextStyle(
-                          fontSize: 52,
-                          fontWeight: FontWeight.w700,
-                          height: 1,
-                          color: colors.text,
+                        const SizedBox(height: 20),
+                        Text(
+                          value,
+                          style: TextStyle(
+                            fontSize: 52,
+                            fontWeight: FontWeight.w700,
+                            height: 1,
+                            color: colors.text,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        caption.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 12,
-                          letterSpacing: 2,
-                          fontWeight: FontWeight.w600,
-                          color: colors.goldDim,
+                        const SizedBox(height: 8),
+                        Text(
+                          caption.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            letterSpacing: 2,
+                            fontWeight: FontWeight.w600,
+                            color: colors.goldDim,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 28),
-                      body,
-                    ],
+                        const SizedBox(height: 28),
+                        body,
+                      ],
+                    ),
                   ),
                 ),
               ),

@@ -11,6 +11,7 @@ import '../theme/app_colors.dart';
 import '../utils/habit_stats.dart';
 import '../widgets/area_tag.dart';
 import '../widgets/project_tag.dart';
+import '../widgets/responsive_content.dart';
 import '../widgets/star_heatmap.dart';
 import 'add_habit_screen.dart';
 
@@ -109,123 +110,143 @@ class _HabitReaderScreenState extends State<HabitReaderScreen> {
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          // The scrollable itself spans the full window width (so its
+          // auto-attached Scrollbar sits at the true page edge on wide
+          // viewports); only its content is capped/centered.
           children: [
-            Row(
-              children: [
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: Icon(Icons.arrow_back, color: colors.muted),
-                ),
-                Expanded(
-                  child: Text(
-                    _habit.title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 18,
-                      color: colors.text,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                IconButton(
-                  onPressed: _edit,
-                  icon: Icon(Icons.edit_outlined, color: colors.muted),
-                ),
-              ],
-            ),
-            if (widget.project != null) ...[
-              const SizedBox(height: 8),
-              AreaTag(area: widget.project!.area, iconSize: 20, fontSize: 16),
-              const SizedBox(height: 6),
-              ProjectTag(project: widget.project!, fontSize: 14),
-            ],
-            if (_habit.description != null) ...[
-              const SizedBox(height: 14),
-              Text(
-                _habit.description!,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: colors.muted,
-                  height: 1.4,
-                ),
-              ),
-            ],
-            const SizedBox(height: 24),
-            Center(
+            ResponsiveContent(
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    '$streak',
-                    style: TextStyle(
-                      fontSize: 44,
-                      fontWeight: FontWeight.w800,
-                      color: colors.gold,
-                      height: 1,
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: Icon(Icons.arrow_back, color: colors.muted),
+                      ),
+                      Expanded(
+                        child: Text(
+                          _habit.title,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 18,
+                            color: colors.text,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: _edit,
+                        icon: Icon(Icons.edit_outlined, color: colors.muted),
+                      ),
+                    ],
+                  ),
+                  if (widget.project != null) ...[
+                    const SizedBox(height: 8),
+                    AreaTag(
+                      area: widget.project!.area,
+                      iconSize: 20,
+                      fontSize: 16,
+                    ),
+                    const SizedBox(height: 6),
+                    ProjectTag(project: widget.project!, fontSize: 14),
+                  ],
+                  if (_habit.description != null) ...[
+                    const SizedBox(height: 14),
+                    Text(
+                      _habit.description!,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: colors.muted,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  Center(
+                    child: Column(
+                      children: [
+                        Text(
+                          '$streak',
+                          style: TextStyle(
+                            fontSize: 44,
+                            fontWeight: FontWeight.w800,
+                            color: colors.gold,
+                            height: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          strings.habitCurrentStreakLabel,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: colors.muted,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    strings.habitCurrentStreakLabel,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: colors.muted,
-                      letterSpacing: 1.2,
+                  const SizedBox(height: 24),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: colors.nightPanel,
+                      border: Border.all(color: colors.nightBorder),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: StarHeatmap(
+                      countsByDay: countsByDay,
+                      intensityByDay: countsByDay,
                     ),
                   ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _toggleToday(doneToday),
+                      icon: Icon(
+                        doneToday
+                            ? Icons.check_circle
+                            : Icons.radio_button_unchecked,
+                      ),
+                      label: Text(
+                        doneToday
+                            ? strings.habitDoneTodayLabel
+                            : strings.markHabitDoneAction,
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: doneToday
+                            ? colors.nightPanel
+                            : colors.gold,
+                        foregroundColor: doneToday
+                            ? colors.gold
+                            : colors.onGold,
+                        side: doneToday ? BorderSide(color: colors.gold) : null,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (doneToday) ...[
+                    const SizedBox(height: 8),
+                    Center(
+                      child: TextButton(
+                        onPressed: () => _toggleToday(true),
+                        child: Text(
+                          strings.undoHabitTodayAction,
+                          style: TextStyle(color: colors.muted),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: colors.nightPanel,
-                border: Border.all(color: colors.nightBorder),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: StarHeatmap(
-                countsByDay: countsByDay,
-                intensityByDay: countsByDay,
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _toggleToday(doneToday),
-                icon: Icon(
-                  doneToday ? Icons.check_circle : Icons.radio_button_unchecked,
-                ),
-                label: Text(
-                  doneToday
-                      ? strings.habitDoneTodayLabel
-                      : strings.markHabitDoneAction,
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: doneToday ? colors.nightPanel : colors.gold,
-                  foregroundColor: doneToday ? colors.gold : colors.onGold,
-                  side: doneToday ? BorderSide(color: colors.gold) : null,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                ),
-              ),
-            ),
-            if (doneToday) ...[
-              const SizedBox(height: 8),
-              Center(
-                child: TextButton(
-                  onPressed: () => _toggleToday(true),
-                  child: Text(
-                    strings.undoHabitTodayAction,
-                    style: TextStyle(color: colors.muted),
-                  ),
-                ),
-              ),
-            ],
           ],
         ),
       ),

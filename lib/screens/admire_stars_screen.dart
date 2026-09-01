@@ -9,6 +9,7 @@ import '../models/life_area.dart';
 import '../models/project.dart';
 import '../models/star.dart';
 import '../theme/app_colors.dart';
+import '../widgets/responsive_content.dart';
 import 'star_reader_screen.dart';
 
 /// Entry point for reflecting on saved victories — reachable from every tab
@@ -118,13 +119,15 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: Icon(Icons.close, color: colors.crisisMuted),
-                  ),
-                ],
+              ResponsiveContent(
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: Icon(Icons.close, color: colors.crisisMuted),
+                    ),
+                  ],
+                ),
               ),
               Expanded(
                 child: LayoutBuilder(
@@ -136,69 +139,73 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
                           minHeight: constraints.maxHeight,
                         ),
                         child: IntrinsicHeight(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              SizedBox(
-                                width: double.infinity,
-                                child: Text(
-                                  strings.admireYourStars,
-                                  style: TextStyle(
-                                    fontSize: 26,
-                                    fontStyle: FontStyle.italic,
-                                    fontWeight: FontWeight.w600,
-                                    color: colors.text,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              SizedBox(
-                                width: double.infinity,
-                                child: Text(
-                                  strings.admireTagline,
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    height: 1.5,
-                                    color: colors.crisisMuted,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 32),
-                              _AllAreasSwitch(
-                                label: strings.allAreasLabel,
-                                value: _allSelected,
-                                onChanged: (_) => _toggleAll(),
-                              ),
-                              const SizedBox(height: 28),
-                              Column(
-                                children: [
-                                  for (
-                                    var row = 0;
-                                    row * 2 < LifeArea.values.length;
-                                    row++
-                                  ) ...[
-                                    if (row > 0) const SizedBox(height: 12),
-                                    Row(
-                                      children: [
-                                        for (var col = 0; col < 2; col++) ...[
-                                          if (col > 0)
-                                            const SizedBox(width: 12),
-                                          Expanded(
-                                            child: _areaChip(
-                                              context,
-                                              LifeArea.values[row * 2 + col],
-                                            ),
-                                          ),
-                                        ],
-                                      ],
+                          child: ResponsiveContent(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: Text(
+                                    strings.admireYourStars,
+                                    style: TextStyle(
+                                      fontSize: 26,
+                                      fontStyle: FontStyle.italic,
+                                      fontWeight: FontWeight.w600,
+                                      color: colors.text,
                                     ),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: Text(
+                                    strings.admireTagline,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      height: 1.5,
+                                      color: colors.crisisMuted,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 32),
+                                _AllAreasSwitch(
+                                  label: strings.allAreasLabel,
+                                  value: _allSelected,
+                                  onChanged: (_) => _toggleAll(),
+                                ),
+                                const SizedBox(height: 28),
+                                Column(
+                                  children: [
+                                    for (
+                                      var row = 0;
+                                      row * 2 < LifeArea.values.length;
+                                      row++
+                                    ) ...[
+                                      if (row > 0) const SizedBox(height: 12),
+                                      Row(
+                                        children: [
+                                          for (var col = 0; col < 2; col++) ...[
+                                            if (col > 0)
+                                              const SizedBox(width: 12),
+                                            Expanded(
+                                              child: _areaChip(
+                                                context,
+                                                LifeArea.values[row * 2 + col],
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ],
                                   ],
-                                ],
-                              ),
-                              Expanded(
-                                child: Center(child: _UpliftingQuoteCarousel()),
-                              ),
-                            ],
+                                ),
+                                Expanded(
+                                  child: Center(
+                                    child: _UpliftingQuoteCarousel(),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -206,38 +213,43 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
                   },
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(28, 12, 28, 24),
-                child: Column(
-                  children: [
-                    Text(
-                      poolSize == 0
-                          ? strings.pickAtLeastOneArea
-                          : strings.starsCount(poolSize),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 13, color: colors.crisisMuted),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: poolSize == 0 ? null : _start,
-                        icon: const Icon(Icons.auto_awesome, size: 17),
-                        label: Text(strings.viewYourStars),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: colors.gold,
-                          foregroundColor: colors.onGold,
-                          disabledBackgroundColor: colors.crisisMuted
-                              .withValues(alpha: 0.15),
-                          disabledForegroundColor: colors.crisisMuted,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
+              ResponsiveContent(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(28, 12, 28, 24),
+                  child: Column(
+                    children: [
+                      Text(
+                        poolSize == 0
+                            ? strings.pickAtLeastOneArea
+                            : strings.starsCount(poolSize),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: colors.crisisMuted,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: poolSize == 0 ? null : _start,
+                          icon: const Icon(Icons.auto_awesome, size: 17),
+                          label: Text(strings.viewYourStars),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colors.gold,
+                            foregroundColor: colors.onGold,
+                            disabledBackgroundColor: colors.crisisMuted
+                                .withValues(alpha: 0.15),
+                            disabledForegroundColor: colors.crisisMuted,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],

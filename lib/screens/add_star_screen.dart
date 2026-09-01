@@ -17,6 +17,7 @@ import '../widgets/intensity_bolts.dart';
 import '../widgets/photo_picker.dart';
 import '../widgets/project_picker.dart';
 import '../widgets/project_tag.dart';
+import '../widgets/responsive_content.dart';
 import 'photo_crop_screen.dart';
 
 /// What the user entered, handed back to whoever pushed this screen.
@@ -438,288 +439,297 @@ class _AddStarScreenState extends State<AddStarScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: _handleBack,
-                    icon: Icon(Icons.arrow_back, color: colors.muted),
-                  ),
-                  Text(
-                    widget.isEditing
-                        ? strings.editStarEyebrow
-                        : strings.newStarEyebrow,
-                    style: TextStyle(
-                      fontSize: 12,
-                      letterSpacing: 1.4,
-                      fontWeight: FontWeight.w600,
-                      color: colors.gold,
+          child: ResponsiveContent(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: _handleBack,
+                      icon: Icon(Icons.arrow_back, color: colors.muted),
                     ),
+                    Text(
+                      widget.isEditing
+                          ? strings.editStarEyebrow
+                          : strings.newStarEyebrow,
+                      style: TextStyle(
+                        fontSize: 12,
+                        letterSpacing: 1.4,
+                        fontWeight: FontWeight.w600,
+                        color: colors.gold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Center(
+                  child: _AchievedToggle(
+                    achieved: _achieved,
+                    onChanged: (value) => setState(() => _achieved = value),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // A fixed minimum height, not just a Text — the goal question
+                // is much longer than the victory one and wraps to 2 lines,
+                // so without this the constellation field (and everything
+                // below it) starts at a different Y depending on which
+                // question is showing. minHeight (not a fixed height) so an
+                // unexpectedly long translation still isn't clipped. Centered
+                // within that reserved space so the shorter, 1-line victory
+                // question doesn't sit stuck to the top of it.
+                Container(
+                  constraints: const BoxConstraints(minHeight: 76),
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    _achieved
+                        ? strings.addWinQuestion
+                        : strings.addGoalQuestion,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 24,
+                      color: colors.text,
+                    ),
+                  ),
+                ),
+                if (_selectedProject != null) ...[
+                  const SizedBox(height: 14),
+                  AreaTag(
+                    area: _selectedProject!.area,
+                    iconSize: 22,
+                    fontSize: 20,
                   ),
                 ],
-              ),
-              const SizedBox(height: 16),
-              Center(
-                child: _AchievedToggle(
-                  achieved: _achieved,
-                  onChanged: (value) => setState(() => _achieved = value),
-                ),
-              ),
-              const SizedBox(height: 20),
-              // A fixed minimum height, not just a Text — the goal question
-              // is much longer than the victory one and wraps to 2 lines,
-              // so without this the constellation field (and everything
-              // below it) starts at a different Y depending on which
-              // question is showing. minHeight (not a fixed height) so an
-              // unexpectedly long translation still isn't clipped. Centered
-              // within that reserved space so the shorter, 1-line victory
-              // question doesn't sit stuck to the top of it.
-              Container(
-                constraints: const BoxConstraints(minHeight: 76),
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  _achieved ? strings.addWinQuestion : strings.addGoalQuestion,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 24,
-                    color: colors.text,
+                const SizedBox(height: 24),
+                if (widget.lockedProject == null) ...[
+                  Text(
+                    strings.projectLabel,
+                    style: TextStyle(fontSize: 13, color: colors.muted),
                   ),
-                ),
-              ),
-              if (_selectedProject != null) ...[
-                const SizedBox(height: 14),
-                AreaTag(
-                  area: _selectedProject!.area,
-                  iconSize: 22,
-                  fontSize: 20,
-                ),
-              ],
-              const SizedBox(height: 24),
-              if (widget.lockedProject == null) ...[
-                Text(
-                  strings.projectLabel,
-                  style: TextStyle(fontSize: 13, color: colors.muted),
-                ),
-                const SizedBox(height: 6),
-                InkWell(
-                  onTap: _openProjectPicker,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colors.nightPanel,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: colors.nightBorder),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _selectedProject != null
-                              ? ProjectTag(
-                                  project: _selectedProject!,
-                                  iconSize: 18,
-                                  fontSize: 15,
-                                  textColor: colors.text,
-                                )
-                              : Text(
-                                  strings.selectAProject,
-                                  style: TextStyle(
-                                    color: colors.muted,
+                  const SizedBox(height: 6),
+                  InkWell(
+                    onTap: _openProjectPicker,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colors.nightPanel,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: colors.nightBorder),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _selectedProject != null
+                                ? ProjectTag(
+                                    project: _selectedProject!,
+                                    iconSize: 18,
                                     fontSize: 15,
+                                    textColor: colors.text,
+                                  )
+                                : Text(
+                                    strings.selectAProject,
+                                    style: TextStyle(
+                                      color: colors.muted,
+                                      fontSize: 15,
+                                    ),
                                   ),
-                                ),
+                          ),
+                          Icon(Icons.expand_more, color: colors.muted),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+                if (_achieved) ...[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _DateField(
+                          label: strings.dateLabel,
+                          hint: strings.selectADateHint,
+                          icon: Icons.calendar_today,
+                          text: _date == null
+                              ? null
+                              : formatDisplayDate(_date!, strings),
+                          onTap: _pickDate,
                         ),
-                        Icon(Icons.expand_more, color: colors.muted),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _DateField(
+                          label: strings.timeLabel,
+                          hint: strings.selectATimeHint,
+                          icon: Icons.access_time,
+                          text: _date == null
+                              ? null
+                              : formatDisplayTime(_date!),
+                          onTap: _pickTime,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 20),
-              ],
-              if (_achieved) ...[
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: _DateField(
-                        label: strings.dateLabel,
-                        hint: strings.selectADateHint,
-                        icon: Icons.calendar_today,
-                        text: _date == null
-                            ? null
-                            : formatDisplayDate(_date!, strings),
-                        onTap: _pickDate,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _DateField(
-                        label: strings.timeLabel,
-                        hint: strings.selectATimeHint,
-                        icon: Icons.access_time,
-                        text: _date == null ? null : formatDisplayTime(_date!),
-                        onTap: _pickTime,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-              ] else ...[
-                _DateField(
-                  label: strings.targetDateLabel,
-                  hint: strings.selectATargetDateHint,
-                  icon: Icons.flag_outlined,
-                  text: _targetDate == null
-                      ? null
-                      : formatDisplayDate(_targetDate!, strings),
-                  onTap: _pickTargetDate,
-                ),
-                const SizedBox(height: 20),
-              ],
-              Text(
-                strings.titleFieldLabel,
-                style: TextStyle(fontSize: 13, color: colors.muted),
-              ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _titleController,
-                textInputAction: TextInputAction.next,
-                style: TextStyle(color: colors.text, fontSize: 15),
-                decoration: InputDecoration(hintText: strings.titleHint),
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                strings.detailsLabel,
-                style: TextStyle(fontSize: 13, color: colors.muted),
-              ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _descriptionController,
-                minLines: 4,
-                maxLines: 6,
-                style: TextStyle(color: colors.text, fontSize: 15),
-                decoration: InputDecoration(hintText: strings.detailsHint),
-                onChanged: (_) => setState(() {}),
-              ),
-              if (_achieved) ...[
-                const SizedBox(height: 20),
+                  const SizedBox(height: 20),
+                ] else ...[
+                  _DateField(
+                    label: strings.targetDateLabel,
+                    hint: strings.selectATargetDateHint,
+                    icon: Icons.flag_outlined,
+                    text: _targetDate == null
+                        ? null
+                        : formatDisplayDate(_targetDate!, strings),
+                    onTap: _pickTargetDate,
+                  ),
+                  const SizedBox(height: 20),
+                ],
                 Text(
-                  strings.intensityLabel,
-                  style: TextStyle(fontSize: 13, color: colors.muted),
-                ),
-                const SizedBox(height: 10),
-                Center(
-                  child: IntensityBolts(
-                    intensity: _intensity,
-                    size: 26,
-                    spacing: 6,
-                    emphasizeLast: true,
-                    emphasizedScale: 1.6,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Center(
-                  child: FractionallySizedBox(
-                    widthFactor: 0.7,
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        activeTrackColor: colors.gold,
-                        inactiveTrackColor: colors.nightBorder,
-                        thumbColor: colors.gold,
-                        overlayColor: Colors.transparent,
-                        overlayShape: SliderComponentShape.noOverlay,
-                      ),
-                      child: Slider(
-                        value: _intensity.toDouble(),
-                        min: 1,
-                        max: 5,
-                        divisions: 4,
-                        onChanged: (value) =>
-                            setState(() => _intensity = value.round()),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  strings.photoLabel,
+                  strings.titleFieldLabel,
                   style: TextStyle(fontSize: 13, color: colors.muted),
                 ),
                 const SizedBox(height: 6),
-                PhotoPicker(
-                  photoPath: _photoPath,
-                  onPick: _pickPhoto,
-                  onRemove: _removePhoto,
+                TextField(
+                  controller: _titleController,
+                  textInputAction: TextInputAction.next,
+                  style: TextStyle(color: colors.text, fontSize: 15),
+                  decoration: InputDecoration(hintText: strings.titleHint),
+                  onChanged: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  strings.detailsLabel,
+                  style: TextStyle(fontSize: 13, color: colors.muted),
+                ),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _descriptionController,
+                  minLines: 4,
+                  maxLines: 6,
+                  style: TextStyle(color: colors.text, fontSize: 15),
+                  decoration: InputDecoration(hintText: strings.detailsHint),
+                  onChanged: (_) => setState(() {}),
+                ),
+                if (_achieved) ...[
+                  const SizedBox(height: 20),
+                  Text(
+                    strings.intensityLabel,
+                    style: TextStyle(fontSize: 13, color: colors.muted),
+                  ),
+                  const SizedBox(height: 10),
+                  Center(
+                    child: IntensityBolts(
+                      intensity: _intensity,
+                      size: 26,
+                      spacing: 6,
+                      emphasizeLast: true,
+                      emphasizedScale: 1.6,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Center(
+                    child: FractionallySizedBox(
+                      widthFactor: 0.7,
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          activeTrackColor: colors.gold,
+                          inactiveTrackColor: colors.nightBorder,
+                          thumbColor: colors.gold,
+                          overlayColor: Colors.transparent,
+                          overlayShape: SliderComponentShape.noOverlay,
+                        ),
+                        child: Slider(
+                          value: _intensity.toDouble(),
+                          min: 1,
+                          max: 5,
+                          divisions: 4,
+                          onChanged: (value) =>
+                              setState(() => _intensity = value.round()),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    strings.photoLabel,
+                    style: TextStyle(fontSize: 13, color: colors.muted),
+                  ),
+                  const SizedBox(height: 6),
+                  PhotoPicker(
+                    photoPath: _photoPath,
+                    onPick: _pickPhoto,
+                    onRemove: _removePhoto,
+                  ),
+                ],
+                const SizedBox(height: 20),
+                Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (widget.isEditing && !widget.hideDelete) ...[
+                        FloatingActionButton(
+                          heroTag: 'deleteStarFab',
+                          onPressed: _confirmAndDelete,
+                          backgroundColor: colors.danger,
+                          elevation: 0,
+                          shape: const CircleBorder(),
+                          tooltip: strings.deleteStarAction,
+                          child: Icon(
+                            Icons.delete_outline,
+                            color: colors.night,
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                      ],
+                      ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _titleController,
+                        builder: (context, value, child) {
+                          final canSave =
+                              value.text.trim().isNotEmpty &&
+                              _selectedProject != null &&
+                              (!widget.isEditing || _hasUnsavedChanges);
+                          return Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              boxShadow: canSave
+                                  ? [
+                                      BoxShadow(
+                                        color: colors.gold.withValues(
+                                          alpha: 0.35,
+                                        ),
+                                        blurRadius: 20,
+                                        offset: const Offset(0, 6),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: FloatingActionButton(
+                              heroTag: 'saveStarFab',
+                              onPressed: canSave
+                                  ? _save
+                                  : _showCannotSaveMessage,
+                              backgroundColor: canSave
+                                  ? colors.gold
+                                  : colors.muted,
+                              elevation: 0,
+                              shape: const CircleBorder(),
+                              tooltip: widget.isEditing
+                                  ? strings.saveChanges
+                                  : strings.lightThisStar,
+                              child: Icon(Icons.check, color: colors.night),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ],
-              const SizedBox(height: 20),
-              Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (widget.isEditing && !widget.hideDelete) ...[
-                      FloatingActionButton(
-                        heroTag: 'deleteStarFab',
-                        onPressed: _confirmAndDelete,
-                        backgroundColor: colors.danger,
-                        elevation: 0,
-                        shape: const CircleBorder(),
-                        tooltip: strings.deleteStarAction,
-                        child: Icon(Icons.delete_outline, color: colors.night),
-                      ),
-                      const SizedBox(width: 20),
-                    ],
-                    ValueListenableBuilder<TextEditingValue>(
-                      valueListenable: _titleController,
-                      builder: (context, value, child) {
-                        final canSave =
-                            value.text.trim().isNotEmpty &&
-                            _selectedProject != null &&
-                            (!widget.isEditing || _hasUnsavedChanges);
-                        return Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: canSave
-                                ? [
-                                    BoxShadow(
-                                      color: colors.gold.withValues(
-                                        alpha: 0.35,
-                                      ),
-                                      blurRadius: 20,
-                                      offset: const Offset(0, 6),
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: FloatingActionButton(
-                            heroTag: 'saveStarFab',
-                            onPressed: canSave
-                                ? _save
-                                : _showCannotSaveMessage,
-                            backgroundColor: canSave
-                                ? colors.gold
-                                : colors.muted,
-                            elevation: 0,
-                            shape: const CircleBorder(),
-                            tooltip: widget.isEditing
-                                ? strings.saveChanges
-                                : strings.lightThisStar,
-                            child: Icon(Icons.check, color: colors.night),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

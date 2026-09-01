@@ -12,6 +12,7 @@ import '../l10n/strings_scope.dart';
 import '../notifications/reminder_service.dart';
 import '../settings/settings_controller.dart';
 import '../theme/app_colors.dart';
+import '../widgets/responsive_content.dart';
 
 /// The Settings tab: appearance (light/dark), language, the daily reminder
 /// notification, a "Data" section (seed/reset — dev tooling that lives here
@@ -197,211 +198,233 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 32, 20, 32),
+          // The scrollable itself spans the full window width (so its
+          // auto-attached Scrollbar sits at the true page edge on wide
+          // viewports); only its content is capped/centered.
           children: [
-            Text(
-              strings.settingsEyebrow,
-              style: TextStyle(
-                fontSize: 12,
-                letterSpacing: 2,
-                fontWeight: FontWeight.w600,
-                color: colors.goldDim,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              strings.settingsTitle,
-              style: TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.w700,
-                color: colors.text,
-              ),
-            ),
-            const SizedBox(height: 28),
+            ResponsiveContent(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    strings.settingsEyebrow,
+                    style: TextStyle(
+                      fontSize: 12,
+                      letterSpacing: 2,
+                      fontWeight: FontWeight.w600,
+                      color: colors.goldDim,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    strings.settingsTitle,
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w700,
+                      color: colors.text,
+                    ),
+                  ),
+                  const SizedBox(height: 28),
 
-            _SectionLabel(strings.appearanceSection),
-            const SizedBox(height: 10),
-            SegmentedButton<ThemeMode>(
-              style: _segmentedButtonStyle(colors),
-              segments: [
-                ButtonSegment(
-                  value: ThemeMode.light,
-                  icon: const Icon(Icons.light_mode),
-                  label: Text(strings.themeLight),
-                ),
-                ButtonSegment(
-                  value: ThemeMode.dark,
-                  icon: const Icon(Icons.dark_mode),
-                  label: Text(strings.themeDark),
-                ),
-              ],
-              selected: {widget.settings.themeMode},
-              onSelectionChanged: (selection) => setState(() {
-                widget.settings.setThemeMode(selection.first);
-              }),
-            ),
-            const SizedBox(height: 28),
+                  _SectionLabel(strings.appearanceSection),
+                  const SizedBox(height: 10),
+                  SegmentedButton<ThemeMode>(
+                    style: _segmentedButtonStyle(colors),
+                    segments: [
+                      ButtonSegment(
+                        value: ThemeMode.light,
+                        icon: const Icon(Icons.light_mode),
+                        label: Text(strings.themeLight),
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.dark,
+                        icon: const Icon(Icons.dark_mode),
+                        label: Text(strings.themeDark),
+                      ),
+                    ],
+                    selected: {widget.settings.themeMode},
+                    onSelectionChanged: (selection) => setState(() {
+                      widget.settings.setThemeMode(selection.first);
+                    }),
+                  ),
+                  const SizedBox(height: 28),
 
-            _SectionLabel(strings.languageSection),
-            const SizedBox(height: 10),
-            SegmentedButton<String>(
-              style: _segmentedButtonStyle(colors),
-              segments: [
-                ButtonSegment(
-                  value: 'en',
-                  label: Text(strings.languageEnglish),
-                ),
-                ButtonSegment(
-                  value: 'it',
-                  label: Text(strings.languageItalian),
-                ),
-                ButtonSegment(
-                  value: 'ro',
-                  label: Text(strings.languageRomanian),
-                ),
-              ],
-              selected: {widget.settings.locale},
-              onSelectionChanged: (selection) => setState(() {
-                widget.settings.setLocale(selection.first);
-              }),
-            ),
-            const SizedBox(height: 28),
+                  _SectionLabel(strings.languageSection),
+                  const SizedBox(height: 10),
+                  SegmentedButton<String>(
+                    style: _segmentedButtonStyle(colors),
+                    segments: [
+                      ButtonSegment(
+                        value: 'en',
+                        label: Text(strings.languageEnglish),
+                      ),
+                      ButtonSegment(
+                        value: 'it',
+                        label: Text(strings.languageItalian),
+                      ),
+                      ButtonSegment(
+                        value: 'ro',
+                        label: Text(strings.languageRomanian),
+                      ),
+                    ],
+                    selected: {widget.settings.locale},
+                    onSelectionChanged: (selection) => setState(() {
+                      widget.settings.setLocale(selection.first);
+                    }),
+                  ),
+                  const SizedBox(height: 28),
 
-            _SectionLabel(strings.reminderSection),
-            const SizedBox(height: 4),
-            Material(
-              color: colors.nightPanel,
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: colors.nightBorder),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    SwitchListTile(
-                      value: widget.settings.reminderEnabled,
-                      onChanged: _setReminderEnabled,
-                      activeThumbColor: colors.gold,
-                      title: Text(
-                        strings.reminderToggleLabel,
-                        style: TextStyle(color: colors.text, fontSize: 14),
+                  _SectionLabel(strings.reminderSection),
+                  const SizedBox(height: 4),
+                  Material(
+                    color: colors.nightPanel,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: colors.nightBorder),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          SwitchListTile(
+                            value: widget.settings.reminderEnabled,
+                            onChanged: _setReminderEnabled,
+                            activeThumbColor: colors.gold,
+                            title: Text(
+                              strings.reminderToggleLabel,
+                              style: TextStyle(
+                                color: colors.text,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          if (widget.settings.reminderEnabled) ...[
+                            ListTile(
+                              onTap: _pickReminderTime,
+                              title: Text(
+                                strings.reminderTimeLabel,
+                                style: TextStyle(
+                                  color: colors.muted,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              trailing: Text(
+                                TimeOfDay(
+                                  hour: widget.settings.reminderHour,
+                                  minute: widget.settings.reminderMinute,
+                                ).format(context),
+                                style: TextStyle(
+                                  color: colors.gold,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ),
+                            ListTile(
+                              onTap: _sendTestNotification,
+                              title: Text(
+                                strings.testNotificationButton,
+                                style: TextStyle(
+                                  color: colors.gold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              leading: Icon(
+                                Icons.notifications_active_outlined,
+                                color: colors.gold,
+                                size: 20,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
-                    if (widget.settings.reminderEnabled) ...[
-                      ListTile(
-                        onTap: _pickReminderTime,
-                        title: Text(
-                          strings.reminderTimeLabel,
-                          style: TextStyle(color: colors.muted, fontSize: 13),
-                        ),
-                        trailing: Text(
-                          TimeOfDay(
-                            hour: widget.settings.reminderHour,
-                            minute: widget.settings.reminderMinute,
-                          ).format(context),
-                          style: TextStyle(
-                            color: colors.gold,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-                      ListTile(
-                        onTap: _sendTestNotification,
-                        title: Text(
-                          strings.testNotificationButton,
-                          style: TextStyle(color: colors.gold, fontSize: 13),
-                        ),
-                        leading: Icon(
-                          Icons.notifications_active_outlined,
-                          color: colors.gold,
-                          size: 20,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 28),
+                  ),
+                  const SizedBox(height: 28),
 
-            _SectionLabel(strings.dataSection),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 4,
-              children: [
-                TextButton.icon(
-                  onPressed: _seedSampleData,
-                  icon: Icon(
-                    Icons.science_outlined,
-                    size: 16,
-                    color: colors.muted,
-                  ),
-                  label: Text(
-                    strings.seedSampleData,
-                    style: TextStyle(color: colors.muted, fontSize: 12),
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: _resetAllData,
-                  icon: Icon(
-                    Icons.delete_outline,
-                    size: 16,
-                    color: colors.danger,
-                  ),
-                  label: Text(
-                    strings.resetAllData,
-                    style: TextStyle(color: colors.danger, fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 28),
-
-            _SectionLabel(strings.aboutSection),
-            const SizedBox(height: 10),
-            FutureBuilder<PackageInfo>(
-              future: PackageInfo.fromPlatform(),
-              builder: (context, snapshot) {
-                final version = snapshot.data?.version;
-                return Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: colors.nightPanel,
-                    border: Border.all(color: colors.nightBorder),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  _SectionLabel(strings.dataSection),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 4,
                     children: [
-                      Text(
-                        'Victory Stars',
-                        style: TextStyle(
-                          color: colors.text,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
+                      TextButton.icon(
+                        onPressed: _seedSampleData,
+                        icon: Icon(
+                          Icons.science_outlined,
+                          size: 16,
+                          color: colors.muted,
+                        ),
+                        label: Text(
+                          strings.seedSampleData,
+                          style: TextStyle(color: colors.muted, fontSize: 12),
                         ),
                       ),
-                      if (version != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          strings.aboutVersion(version),
-                          style: TextStyle(color: colors.muted, fontSize: 13),
+                      TextButton.icon(
+                        onPressed: _resetAllData,
+                        icon: Icon(
+                          Icons.delete_outline,
+                          size: 16,
+                          color: colors.danger,
                         ),
-                      ],
-                      const SizedBox(height: 8),
-                      Text(
-                        strings.aboutTagline,
-                        style: TextStyle(
-                          color: colors.muted,
-                          fontSize: 13,
-                          height: 1.4,
+                        label: Text(
+                          strings.resetAllData,
+                          style: TextStyle(color: colors.danger, fontSize: 12),
                         ),
                       ),
                     ],
                   ),
-                );
-              },
+                  const SizedBox(height: 28),
+
+                  _SectionLabel(strings.aboutSection),
+                  const SizedBox(height: 10),
+                  FutureBuilder<PackageInfo>(
+                    future: PackageInfo.fromPlatform(),
+                    builder: (context, snapshot) {
+                      final version = snapshot.data?.version;
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: colors.nightPanel,
+                          border: Border.all(color: colors.nightBorder),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Victory Stars',
+                              style: TextStyle(
+                                color: colors.text,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                            ),
+                            if (version != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                strings.aboutVersion(version),
+                                style: TextStyle(
+                                  color: colors.muted,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 8),
+                            Text(
+                              strings.aboutTagline,
+                              style: TextStyle(
+                                color: colors.muted,
+                                fontSize: 13,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
           ],
         ),

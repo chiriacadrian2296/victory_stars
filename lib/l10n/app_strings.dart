@@ -22,6 +22,8 @@ abstract class AppStrings {
   String get navHome;
   String get navSky;
   String get navSettings;
+  String get collapseSidebarAction;
+  String get expandSidebarAction;
 
   // Home dashboard
   String get homeEyebrow;

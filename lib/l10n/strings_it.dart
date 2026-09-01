@@ -29,6 +29,10 @@ class StringsIt implements AppStrings {
   String get navSky => 'Cielo';
   @override
   String get navSettings => 'Impostazioni';
+  @override
+  String get collapseSidebarAction => 'Comprimi la barra laterale';
+  @override
+  String get expandSidebarAction => 'Espandi la barra laterale';
 
   @override
   String get homeEyebrow => 'I TUOI PROGRESSI';

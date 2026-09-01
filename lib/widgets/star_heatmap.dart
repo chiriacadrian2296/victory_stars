@@ -61,8 +61,12 @@ class StarHeatmap extends StatelessWidget {
     // actually have a star lit — an all-zero day never glows, so it
     // shouldn't pull the low end of the scale down further.
     final litIntensities = intensityByDay.values.where((v) => v > 0);
-    final minIntensity = litIntensities.isEmpty ? 0 : litIntensities.reduce((a, b) => a < b ? a : b);
-    final maxIntensity = litIntensities.isEmpty ? 0 : litIntensities.reduce((a, b) => a > b ? a : b);
+    final minIntensity = litIntensities.isEmpty
+        ? 0
+        : litIntensities.reduce((a, b) => a < b ? a : b);
+    final maxIntensity = litIntensities.isEmpty
+        ? 0
+        : litIntensities.reduce((a, b) => a > b ? a : b);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -72,7 +76,11 @@ class StarHeatmap extends StatelessWidget {
             Expanded(
               child: Text(
                 strings.monthTitle(firstOfMonth),
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.text),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: colors.text,
+                ),
               ),
             ),
             _MonthArrowButton(icon: Icons.chevron_left, onTap: onPreviousMonth),
@@ -85,7 +93,10 @@ class StarHeatmap extends StatelessWidget {
             for (final label in strings.weekdayAbbreviations)
               Expanded(
                 child: Center(
-                  child: Text(label, style: TextStyle(fontSize: 11, color: colors.muted)),
+                  child: Text(
+                    label,
+                    style: TextStyle(fontSize: 11, color: colors.muted),
+                  ),
                 ),
               ),
           ],
@@ -188,7 +199,13 @@ class _DayCell extends StatelessWidget {
         width: _slotSize,
         height: _slotSize,
         child: Center(
-          child: Text('$dayNumber', style: TextStyle(fontSize: 10, color: context.colors.muted.withValues(alpha: 0.4))),
+          child: Text(
+            '$dayNumber',
+            style: TextStyle(
+              fontSize: 10,
+              color: context.colors.muted.withValues(alpha: 0.4),
+            ),
+          ),
         ),
       );
     }
@@ -211,36 +228,43 @@ class _DayCell extends StatelessWidget {
       glowStrength = glowFloor + (1 - glowFloor) * normalized;
     }
 
-    return GestureDetector(
-      onTap: onTap == null ? null : () => onTap!(day),
-      child: SizedBox(
-        width: _slotSize,
-        height: _slotSize,
-        child: Center(
-          child: Container(
-            width: _starSize,
-            height: _starSize,
-            decoration: dayIntensity <= 0
-                ? null
-                : BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: colors.gold.withValues(alpha: 0.1 + 0.65 * glowStrength),
-                        blurRadius: 1 + 25 * glowStrength,
-                        spreadRadius: 4 * glowStrength,
-                      ),
-                    ],
-                  ),
-            // The star itself is always the same solid gold, lit or not —
-            // only the glow (above) carries how many/how intense that
-            // day's wins were. It used to also fade the star's own opacity
-            // down for low counts, which just made a light day look like a
-            // rendering glitch rather than a deliberate "less glow" day.
-            child: Icon(
-              isLit ? Icons.star : Icons.star_border,
-              size: _starSize,
-              color: isLit ? colors.gold : colors.gold.withValues(alpha: 0.16),
+    return MouseRegion(
+      cursor: onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap == null ? null : () => onTap!(day),
+        child: SizedBox(
+          width: _slotSize,
+          height: _slotSize,
+          child: Center(
+            child: Container(
+              width: _starSize,
+              height: _starSize,
+              decoration: dayIntensity <= 0
+                  ? null
+                  : BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: colors.gold.withValues(
+                            alpha: 0.1 + 0.65 * glowStrength,
+                          ),
+                          blurRadius: 1 + 25 * glowStrength,
+                          spreadRadius: 4 * glowStrength,
+                        ),
+                      ],
+                    ),
+              // The star itself is always the same solid gold, lit or not —
+              // only the glow (above) carries how many/how intense that
+              // day's wins were. It used to also fade the star's own opacity
+              // down for low counts, which just made a light day look like a
+              // rendering glitch rather than a deliberate "less glow" day.
+              child: Icon(
+                isLit ? Icons.star : Icons.star_border,
+                size: _starSize,
+                color: isLit
+                    ? colors.gold
+                    : colors.gold.withValues(alpha: 0.16),
+              ),
             ),
           ),
         ),

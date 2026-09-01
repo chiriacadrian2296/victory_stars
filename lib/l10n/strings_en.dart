@@ -29,6 +29,10 @@ class StringsEn implements AppStrings {
   String get navSky => 'Sky';
   @override
   String get navSettings => 'Settings';
+  @override
+  String get collapseSidebarAction => 'Collapse sidebar';
+  @override
+  String get expandSidebarAction => 'Expand sidebar';
 
   @override
   String get homeEyebrow => 'YOUR PROGRESS';

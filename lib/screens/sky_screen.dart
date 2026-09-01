@@ -11,6 +11,7 @@ import '../theme/app_colors.dart';
 import '../utils/area_stats.dart';
 import '../utils/star_stats.dart';
 import '../widgets/area_tag.dart';
+import '../widgets/responsive_content.dart';
 import 'area_projects_screen.dart';
 
 /// The Sky hub: the 8 fixed life areas, each showing how many victories are
@@ -59,44 +60,46 @@ class _SkyScreenState extends State<SkyScreen> {
     return Scaffold(
       backgroundColor: context.colors.night,
       body: SafeArea(
-        child: Column(
-          children: [
-            const _Header(),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
-                child: Column(
-                  children: [
-                    for (var i = 0; i < LifeArea.values.length; i++) ...[
-                      if (i > 0) const SizedBox(height: 10),
-                      Expanded(
-                        child: _AreaCard(
-                          area: LifeArea.values[i],
-                          starCount: starsInArea(
-                            LifeArea.values[i],
-                            widget.projectRepository,
-                            widget.starRepository,
+        child: ResponsiveContent(
+          child: Column(
+            children: [
+              const _Header(),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < LifeArea.values.length; i++) ...[
+                        if (i > 0) const SizedBox(height: 10),
+                        Expanded(
+                          child: _AreaCard(
+                            area: LifeArea.values[i],
+                            starCount: starsInArea(
+                              LifeArea.values[i],
+                              widget.projectRepository,
+                              widget.starRepository,
+                            ),
+                            openGoals: openGoalsInArea(
+                              LifeArea.values[i],
+                              widget.projectRepository,
+                              widget.starRepository,
+                            ),
+                            activeHabits: litHabitsInArea(
+                              LifeArea.values[i],
+                              widget.projectRepository,
+                              widget.habitRepository,
+                              widget.habitCompletionRepository,
+                            ),
+                            onTap: () => _openArea(LifeArea.values[i]),
                           ),
-                          openGoals: openGoalsInArea(
-                            LifeArea.values[i],
-                            widget.projectRepository,
-                            widget.starRepository,
-                          ),
-                          activeHabits: litHabitsInArea(
-                            LifeArea.values[i],
-                            widget.projectRepository,
-                            widget.habitRepository,
-                            widget.habitCompletionRepository,
-                          ),
-                          onTap: () => _openArea(LifeArea.values[i]),
                         ),
-                      ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

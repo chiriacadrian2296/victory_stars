@@ -5,7 +5,7 @@ import '../models/project.dart';
 import '../models/star.dart';
 import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
-import 'area_tag.dart';
+import 'area_kind_badge.dart';
 import 'project_tag.dart';
 
 /// A still-unlit goal in a flat star list — [star] is always expected to
@@ -36,25 +36,54 @@ class GoalCard extends StatelessWidget {
             border: Border.all(color: colors.goldDim.withValues(alpha: 0.35)),
             borderRadius: borderRadius,
           ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.flag_outlined, size: 13, color: colors.goldDim),
-                    const SizedBox(width: 6),
+                    AreaKindBadge(
+                      area: project?.area,
+                      kindIcon: Icons.flag_outlined,
+                      kindLabel: strings.achievedToggleOff,
+                      kindColor: colors.goldDim,
+                    ),
+                    if (project != null) ...[
+                      const SizedBox(height: 8),
+                      ProjectTag(project: project!),
+                    ],
+                    const SizedBox(height: 8),
                     Text(
-                      strings.achievedToggleOff,
+                      star.title,
                       style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: colors.goldDim,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 19,
+                        color: colors.text,
                       ),
                     ),
-                    if (star.targetDate != null) ...[
-                      const Spacer(),
+                    if (star.description != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        star.description!,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: colors.muted,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              // Not gold, unlike the other cards' top-right indicator —
+              // it's just an aspiration, not something already true.
+              if (star.targetDate != null)
+                Positioned(
+                  top: 14,
+                  right: 14,
+                  child: Row(
+                    children: [
                       Icon(Icons.event_outlined, size: 13, color: colors.muted),
                       const SizedBox(width: 5),
                       Text(
@@ -62,36 +91,9 @@ class GoalCard extends StatelessWidget {
                         style: TextStyle(fontSize: 12, color: colors.muted),
                       ),
                     ],
-                  ],
-                ),
-                if (project != null) ...[
-                  const SizedBox(height: 8),
-                  AreaTag(area: project!.area),
-                  const SizedBox(height: 4),
-                  ProjectTag(project: project!),
-                ],
-                const SizedBox(height: 8),
-                Text(
-                  star.title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 19,
-                    color: colors.text,
                   ),
                 ),
-                if (star.description != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    star.description!,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: colors.muted,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+            ],
           ),
         ),
       ),

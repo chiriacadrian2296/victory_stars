@@ -306,7 +306,6 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
                                 .where((e) => e.kind == StarKind.victory)
                                 .length,
                             selected: _kindFilter.contains(StarKind.victory),
-                            color: colors.gold,
                             onTap: () => _toggleKind(StarKind.victory),
                           ),
                           const SizedBox(width: 10),
@@ -317,7 +316,6 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
                                 .where((e) => e.kind == StarKind.goal)
                                 .length,
                             selected: _kindFilter.contains(StarKind.goal),
-                            color: colors.goldDim,
                             onTap: () => _toggleKind(StarKind.goal),
                           ),
                           const SizedBox(width: 10),
@@ -328,7 +326,6 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
                                 .where((e) => e.kind == StarKind.dead)
                                 .length,
                             selected: _kindFilter.contains(StarKind.dead),
-                            color: colors.muted,
                             onTap: () => _toggleKind(StarKind.dead),
                           ),
                           const SizedBox(width: 10),
@@ -339,7 +336,6 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
                                 .where((e) => e.kind == StarKind.habit)
                                 .length,
                             selected: _kindFilter.contains(StarKind.habit),
-                            color: colors.crisisMuted,
                             onTap: () => _toggleKind(StarKind.habit),
                           ),
                         ],
@@ -570,14 +566,16 @@ class _FlatList extends StatelessWidget {
 
 /// A toggle chip for one star kind in the "Stars" flat list — icon, label,
 /// and a count that stays visible even when unselected, so the user can see
-/// what they're hiding, not just what they're showing.
+/// what they're hiding, not just what they're showing. Selected chips all
+/// use the same gold look regardless of kind — the color used to vary per
+/// kind, which read as each chip having its own on-state instead of all
+/// four being one consistent filter control.
 class _KindFilterChip extends StatelessWidget {
   const _KindFilterChip({
     required this.icon,
     required this.label,
     required this.count,
     required this.selected,
-    required this.color,
     required this.onTap,
   });
 
@@ -585,63 +583,63 @@ class _KindFilterChip extends StatelessWidget {
   final String label;
   final int count;
   final bool selected;
-  final Color color;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: selected
+                  ? colors.gold.withValues(alpha: 0.14)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
                 color: selected
-                    ? color.withValues(alpha: 0.14)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: selected
-                      ? color.withValues(alpha: 0.5)
-                      : colors.nightBorder,
+                    ? colors.gold.withValues(alpha: 0.5)
+                    : colors.nightBorder,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: 16,
+                  color: selected ? colors.gold : colors.muted,
                 ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon, size: 16, color: selected ? color : colors.muted),
-                  const SizedBox(width: 6),
-                  Text(
-                    '$count',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: selected ? colors.text : colors.muted,
-                    ),
+                const SizedBox(width: 6),
+                Text(
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: selected ? colors.text : colors.muted,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
-            // Just the kind name — the count already sits inside the pill
-            // above, so it isn't repeated here.
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                color: selected ? color : colors.muted,
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
+        const SizedBox(height: 4),
+        // Just the kind name, purely a visual label — not part of the tap
+        // target above, so accidentally tapping it doesn't toggle anything.
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            color: selected ? colors.gold : colors.muted,
+          ),
+        ),
+      ],
     );
   }
 }

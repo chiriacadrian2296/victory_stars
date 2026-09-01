@@ -256,6 +256,7 @@ void main() {
       final deleted = await repo.delete(remove.id);
 
       expect(deleted.dead, isTrue);
+      expect(deleted.deadDate, isNotNull);
       expect(repo.getAllForProject(1).map((s) => s.id), [keep.id, remove.id]);
       expect(
         repo.getAllForProject(1).firstWhere((s) => s.id == remove.id).dead,
@@ -286,6 +287,7 @@ void main() {
     expect(resurrected.id, star.id);
     expect(resurrected.slotSequence, star.slotSequence);
     expect(resurrected.dead, isFalse);
+    expect(resurrected.deadDate, isNull);
     expect(resurrected.title, 'Reborn');
     expect(resurrected.isAchieved, isTrue);
     expect(resurrected.number, 1);

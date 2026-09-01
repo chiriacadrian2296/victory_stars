@@ -158,6 +158,7 @@ class StarRepository {
       intensity: achievedDate == null ? null : intensity,
       photoPath: photoPath,
       dead: existing.dead,
+      deadDate: existing.deadDate,
     );
 
     final nextStars = [...stars]..[index] = updated;
@@ -199,6 +200,7 @@ class StarRepository {
       intensity: intensity,
       photoPath: photoPath ?? existing.photoPath,
       dead: existing.dead,
+      deadDate: existing.deadDate,
     );
 
     final nextStars = [...stars]..[index] = updated;
@@ -227,6 +229,7 @@ class StarRepository {
       targetDate: existing.targetDate,
       photoPath: existing.photoPath,
       dead: existing.dead,
+      deadDate: existing.deadDate,
     );
 
     final nextStars = [...stars]..[index] = updated;
@@ -246,7 +249,7 @@ class StarRepository {
     if (index == -1) {
       throw StateError('No star found with id $id');
     }
-    final updated = stars[index].copyWith(dead: true);
+    final updated = stars[index].copyWith(dead: true, deadDate: DateTime.now());
     final nextStars = [...stars]..[index] = updated;
     await _saveAll(nextStars);
     return updated;

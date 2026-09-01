@@ -4,7 +4,7 @@ import '../l10n/strings_scope.dart';
 import '../models/habit.dart';
 import '../models/project.dart';
 import '../theme/app_colors.dart';
-import 'area_tag.dart';
+import 'area_kind_badge.dart';
 import 'project_tag.dart';
 
 /// A pulsar (habit) in a flat star list. Visually its own family — smaller
@@ -49,24 +49,51 @@ class HabitCard extends StatelessWidget {
             ),
             borderRadius: borderRadius,
           ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.repeat, size: 13, color: accent),
-                    const SizedBox(width: 6),
+                    AreaKindBadge(
+                      area: project?.area,
+                      kindIcon: Icons.repeat,
+                      kindLabel: strings.starKindPulsarTagLabel,
+                      kindColor: accent,
+                    ),
+                    if (project != null) ...[
+                      const SizedBox(height: 8),
+                      ProjectTag(project: project!),
+                    ],
+                    const SizedBox(height: 8),
                     Text(
-                      strings.starKindPulsarTagLabel,
+                      habit.title,
                       style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: accent,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 19,
+                        color: isLit ? colors.text : colors.muted,
                       ),
                     ),
-                    const Spacer(),
+                    if (habit.description != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        habit.description!,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: colors.muted,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Positioned(
+                top: 14,
+                right: 14,
+                child: Row(
+                  children: [
                     Icon(
                       Icons.local_fire_department,
                       size: 14,
@@ -83,34 +110,8 @@ class HabitCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (project != null) ...[
-                  const SizedBox(height: 8),
-                  AreaTag(area: project!.area),
-                  const SizedBox(height: 4),
-                  ProjectTag(project: project!),
-                ],
-                const SizedBox(height: 8),
-                Text(
-                  habit.title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 19,
-                    color: isLit ? colors.text : colors.muted,
-                  ),
-                ),
-                if (habit.description != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    habit.description!,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: colors.muted,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

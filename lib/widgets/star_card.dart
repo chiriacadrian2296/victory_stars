@@ -5,7 +5,7 @@ import '../models/project.dart';
 import '../models/star.dart';
 import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
-import 'area_tag.dart';
+import 'area_kind_badge.dart';
 import 'intensity_bolts.dart';
 import 'project_tag.dart';
 
@@ -27,6 +27,7 @@ class StarCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final strings = context.strings;
     final borderRadius = BorderRadius.circular(12);
 
     return Material(
@@ -47,31 +48,14 @@ class StarCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Icon(Icons.star, size: 13, color: colors.gold),
-                        const SizedBox(width: 6),
-                        Text(
-                          context.strings.starKindVictoryTagLabel,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: colors.gold,
-                          ),
-                        ),
-                        const Spacer(),
-                        IntensityBolts(
-                          intensity: star.intensity!,
-                          size: 13,
-                          spacing: 2,
-                          emphasizeLast: true,
-                        ),
-                      ],
+                    AreaKindBadge(
+                      area: project?.area,
+                      kindIcon: Icons.star,
+                      kindLabel: strings.starKindVictoryTagLabel,
+                      kindColor: colors.gold,
                     ),
                     if (project != null) ...[
                       const SizedBox(height: 8),
-                      AreaTag(area: project!.area),
-                      const SizedBox(height: 4),
                       ProjectTag(project: project!),
                     ],
                     const SizedBox(height: 8),
@@ -82,14 +66,6 @@ class StarCard extends StatelessWidget {
                         fontSize: 19,
                         color: colors.text,
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      formatDisplayDateTime(
-                        star.achievedDate!,
-                        context.strings,
-                      ),
-                      style: TextStyle(fontSize: 12, color: colors.muted),
                     ),
                     if (star.description != null) ...[
                       const SizedBox(height: 6),
@@ -102,14 +78,52 @@ class StarCard extends StatelessWidget {
                         ),
                       ),
                     ],
+                    const SizedBox(height: 16),
+                    Center(
+                      child: IntensityBolts(
+                        intensity: star.intensity!,
+                        size: 16,
+                        spacing: 3,
+                        emphasizeLast: true,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.calendar_today,
+                            size: 12,
+                            color: colors.muted,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            formatDisplayDate(star.achievedDate!, strings),
+                            style: TextStyle(fontSize: 12, color: colors.muted),
+                          ),
+                          const SizedBox(width: 12),
+                          Icon(
+                            Icons.access_time,
+                            size: 12,
+                            color: colors.muted,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            formatDisplayTime(star.achievedDate!),
+                            style: TextStyle(fontSize: 12, color: colors.muted),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
               if (star.photoPath != null)
                 Positioned(
-                  bottom: 10,
-                  right: 10,
-                  child: Icon(Icons.photo_camera, size: 22, color: colors.gold),
+                  top: 14,
+                  right: 14,
+                  child: Icon(Icons.photo_camera, size: 20, color: colors.gold),
                 ),
             ],
           ),

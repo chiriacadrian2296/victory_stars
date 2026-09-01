@@ -28,6 +28,7 @@ class Star {
     this.intensity,
     this.photoPath,
     this.dead = false,
+    this.deadDate,
   }) : assert(
          intensity == null || (intensity >= 1 && intensity <= 5),
          'intensity must be 1-5, was $intensity',
@@ -64,6 +65,11 @@ class Star {
   /// forever, but it no longer counts as a goal or a victory anywhere.
   final bool dead;
 
+  /// When [dead] became true. Null for a star that's never been deleted;
+  /// cleared on resurrection along with [dead] itself, since a resurrected
+  /// star isn't dead anymore and shouldn't remember when it last was.
+  final DateTime? deadDate;
+
   bool get isAchieved => achievedDate != null && !dead;
   bool get isGoal => achievedDate == null && !dead;
 
@@ -80,6 +86,7 @@ class Star {
     int? intensity,
     String? photoPath,
     bool? dead,
+    DateTime? deadDate,
   }) {
     return Star(
       id: id ?? this.id,
@@ -94,6 +101,7 @@ class Star {
       intensity: intensity ?? this.intensity,
       photoPath: photoPath ?? this.photoPath,
       dead: dead ?? this.dead,
+      deadDate: deadDate ?? this.deadDate,
     );
   }
 
@@ -111,6 +119,7 @@ class Star {
       intensity: json['intensity'] as int?,
       photoPath: json['photoPath'] as String?,
       dead: json['dead'] as bool? ?? false,
+      deadDate: (json['deadDate'] as String?).let(DateTime.parse),
     );
   }
 
@@ -128,6 +137,7 @@ class Star {
       'intensity': intensity,
       'photoPath': photoPath,
       'dead': dead,
+      'deadDate': deadDate?.toIso8601String(),
     };
   }
 
@@ -145,7 +155,8 @@ class Star {
         other.achievedDate == achievedDate &&
         other.intensity == intensity &&
         other.photoPath == photoPath &&
-        other.dead == dead;
+        other.dead == dead &&
+        other.deadDate == deadDate;
   }
 
   @override
@@ -162,6 +173,7 @@ class Star {
     intensity,
     photoPath,
     dead,
+    deadDate,
   );
 }
 

@@ -17,6 +17,14 @@ abstract class AppStrings {
   String get areaSocial;
   String get areaSpiritual;
   String get areaPhilanthropic;
+  String get areaPhysicalDescription;
+  String get areaPsychologicalDescription;
+  String get areaProfessionalDescription;
+  String get areaFinancialDescription;
+  String get areaPersonalDescription;
+  String get areaSocialDescription;
+  String get areaSpiritualDescription;
+  String get areaPhilanthropicDescription;
 
   // Bottom navigation
   String get navHome;
@@ -66,7 +74,8 @@ abstract class AppStrings {
   // Area detail (constellations / list view switch)
   String get searchHint;
   String get noSearchResults;
-  String get areaWinsEmpty;
+  String get skyEmptyConstellations;
+  String get skyEmptyStars;
 
   // Constellation card stats (Sky > area > Constellations view)
   String intensityCount(int value);
@@ -93,12 +102,20 @@ abstract class AppStrings {
   String areaEmptyProjects(String areaName);
   String get constellationsModeLabel;
   String get listModeLabel;
+  String get skyModeSupernovas;
+  String get filterAreasAction;
+  String get applyAreaFilterAction;
+  String get filterKindSectionTitle;
+  String get allKindsLabel;
 
-  // Area detail (the vision text + entry point into that area's own
-  // constellations/stars)
+  // Area detail (the vision text, description, and big stat numbers for a
+  // single Supernova)
   String get areaVisionLabel;
   String get areaVisionHint;
-  String get areaViewProjectsAction;
+  String get editVisionAction;
+  String get areaConstellationsStatLabel;
+  String get areaStarsStatLabel;
+  String get areaIntensityStatLabel;
 
   // Constellation
   String get constellationShapeMissing;

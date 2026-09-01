@@ -22,6 +22,23 @@ int starsInArea(
   return total;
 }
 
+/// Total intensity of every achieved victory across every project in
+/// [area], summed the same way [starsInArea] sums counts — used by the
+/// Supernova detail screen's big stat row.
+int totalIntensityInArea(
+  LifeArea area,
+  ProjectRepository projectRepository,
+  StarRepository starRepository,
+) {
+  var total = 0;
+  for (final project in projectRepository.getProjectsForArea(area)) {
+    for (final star in starRepository.getAllForProject(project.id)) {
+      if (star.isAchieved) total += star.intensity ?? 0;
+    }
+  }
+  return total;
+}
+
 /// Groups achieved [stars] by calendar day (time-of-day discarded, [Star.dead]
 /// and unachieved goals excluded by the caller before this is called),
 /// counting how many were achieved on each day. Used to drive the

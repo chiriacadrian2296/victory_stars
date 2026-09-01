@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
 
 import '../data/area_vision_repository.dart';
-import '../data/custom_constellation_repository.dart';
-import '../data/habit_completion_repository.dart';
-import '../data/habit_repository.dart';
 import '../data/project_repository.dart';
 import '../data/star_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../models/life_area.dart';
 import '../theme/app_colors.dart';
+import '../utils/star_stats.dart';
 import '../widgets/area_tag.dart';
 import '../widgets/responsive_content.dart';
-import 'area_projects_screen.dart';
 
-/// One life area's own page — reached by tapping it in [SkyScreen]. Shows
-/// (and lets the user edit) that area's "vision" — their own words for what
-/// they want out of it, something to work toward with goals and habits —
-/// and a way onward into its constellations/stars ([AreaProjectsScreen]).
+/// One Supernova's own page — reached by tapping it in [SkyScreen]'s
+/// Supernovas view. Shows the area's icon, name, and description, three big
+/// numbers (constellations/stars/intensity), and that area's "vision" —
+/// their own words for what they want out of it — editable via the Edit
+/// button. Nothing to navigate onward to from here, only back; constellations
+/// and stars now live in Sky's own Constellations/Stars views instead.
 class AreaDetailScreen extends StatefulWidget {
   const AreaDetailScreen({
     super.key,
@@ -24,18 +23,12 @@ class AreaDetailScreen extends StatefulWidget {
     required this.areaVisionRepository,
     required this.projectRepository,
     required this.starRepository,
-    required this.habitRepository,
-    required this.habitCompletionRepository,
-    required this.customConstellationRepository,
   });
 
   final LifeArea area;
   final AreaVisionRepository areaVisionRepository;
   final ProjectRepository projectRepository;
   final StarRepository starRepository;
-  final HabitRepository habitRepository;
-  final HabitCompletionRepository habitCompletionRepository;
-  final CustomConstellationRepository customConstellationRepository;
 
   @override
   State<AreaDetailScreen> createState() => _AreaDetailScreenState();
@@ -46,9 +39,13 @@ class _AreaDetailScreenState extends State<AreaDetailScreen> {
     text: widget.areaVisionRepository.getVision(widget.area),
   );
   late final _visionFocusNode = FocusNode()..addListener(_handleFocusChange);
+  bool _editingVision = false;
 
   void _handleFocusChange() {
-    if (!_visionFocusNode.hasFocus) _saveVision();
+    if (!_visionFocusNode.hasFocus) {
+      _saveVision();
+      setState(() => _editingVision = false);
+    }
   }
 
   Future<void> _saveVision() {
@@ -58,19 +55,9 @@ class _AreaDetailScreenState extends State<AreaDetailScreen> {
     );
   }
 
-  void _openProjects() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AreaProjectsScreen(
-          area: widget.area,
-          projectRepository: widget.projectRepository,
-          starRepository: widget.starRepository,
-          habitRepository: widget.habitRepository,
-          habitCompletionRepository: widget.habitCompletionRepository,
-          customConstellationRepository: widget.customConstellationRepository,
-        ),
-      ),
-    );
+  void _startEditingVision() {
+    setState(() => _editingVision = true);
+    _visionFocusNode.requestFocus();
   }
 
   @override
@@ -85,6 +72,21 @@ class _AreaDetailScreenState extends State<AreaDetailScreen> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final strings = context.strings;
+    final area = widget.area;
+
+    final constellationCount = widget.projectRepository
+        .getProjectsForArea(area)
+        .length;
+    final starCount = starsInArea(
+      area,
+      widget.projectRepository,
+      widget.starRepository,
+    );
+    final totalIntensity = totalIntensityInArea(
+      area,
+      widget.projectRepository,
+      widget.starRepository,
+    );
 
     return PopScope(
       canPop: true,
@@ -110,62 +112,152 @@ class _AreaDetailScreenState extends State<AreaDetailScreen> {
                         icon: Icon(Icons.arrow_back, color: colors.muted),
                       ),
                       Expanded(
-                        child: AreaTag(
-                          area: widget.area,
-                          iconSize: 22,
-                          fontSize: 20,
+                        child: AreaTag(area: area, iconSize: 22, fontSize: 20),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      area.description(strings),
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.4,
+                        color: colors.muted,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _StatBlock(
+                          value: '$constellationCount',
+                          label: strings.areaConstellationsStatLabel,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _StatBlock(
+                          value: '$starCount',
+                          label: strings.areaStarsStatLabel,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _StatBlock(
+                          value: '$totalIntensity',
+                          label: strings.areaIntensityStatLabel,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 28),
                   Text(
                     strings.areaVisionLabel,
                     style: TextStyle(fontSize: 13, color: colors.muted),
                   ),
                   const SizedBox(height: 6),
-                  TextField(
-                    controller: _visionController,
-                    focusNode: _visionFocusNode,
-                    minLines: 6,
-                    maxLines: null,
-                    style: TextStyle(
-                      color: colors.text,
-                      fontSize: 15,
-                      height: 1.5,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: strings.areaVisionHint,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _openProjects,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: colors.gold,
-                        side: BorderSide(color: colors.gold),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                  if (_editingVision)
+                    TextField(
+                      controller: _visionController,
+                      focusNode: _visionFocusNode,
+                      minLines: 6,
+                      maxLines: null,
+                      style: TextStyle(
+                        color: colors.text,
+                        fontSize: 15,
+                        height: 1.5,
                       ),
-                      icon: const Icon(Icons.auto_awesome),
-                      label: Text(
-                        strings.areaViewProjectsAction,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
+                      decoration: InputDecoration(
+                        hintText: strings.areaVisionHint,
+                      ),
+                    )
+                  else
+                    Text(
+                      _visionController.text.trim().isEmpty
+                          ? strings.areaVisionHint
+                          : _visionController.text,
+                      style: TextStyle(
+                        color: _visionController.text.trim().isEmpty
+                            ? colors.muted
+                            : colors.text,
+                        fontSize: 15,
+                        height: 1.5,
                       ),
                     ),
-                  ),
+                  const SizedBox(height: 16),
+                  if (!_editingVision)
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _startEditingVision,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: colors.gold,
+                          side: BorderSide(color: colors.gold),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        icon: const Icon(Icons.edit),
+                        label: Text(
+                          strings.editVisionAction,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// One of the three big numbers on a Supernova's detail page — value up top
+/// in gold, a small muted label underneath. Styled after `stats_screen.dart`'s
+/// `_StatCard`, minus its tap target — nothing to drill into here.
+class _StatBlock extends StatelessWidget {
+  const _StatBlock({required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      decoration: BoxDecoration(
+        color: colors.nightPanel,
+        border: Border.all(color: colors.nightBorder),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              color: colors.gold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: colors.muted),
+          ),
+        ],
       ),
     );
   }

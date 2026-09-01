@@ -22,6 +22,30 @@ class StringsEn implements AppStrings {
   String get areaSpiritual => 'Spiritual';
   @override
   String get areaPhilanthropic => 'Philanthropic';
+  @override
+  String get areaPhysicalDescription =>
+      'Movement, strength, and the health that carries everything else.';
+  @override
+  String get areaPsychologicalDescription =>
+      'Your mind — clarity, resilience, and emotional balance.';
+  @override
+  String get areaProfessionalDescription =>
+      "Your work — career, craft, and the skills you're building.";
+  @override
+  String get areaFinancialDescription =>
+      'Your money — saving, earning, and long-term security.';
+  @override
+  String get areaPersonalDescription =>
+      'Your growth — habits, discipline, and self-improvement.';
+  @override
+  String get areaSocialDescription =>
+      'Your people — friends, family, and real connection.';
+  @override
+  String get areaSpiritualDescription =>
+      'Your inner life — meaning, stillness, and what you believe.';
+  @override
+  String get areaPhilanthropicDescription =>
+      "Your impact — giving, service, and other people's lives.";
 
   @override
   String get navHome => 'Home';
@@ -107,7 +131,9 @@ class StringsEn implements AppStrings {
   @override
   String get noSearchResults => 'No stars match your search.';
   @override
-  String get areaWinsEmpty => 'No stars in this supernova yet.';
+  String get skyEmptyConstellations => 'No constellations yet.';
+  @override
+  String get skyEmptyStars => 'No stars yet.';
   @override
   String intensityCount(int value) => '$value intensity';
   @override
@@ -118,6 +144,16 @@ class StringsEn implements AppStrings {
   String get constellationsModeLabel => 'Constellations';
   @override
   String get listModeLabel => 'Stars';
+  @override
+  String get skyModeSupernovas => 'Supernovas';
+  @override
+  String get filterAreasAction => 'Filter areas';
+  @override
+  String get applyAreaFilterAction => 'Apply filter';
+  @override
+  String get filterKindSectionTitle => 'Star kind';
+  @override
+  String get allKindsLabel => 'All kinds';
 
   @override
   String get areaVisionLabel => 'Your vision for this area';
@@ -125,7 +161,13 @@ class StringsEn implements AppStrings {
   String get areaVisionHint =>
       "What kind of reality do you want here? What are you working toward?";
   @override
-  String get areaViewProjectsAction => 'View constellations and stars';
+  String get editVisionAction => 'Edit vision';
+  @override
+  String get areaConstellationsStatLabel => 'Constellations';
+  @override
+  String get areaStarsStatLabel => 'Stars';
+  @override
+  String get areaIntensityStatLabel => 'Intensity';
 
   @override
   String get dataSection => 'Data';

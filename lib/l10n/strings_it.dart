@@ -22,6 +22,30 @@ class StringsIt implements AppStrings {
   String get areaSpiritual => 'Spirituale';
   @override
   String get areaPhilanthropic => 'Filantropica';
+  @override
+  String get areaPhysicalDescription =>
+      'Il tuo corpo — movimento, forza e la salute che sostiene tutto il resto.';
+  @override
+  String get areaPsychologicalDescription =>
+      'La tua mente — lucidità, resilienza ed equilibrio emotivo.';
+  @override
+  String get areaProfessionalDescription =>
+      'Il tuo lavoro — carriera, competenze e ciò che stai costruendo.';
+  @override
+  String get areaFinancialDescription =>
+      'Il tuo denaro — risparmio, guadagno e sicurezza a lungo termine.';
+  @override
+  String get areaPersonalDescription =>
+      'La tua crescita — abitudini, disciplina e miglioramento personale.';
+  @override
+  String get areaSocialDescription =>
+      'Le tue persone — amici, famiglia e connessioni vere.';
+  @override
+  String get areaSpiritualDescription =>
+      'La tua vita interiore — significato, quiete e ciò in cui credi.';
+  @override
+  String get areaPhilanthropicDescription =>
+      'Il tuo impatto — dare, servire e la vita degli altri.';
 
   @override
   String get navHome => 'Home';
@@ -107,7 +131,9 @@ class StringsIt implements AppStrings {
   @override
   String get noSearchResults => 'Nessuna stella corrisponde alla ricerca.';
   @override
-  String get areaWinsEmpty => 'Ancora nessuna stella in questa supernova.';
+  String get skyEmptyConstellations => 'Ancora nessuna costellazione.';
+  @override
+  String get skyEmptyStars => 'Ancora nessuna stella.';
   @override
   String intensityCount(int value) => '$value intensità';
   @override
@@ -118,6 +144,16 @@ class StringsIt implements AppStrings {
   String get constellationsModeLabel => 'Costellazioni';
   @override
   String get listModeLabel => 'Stelle';
+  @override
+  String get skyModeSupernovas => 'Supernove';
+  @override
+  String get filterAreasAction => 'Filtra aree';
+  @override
+  String get applyAreaFilterAction => 'Applica filtro';
+  @override
+  String get filterKindSectionTitle => 'Tipo di stella';
+  @override
+  String get allKindsLabel => 'Tutti i tipi';
 
   @override
   String get areaVisionLabel => 'La tua visione per quest\'area';
@@ -125,7 +161,13 @@ class StringsIt implements AppStrings {
   String get areaVisionHint =>
       'Che tipo di realtà vuoi per quest\'area? Verso cosa vuoi lavorare?';
   @override
-  String get areaViewProjectsAction => 'Vedi costellazioni e stelle';
+  String get editVisionAction => 'Modifica visione';
+  @override
+  String get areaConstellationsStatLabel => 'Costellazioni';
+  @override
+  String get areaStarsStatLabel => 'Stelle';
+  @override
+  String get areaIntensityStatLabel => 'Intensità';
 
   @override
   String get dataSection => 'Dati';

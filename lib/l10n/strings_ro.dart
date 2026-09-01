@@ -22,6 +22,30 @@ class StringsRo implements AppStrings {
   String get areaSpiritual => 'Spiritual';
   @override
   String get areaPhilanthropic => 'Filantropic';
+  @override
+  String get areaPhysicalDescription =>
+      'Corpul tău — mișcare, forță și sănătatea care susține totul.';
+  @override
+  String get areaPsychologicalDescription =>
+      'Mintea ta — claritate, reziliență și echilibru emoțional.';
+  @override
+  String get areaProfessionalDescription =>
+      'Munca ta — carieră, meșteșug și abilitățile pe care le construiești.';
+  @override
+  String get areaFinancialDescription =>
+      'Banii tăi — economisire, câștig și siguranță pe termen lung.';
+  @override
+  String get areaPersonalDescription =>
+      'Creșterea ta — obiceiuri, disciplină și dezvoltare personală.';
+  @override
+  String get areaSocialDescription =>
+      'Oamenii tăi — prieteni, familie și conexiuni reale.';
+  @override
+  String get areaSpiritualDescription =>
+      'Viața ta interioară — sens, liniște și ceea ce crezi.';
+  @override
+  String get areaPhilanthropicDescription =>
+      'Impactul tău — a dărui, a sluji și viețile celorlalți.';
 
   @override
   String get navHome => 'Acasă';
@@ -107,7 +131,9 @@ class StringsRo implements AppStrings {
   @override
   String get noSearchResults => 'Nicio stea nu corespunde căutării.';
   @override
-  String get areaWinsEmpty => 'Încă nicio stea în această supernovă.';
+  String get skyEmptyConstellations => 'Încă nicio constelație.';
+  @override
+  String get skyEmptyStars => 'Încă nicio stea.';
   @override
   String intensityCount(int value) => '$value intensitate';
   @override
@@ -118,6 +144,16 @@ class StringsRo implements AppStrings {
   String get constellationsModeLabel => 'Constelații';
   @override
   String get listModeLabel => 'Stele';
+  @override
+  String get skyModeSupernovas => 'Supernove';
+  @override
+  String get filterAreasAction => 'Filtrează zonele';
+  @override
+  String get applyAreaFilterAction => 'Aplică filtrul';
+  @override
+  String get filterKindSectionTitle => 'Tipul stelei';
+  @override
+  String get allKindsLabel => 'Toate tipurile';
 
   @override
   String get areaVisionLabel => 'Viziunea ta pentru această zonă';
@@ -125,7 +161,13 @@ class StringsRo implements AppStrings {
   String get areaVisionHint =>
       'Ce fel de realitate îți dorești aici? Spre ce vrei să lucrezi?';
   @override
-  String get areaViewProjectsAction => 'Vezi constelații și stele';
+  String get editVisionAction => 'Editează viziunea';
+  @override
+  String get areaConstellationsStatLabel => 'Constelații';
+  @override
+  String get areaStarsStatLabel => 'Stele';
+  @override
+  String get areaIntensityStatLabel => 'Intensitate';
 
   @override
   String get dataSection => 'Date';

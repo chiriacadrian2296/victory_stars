@@ -40,6 +40,28 @@ extension LifeAreaX on LifeArea {
     }
   }
 
+  /// A short tagline for this area, shown on its Supernova detail screen.
+  String description(AppStrings s) {
+    switch (this) {
+      case LifeArea.physical:
+        return s.areaPhysicalDescription;
+      case LifeArea.psychological:
+        return s.areaPsychologicalDescription;
+      case LifeArea.professional:
+        return s.areaProfessionalDescription;
+      case LifeArea.financial:
+        return s.areaFinancialDescription;
+      case LifeArea.personal:
+        return s.areaPersonalDescription;
+      case LifeArea.social:
+        return s.areaSocialDescription;
+      case LifeArea.spiritual:
+        return s.areaSpiritualDescription;
+      case LifeArea.philanthropic:
+        return s.areaPhilanthropicDescription;
+    }
+  }
+
   /// A generic icon representing the area itself — distinct from a
   /// project's own [Project.iconSlug]-based constellation icon, and
   /// deliberately never offered as a project icon choice (see [iconSlug])

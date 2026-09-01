@@ -227,6 +227,15 @@ abstract class AppStrings {
   String get starKindPulsarChipLabel;
   String get starKindPulsarTagLabel;
 
+  // Star card's "extra" badge — the one kind-specific fact shown between
+  // the description and the intensity/date block (photo/target/death
+  // date/streak), and the "created" line every card ends with.
+  String get photoBadgeLabel;
+  String get targetDateBadgeLabel;
+  String get deadDateBadgeLabel;
+  String get streakBadgeLabel;
+  String get createdLabel;
+
   // Admire Your Stars (random reflection, filterable by area)
   String get admireTagline;
   String get allAreasLabel;

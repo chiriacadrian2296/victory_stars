@@ -400,6 +400,17 @@ class StringsRo implements AppStrings {
   String get starKindPulsarTagLabel => 'Pulsar';
 
   @override
+  String get photoBadgeLabel => 'Fotografie';
+  @override
+  String get targetDateBadgeLabel => 'Țintă';
+  @override
+  String get deadDateBadgeLabel => 'Stinsă';
+  @override
+  String get streakBadgeLabel => 'Serie';
+  @override
+  String get createdLabel => 'Creată';
+
+  @override
   String get admireTagline =>
       'Pentru când ești în întuneric și ai nevoie de puțină lumină.';
   @override

@@ -401,6 +401,17 @@ class StringsIt implements AppStrings {
   String get starKindPulsarTagLabel => 'Pulsar';
 
   @override
+  String get photoBadgeLabel => 'Foto';
+  @override
+  String get targetDateBadgeLabel => 'Obiettivo';
+  @override
+  String get deadDateBadgeLabel => 'Spenta';
+  @override
+  String get streakBadgeLabel => 'Serie';
+  @override
+  String get createdLabel => 'Creata';
+
+  @override
   String get admireTagline =>
       'Per quando sei nel buio e hai bisogno di un po\' di luce.';
   @override

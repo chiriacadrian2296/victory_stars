@@ -397,6 +397,17 @@ class StringsEn implements AppStrings {
   String get starKindPulsarTagLabel => 'Pulsar';
 
   @override
+  String get photoBadgeLabel => 'Photo';
+  @override
+  String get targetDateBadgeLabel => 'Target';
+  @override
+  String get deadDateBadgeLabel => 'Died';
+  @override
+  String get streakBadgeLabel => 'Streak';
+  @override
+  String get createdLabel => 'Created';
+
+  @override
   String get admireTagline =>
       "For when you're in the dark and you need some light.";
   @override

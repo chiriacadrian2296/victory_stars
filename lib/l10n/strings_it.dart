@@ -327,7 +327,7 @@ class StringsIt implements AppStrings {
   @override
   String get achievedToggleOn => 'Già raggiunta';
   @override
-  String get achievedToggleOff => 'Obbiettivo futuro';
+  String get achievedToggleOff => 'Obbietivo';
   @override
   String get targetDateLabel => 'Data obbiettivo (opzionale)';
   @override
@@ -409,7 +409,11 @@ class StringsIt implements AppStrings {
   @override
   String get streakBadgeLabel => 'Serie';
   @override
-  String get createdLabel => 'Creata';
+  String get noPhotoLabel => 'Nessuna foto';
+  @override
+  String get noTargetDateLabel => 'Nessuna data obiettivo';
+  @override
+  String get noDeadDateLabel => 'Nessuna data';
 
   @override
   String get admireTagline =>

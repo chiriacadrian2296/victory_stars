@@ -13,9 +13,9 @@ import 'star_kind_label.dart';
 
 /// A tombstoned star in a flat star list — [star] is always expected to
 /// satisfy `star.dead`. The title stays muted so it visibly reads as
-/// "spent" next to lit victories and goals; everything else uses the same
-/// gold-accented look every other card does. Tapping it opens the reader's
-/// "resurrect" flow.
+/// "spent" next to lit victories and goals, and the kind icon uses the
+/// app's light-blue accent instead of gold; everything else matches every
+/// other card's look. Tapping it opens the reader's "resurrect" flow.
 class DeadStarCard extends StatelessWidget {
   const DeadStarCard({super.key, required this.star, this.onTap, this.project});
 
@@ -36,7 +36,7 @@ class DeadStarCard extends StatelessWidget {
         borderRadius: borderRadius,
         child: Ink(
           decoration: BoxDecoration(
-            color: colors.nightPanel.withValues(alpha: 0.6),
+            color: colors.nightPanel,
             border: Border.all(color: colors.nightBorder),
             borderRadius: borderRadius,
           ),
@@ -48,6 +48,7 @@ class DeadStarCard extends StatelessWidget {
                 StarKindLabel(
                   icon: Icons.star_outline,
                   label: strings.deadStarTitle,
+                  iconColor: colors.crisisMuted,
                 ),
                 if (project != null) ...[
                   const SizedBox(height: 10),
@@ -81,14 +82,15 @@ class DeadStarCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                StarExtraBadgeSlot(
-                  badge: star.deadDate == null
+                StarExtraBadge(
+                  icon: Icons.church,
+                  label: star.deadDate == null
+                      ? strings.noDeadDateLabel
+                      : strings.deadDateBadgeLabel,
+                  value: star.deadDate == null
                       ? null
-                      : StarExtraBadge(
-                          icon: Icons.church,
-                          label: strings.deadDateBadgeLabel,
-                          value: formatDisplayDate(star.deadDate!, strings),
-                        ),
+                      : formatDisplayDate(star.deadDate!, strings),
+                  dimmed: star.deadDate == null,
                 ),
                 const SizedBox(height: 12),
                 StarCreatedAt(createdAt: star.createdAt),

@@ -6,9 +6,10 @@ import '../utils/date_format.dart';
 
 /// When this card's underlying star/habit was created — the one date every
 /// kind actually has (achieved/target/death dates are each kind-specific,
-/// but creation isn't), shown at the bottom of every card. Time sits on
-/// its own line below the date rather than beside it, each with its own
-/// icon.
+/// but creation isn't), shown at the bottom of every card. Just the date
+/// itself, no "Created" label — the calendar icon already says what kind
+/// of date this is. Time sits on its own line below the date rather than
+/// beside it, each with its own icon.
 class StarCreatedAt extends StatelessWidget {
   const StarCreatedAt({super.key, required this.createdAt});
 
@@ -28,7 +29,7 @@ class StarCreatedAt extends StatelessWidget {
               Icon(Icons.calendar_today, size: 12, color: colors.muted),
               const SizedBox(width: 5),
               Text(
-                '${strings.createdLabel} ${formatDisplayDate(createdAt, strings)}',
+                formatDisplayDate(createdAt, strings),
                 style: TextStyle(fontSize: 12, color: colors.muted),
               ),
             ],

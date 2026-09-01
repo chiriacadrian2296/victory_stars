@@ -99,13 +99,12 @@ class StarCard extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 12),
-                StarExtraBadgeSlot(
-                  badge: star.photoPath == null
-                      ? null
-                      : StarExtraBadge(
-                          icon: Icons.photo_camera,
-                          label: strings.photoBadgeLabel,
-                        ),
+                StarExtraBadge(
+                  icon: Icons.photo_camera,
+                  label: star.photoPath == null
+                      ? strings.noPhotoLabel
+                      : strings.photoBadgeLabel,
+                  dimmed: star.photoPath == null,
                 ),
                 const SizedBox(height: 4),
                 Center(

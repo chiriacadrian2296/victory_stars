@@ -34,7 +34,7 @@ class GoalCard extends StatelessWidget {
         child: Ink(
           decoration: BoxDecoration(
             color: colors.nightPanel,
-            border: Border.all(color: colors.goldDim.withValues(alpha: 0.35)),
+            border: Border.all(color: colors.nightBorder),
             borderRadius: borderRadius,
           ),
           child: Padding(
@@ -90,14 +90,15 @@ class GoalCard extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 12),
-                StarExtraBadgeSlot(
-                  badge: star.targetDate == null
+                StarExtraBadge(
+                  icon: Icons.event_outlined,
+                  label: star.targetDate == null
+                      ? strings.noTargetDateLabel
+                      : strings.targetDateBadgeLabel,
+                  value: star.targetDate == null
                       ? null
-                      : StarExtraBadge(
-                          icon: Icons.event_outlined,
-                          label: strings.targetDateBadgeLabel,
-                          value: formatDisplayDate(star.targetDate!, strings),
-                        ),
+                      : formatDisplayDate(star.targetDate!, strings),
+                  dimmed: star.targetDate == null,
                 ),
                 const SizedBox(height: 12),
                 StarCreatedAt(createdAt: star.createdAt),

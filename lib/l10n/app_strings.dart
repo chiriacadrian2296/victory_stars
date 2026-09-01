@@ -234,7 +234,9 @@ abstract class AppStrings {
   String get targetDateBadgeLabel;
   String get deadDateBadgeLabel;
   String get streakBadgeLabel;
-  String get createdLabel;
+  String get noPhotoLabel;
+  String get noTargetDateLabel;
+  String get noDeadDateLabel;
 
   // Admire Your Stars (random reflection, filterable by area)
   String get admireTagline;

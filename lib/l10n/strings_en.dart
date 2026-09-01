@@ -405,7 +405,11 @@ class StringsEn implements AppStrings {
   @override
   String get streakBadgeLabel => 'Streak';
   @override
-  String get createdLabel => 'Created';
+  String get noPhotoLabel => 'No photo';
+  @override
+  String get noTargetDateLabel => 'No target date';
+  @override
+  String get noDeadDateLabel => 'No death date';
 
   @override
   String get admireTagline =>

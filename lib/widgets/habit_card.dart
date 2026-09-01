@@ -11,10 +11,10 @@ import 'star_extra_badge.dart';
 import 'star_kind_label.dart';
 
 /// A pulsar (habit) in a flat star list — a repeat icon and a streak badge
-/// instead of a date/intensity block. [isLit] dims the title and border
-/// the same way [DeadStarCard] dims a tombstoned star; the kind label and
-/// streak badge stay the same gold look regardless, like every other
-/// card's.
+/// instead of a date/intensity block. [isLit] dims only the title; every
+/// other card kind's border/background look the same regardless of state,
+/// and the kind label and streak badge stay the same gold look every other
+/// card's does too.
 class HabitCard extends StatelessWidget {
   const HabitCard({
     super.key,
@@ -36,7 +36,6 @@ class HabitCard extends StatelessWidget {
     final colors = context.colors;
     final strings = context.strings;
     final borderRadius = BorderRadius.circular(12);
-    final accent = isLit ? colors.crisisMuted : colors.muted;
 
     return Material(
       color: Colors.transparent,
@@ -46,9 +45,7 @@ class HabitCard extends StatelessWidget {
         child: Ink(
           decoration: BoxDecoration(
             color: colors.nightPanel,
-            border: Border.all(
-              color: accent.withValues(alpha: isLit ? 0.5 : 0.3),
-            ),
+            border: Border.all(color: colors.nightBorder),
             borderRadius: borderRadius,
           ),
           child: Padding(
@@ -104,12 +101,10 @@ class HabitCard extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 12),
-                StarExtraBadgeSlot(
-                  badge: StarExtraBadge(
-                    icon: Icons.local_fire_department,
-                    label: strings.streakBadgeLabel,
-                    value: '$currentStreak',
-                  ),
+                StarExtraBadge(
+                  icon: Icons.local_fire_department,
+                  label: strings.streakBadgeLabel,
+                  value: '$currentStreak',
                 ),
                 const SizedBox(height: 12),
                 StarCreatedAt(createdAt: habit.createdAt),

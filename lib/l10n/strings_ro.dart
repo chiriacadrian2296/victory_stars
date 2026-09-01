@@ -408,7 +408,11 @@ class StringsRo implements AppStrings {
   @override
   String get streakBadgeLabel => 'Serie';
   @override
-  String get createdLabel => 'Creată';
+  String get noPhotoLabel => 'Fără fotografie';
+  @override
+  String get noTargetDateLabel => 'Fără dată țintă';
+  @override
+  String get noDeadDateLabel => 'Fără dată';
 
   @override
   String get admireTagline =>

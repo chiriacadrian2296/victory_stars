@@ -106,7 +106,7 @@ class StarCard extends StatelessWidget {
                       : strings.photoBadgeLabel,
                   dimmed: star.photoPath == null,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 14),
                 Center(
                   child: IntensityBolts(
                     intensity: star.intensity!,
@@ -115,7 +115,7 @@ class StarCard extends StatelessWidget {
                     emphasizeLast: true,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 18),
                 StarCreatedAt(createdAt: star.createdAt),
               ],
             ),

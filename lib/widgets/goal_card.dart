@@ -100,7 +100,7 @@ class GoalCard extends StatelessWidget {
                       : formatDisplayDate(star.targetDate!, strings),
                   dimmed: star.targetDate == null,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 18),
                 StarCreatedAt(createdAt: star.createdAt),
               ],
             ),

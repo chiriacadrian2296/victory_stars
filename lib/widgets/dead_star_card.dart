@@ -92,7 +92,7 @@ class DeadStarCard extends StatelessWidget {
                       : formatDisplayDate(star.deadDate!, strings),
                   dimmed: star.deadDate == null,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 18),
                 StarCreatedAt(createdAt: star.createdAt),
               ],
             ),

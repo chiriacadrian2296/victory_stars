@@ -106,7 +106,7 @@ class HabitCard extends StatelessWidget {
                   label: strings.streakBadgeLabel,
                   value: '$currentStreak',
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 18),
                 StarCreatedAt(createdAt: habit.createdAt),
               ],
             ),

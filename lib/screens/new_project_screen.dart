@@ -691,11 +691,12 @@ class _CustomConstellationOption extends StatelessWidget {
                 points: points,
                 edges: constellation.shape.edges,
                 highlightedIndex: null,
-                pointColor: selected ? colors.gold : colors.text,
+                // Selection is shown by the tile's own gold border only —
+                // the drawn shape itself (points/lines) stays the same
+                // white/muted look whether selected or not.
+                pointColor: colors.text,
                 highlightColor: colors.gold,
-                lineColor: (selected ? colors.gold : colors.muted).withValues(
-                  alpha: 0.6,
-                ),
+                lineColor: colors.muted.withValues(alpha: 0.6),
                 pointRadius: 2.5,
               ),
             ),

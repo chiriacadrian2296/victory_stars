@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/area_vision_repository.dart';
 import '../data/custom_constellation_repository.dart';
 import '../data/habit_completion_repository.dart';
 import '../data/habit_repository.dart';
@@ -32,6 +33,7 @@ class RootScreen extends StatefulWidget {
     required this.habitRepository,
     required this.habitCompletionRepository,
     required this.customConstellationRepository,
+    required this.areaVisionRepository,
     required this.reminderService,
   });
 
@@ -41,6 +43,7 @@ class RootScreen extends StatefulWidget {
   final HabitRepository habitRepository;
   final HabitCompletionRepository habitCompletionRepository;
   final CustomConstellationRepository customConstellationRepository;
+  final AreaVisionRepository areaVisionRepository;
   final ReminderService reminderService;
 
   @override
@@ -99,6 +102,7 @@ class _RootScreenState extends State<RootScreen> {
           habitRepository: widget.habitRepository,
           habitCompletionRepository: widget.habitCompletionRepository,
           customConstellationRepository: widget.customConstellationRepository,
+          areaVisionRepository: widget.areaVisionRepository,
         ),
         StatsScreen(
           starRepository: widget.starRepository,
@@ -111,6 +115,7 @@ class _RootScreenState extends State<RootScreen> {
           habitRepository: widget.habitRepository,
           habitCompletionRepository: widget.habitCompletionRepository,
           customConstellationRepository: widget.customConstellationRepository,
+          areaVisionRepository: widget.areaVisionRepository,
           reminderService: widget.reminderService,
         ),
       ],

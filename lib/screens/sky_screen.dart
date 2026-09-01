@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/area_vision_repository.dart';
 import '../data/custom_constellation_repository.dart';
 import '../data/habit_completion_repository.dart';
 import '../data/habit_repository.dart';
@@ -12,12 +13,12 @@ import '../utils/area_stats.dart';
 import '../utils/star_stats.dart';
 import '../widgets/area_tag.dart';
 import '../widgets/responsive_content.dart';
-import 'area_projects_screen.dart';
+import 'area_detail_screen.dart';
 
 /// The Sky hub: the 8 fixed life areas, each showing how many victories are
 /// lit across all of its projects combined, plus how many open goals and
-/// active habits sit alongside them. Tapping an area opens its project list
-/// ([AreaProjectsScreen]).
+/// active habits sit alongside them. Tapping an area opens its own page
+/// ([AreaDetailScreen] — vision text, then onward into its projects).
 class SkyScreen extends StatefulWidget {
   const SkyScreen({
     super.key,
@@ -26,6 +27,7 @@ class SkyScreen extends StatefulWidget {
     required this.habitRepository,
     required this.habitCompletionRepository,
     required this.customConstellationRepository,
+    required this.areaVisionRepository,
   });
 
   final ProjectRepository projectRepository;
@@ -33,6 +35,7 @@ class SkyScreen extends StatefulWidget {
   final HabitRepository habitRepository;
   final HabitCompletionRepository habitCompletionRepository;
   final CustomConstellationRepository customConstellationRepository;
+  final AreaVisionRepository areaVisionRepository;
 
   @override
   State<SkyScreen> createState() => _SkyScreenState();
@@ -42,8 +45,9 @@ class _SkyScreenState extends State<SkyScreen> {
   Future<void> _openArea(LifeArea area) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => AreaProjectsScreen(
+        builder: (_) => AreaDetailScreen(
           area: area,
+          areaVisionRepository: widget.areaVisionRepository,
           projectRepository: widget.projectRepository,
           starRepository: widget.starRepository,
           habitRepository: widget.habitRepository,

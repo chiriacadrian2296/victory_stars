@@ -120,6 +120,14 @@ class StringsEn implements AppStrings {
   String get listModeLabel => 'Stars';
 
   @override
+  String get areaVisionLabel => 'Your vision for this area';
+  @override
+  String get areaVisionHint =>
+      "What kind of reality do you want here? What are you working toward?";
+  @override
+  String get areaViewProjectsAction => 'View constellations and stars';
+
+  @override
   String get dataSection => 'Data';
   @override
   String get seedSampleData => 'Seed sample data';

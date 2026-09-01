@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../data/area_vision_repository.dart';
 import '../data/custom_constellation_repository.dart';
 import '../data/habit_completion_repository.dart';
 import '../data/habit_repository.dart';
@@ -28,6 +29,7 @@ class SettingsScreen extends StatefulWidget {
     required this.habitRepository,
     required this.habitCompletionRepository,
     required this.customConstellationRepository,
+    required this.areaVisionRepository,
     required this.reminderService,
   });
 
@@ -37,6 +39,7 @@ class SettingsScreen extends StatefulWidget {
   final HabitRepository habitRepository;
   final HabitCompletionRepository habitCompletionRepository;
   final CustomConstellationRepository customConstellationRepository;
+  final AreaVisionRepository areaVisionRepository;
   final ReminderService reminderService;
 
   @override
@@ -199,6 +202,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await widget.habitRepository.clear();
     await widget.habitCompletionRepository.clear();
     await widget.customConstellationRepository.clear();
+    await widget.areaVisionRepository.clear();
     if (mounted) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(strings.allDataCleared)));

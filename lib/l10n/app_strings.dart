@@ -94,6 +94,12 @@ abstract class AppStrings {
   String get constellationsModeLabel;
   String get listModeLabel;
 
+  // Area detail (the vision text + entry point into that area's own
+  // constellations/stars)
+  String get areaVisionLabel;
+  String get areaVisionHint;
+  String get areaViewProjectsAction;
+
   // Constellation
   String get constellationShapeMissing;
 

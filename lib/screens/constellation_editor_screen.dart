@@ -9,6 +9,7 @@ import '../l10n/strings_scope.dart';
 import '../models/custom_constellation.dart';
 import '../theme/app_colors.dart';
 import '../widgets/constellation_editor_painter.dart';
+import '../widgets/responsive_content.dart';
 
 /// Lets the user hand-draw their own constellation shape: tap empty space to
 /// place a star, tap two stars in turn to connect/disconnect them, drag a
@@ -480,224 +481,230 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
     return Scaffold(
       backgroundColor: colors.night,
       body: SafeArea(
-        child: Column(
-          children: [
-            Row(
-              children: [
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: Icon(Icons.arrow_back, color: colors.muted),
-                ),
-                Expanded(
-                  child: Text(
-                    widget.existing == null
-                        ? strings.constellationEditorTitle
-                        : strings.constellationEditorEditTitle,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                      color: colors.text,
-                    ),
-                  ),
-                ),
-                Tooltip(
-                  message: strings.constellationEditorGridToggleLabel,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.grid_on, size: 18, color: colors.muted),
-                      Transform.scale(
-                        scale: 0.8,
-                        child: Switch(
-                          value: _gridEnabled,
-                          onChanged: (value) =>
-                              setState(() => _gridEnabled = value),
-                          activeThumbColor: colors.gold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: _showHelp,
-                  icon: Icon(Icons.help_outline, color: colors.muted),
-                  tooltip: strings.constellationEditorHelpAction,
-                ),
-              ],
-            ),
-            Expanded(
-              // Split into two equal-flex regions around the fixed-size
-              // canvas, rather than centering the canvas (or a title+canvas
-              // group) as one block — that only balances the space *outside*
-              // the group, not the title's own position within it. Equal
-              // flex above and below puts the canvas in the true middle of
-              // this area; centering the title inside the top region alone
-              // (which spans exactly from the toolbar to the canvas) puts it
-              // equidistant from both, however tall that region ends up
-              // being.
-              child: Column(
+        child: ResponsiveContent(
+          child: Column(
+            children: [
+              Row(
                 children: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(Icons.arrow_back, color: colors.muted),
+                  ),
                   Expanded(
-                    child: widget.existing == null
-                        ? const SizedBox()
-                        : Center(
-                            child: _ExistingConstellationHeader(
-                              constellation: widget.existing!,
-                            ),
-                          ),
-                  ),
-                  AspectRatio(
-                    aspectRatio: 1,
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        _canvasSize = constraints.biggest;
-                        return Listener(
-                          behavior: HitTestBehavior.opaque,
-                          onPointerDown: _handlePointerDown,
-                          onPointerMove: _handlePointerMove,
-                          onPointerUp: _handlePointerUp,
-                          child: Container(
-                            clipBehavior: Clip.antiAlias,
-                            decoration: BoxDecoration(
-                              color: colors.nightPanel,
-                              border: Border.all(color: colors.nightBorder),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Stack(
-                              children: [
-                                if (_gridEnabled)
-                                  Positioned.fill(
-                                    child: CustomPaint(
-                                      painter: _GridPainter(
-                                        divisions: _gridDivisions,
-                                        color: colors.nightBorder,
-                                        // Just a touch brighter than the
-                                        // regular grid lines — a small blend
-                                        // toward `muted` rather than jumping
-                                        // straight to it, so the center reads
-                                        // as "the same grid, slightly lifted"
-                                        // rather than a visually distinct line.
-                                        centerColor: Color.lerp(
-                                          colors.nightBorder,
-                                          colors.muted,
-                                          0.3,
-                                        )!,
-                                      ),
-                                    ),
-                                  ),
-                                if (_points.isEmpty)
-                                  Center(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(24),
-                                      child: Text(
-                                        strings.constellationEditorEmptyHint,
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(color: colors.muted),
-                                      ),
-                                    ),
-                                  )
-                                else
-                                  CustomPaint(
-                                    size: constraints.biggest,
-                                    painter: ConstellationEditorPainter(
-                                      points: _pixelPoints,
-                                      edges: _edges,
-                                      highlightedIndex:
-                                          _armedIndex ?? _draggingIndex,
-                                      pointColor: colors.text,
-                                      highlightColor: colors.gold,
-                                      lineColor: colors.gold.withValues(
-                                        alpha: 0.5,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
+                    child: Text(
+                      widget.existing == null
+                          ? strings.constellationEditorTitle
+                          : strings.constellationEditorEditTitle,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: colors.text,
+                      ),
                     ),
+                  ),
+                  Tooltip(
+                    message: strings.constellationEditorGridToggleLabel,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.grid_on, size: 18, color: colors.muted),
+                        Transform.scale(
+                          scale: 0.8,
+                          child: Switch(
+                            value: _gridEnabled,
+                            onChanged: (value) =>
+                                setState(() => _gridEnabled = value),
+                            activeThumbColor: colors.gold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: _showHelp,
+                    icon: Icon(Icons.help_outline, color: colors.muted),
+                    tooltip: strings.constellationEditorHelpAction,
                   ),
                 ],
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-              // A Row of Flexible buttons, not a Wrap — a Wrap drops to a
-              // second line once the three pills stop fitting (which a
-              // longer translation, e.g. Romanian, hits easily), while
-              // Flexible instead lets each pill's own label ellipsize so
-              // all three always stay on one row.
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Flexible(
-                    child: _EditorActionButton(
-                      icon: Icons.undo,
-                      label: strings.undoAction,
-                      onTap: _undoStack.isEmpty ? null : _undo,
+              Expanded(
+                // Split into two equal-flex regions around the fixed-size
+                // canvas, rather than centering the canvas (or a title+canvas
+                // group) as one block — that only balances the space *outside*
+                // the group, not the title's own position within it. Equal
+                // flex above and below puts the canvas in the true middle of
+                // this area; centering the title inside the top region alone
+                // (which spans exactly from the toolbar to the canvas) puts it
+                // equidistant from both, however tall that region ends up
+                // being.
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: widget.existing == null
+                          ? const SizedBox()
+                          : Center(
+                              child: _ExistingConstellationHeader(
+                                constellation: widget.existing!,
+                              ),
+                            ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Flexible(
-                    child: _EditorActionButton(
-                      icon: Icons.redo,
-                      label: strings.redoAction,
-                      onTap: _redoStack.isEmpty ? null : _redo,
+                    AspectRatio(
+                      aspectRatio: 1,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          _canvasSize = constraints.biggest;
+                          return Listener(
+                            behavior: HitTestBehavior.opaque,
+                            onPointerDown: _handlePointerDown,
+                            onPointerMove: _handlePointerMove,
+                            onPointerUp: _handlePointerUp,
+                            child: Container(
+                              clipBehavior: Clip.antiAlias,
+                              decoration: BoxDecoration(
+                                color: colors.nightPanel,
+                                border: Border.all(color: colors.nightBorder),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Stack(
+                                children: [
+                                  if (_gridEnabled)
+                                    Positioned.fill(
+                                      child: CustomPaint(
+                                        painter: _GridPainter(
+                                          divisions: _gridDivisions,
+                                          color: colors.nightBorder,
+                                          // Just a touch brighter than the
+                                          // regular grid lines — a small blend
+                                          // toward `muted` rather than jumping
+                                          // straight to it, so the center reads
+                                          // as "the same grid, slightly lifted"
+                                          // rather than a visually distinct line.
+                                          centerColor: Color.lerp(
+                                            colors.nightBorder,
+                                            colors.muted,
+                                            0.3,
+                                          )!,
+                                        ),
+                                      ),
+                                    ),
+                                  if (_points.isEmpty)
+                                    Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(24),
+                                        child: Text(
+                                          strings.constellationEditorEmptyHint,
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(color: colors.muted),
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    CustomPaint(
+                                      size: constraints.biggest,
+                                      painter: ConstellationEditorPainter(
+                                        points: _pixelPoints,
+                                        edges: _edges,
+                                        highlightedIndex:
+                                            _armedIndex ?? _draggingIndex,
+                                        pointColor: colors.text,
+                                        highlightColor: colors.gold,
+                                        lineColor: colors.gold.withValues(
+                                          alpha: 0.5,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Flexible(
-                    child: _EditorActionButton(
-                      icon: Icons.delete_outline,
-                      label: strings.deletePointAction,
-                      onTap: _armedIndex == null ? null : _deleteArmedPoint,
-                    ),
-                  ),
-                ],
+                    const Expanded(child: SizedBox()),
+                  ],
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Text(
-                _points.length >= _maxEditorPoints
-                    ? strings.constellationEditorPointCapReached
-                    : disconnected > 0
-                    ? strings.constellationEditorDisconnectedWarning(
-                        disconnected,
-                      )
-                    : '',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: colors.muted),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: canSave ? _save : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colors.gold,
-                    foregroundColor: colors.onGold,
-                    disabledBackgroundColor: colors.nightBorder,
-                    disabledForegroundColor: colors.muted,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+                // A Row of Flexible buttons, not a Wrap — a Wrap drops to a
+                // second line once the three pills stop fitting (which a
+                // longer translation, e.g. Romanian, hits easily), while
+                // Flexible instead lets each pill's own label ellipsize so
+                // all three always stay on one row.
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: _EditorActionButton(
+                        icon: Icons.undo,
+                        label: strings.undoAction,
+                        onTap: _undoStack.isEmpty ? null : _undo,
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    strings.saveConstellationAction,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: _EditorActionButton(
+                        icon: Icons.redo,
+                        label: strings.redoAction,
+                        onTap: _redoStack.isEmpty ? null : _redo,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: _EditorActionButton(
+                        icon: Icons.delete_outline,
+                        label: strings.deletePointAction,
+                        onTap: _armedIndex == null ? null : _deleteArmedPoint,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
+                child: Text(
+                  _points.length >= _maxEditorPoints
+                      ? strings.constellationEditorPointCapReached
+                      : disconnected > 0
+                      ? strings.constellationEditorDisconnectedWarning(
+                          disconnected,
+                        )
+                      : '',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: colors.muted),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: canSave ? _save : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colors.gold,
+                      foregroundColor: colors.onGold,
+                      disabledBackgroundColor: colors.nightBorder,
+                      disabledForegroundColor: colors.muted,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      strings.saveConstellationAction,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

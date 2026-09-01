@@ -120,6 +120,14 @@ class StringsIt implements AppStrings {
   String get listModeLabel => 'Stelle';
 
   @override
+  String get areaVisionLabel => 'La tua visione per quest\'area';
+  @override
+  String get areaVisionHint =>
+      'Che tipo di realtà vuoi per quest\'area? Verso cosa vuoi lavorare?';
+  @override
+  String get areaViewProjectsAction => 'Vedi costellazioni e stelle';
+
+  @override
   String get dataSection => 'Dati';
   @override
   String get seedSampleData => 'Genera dati di esempio';

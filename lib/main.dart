@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'data/area_vision_repository.dart';
 import 'data/custom_constellation_repository.dart';
 import 'data/habit_completion_repository.dart';
 import 'data/habit_repository.dart';
@@ -42,6 +43,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
   HabitRepository? _habitRepository;
   HabitCompletionRepository? _habitCompletionRepository;
   CustomConstellationRepository? _customConstellationRepository;
+  AreaVisionRepository? _areaVisionRepository;
   ReminderService? _reminderService;
 
   /// Set only if [_load] throws. A blank splash that silently never
@@ -67,6 +69,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
           await HabitCompletionRepository.create();
       final customConstellationRepository =
           await CustomConstellationRepository.create();
+      final areaVisionRepository = await AreaVisionRepository.create();
       // Idempotent — safe (and cheap once everything's migrated) to run on
       // every launch. Must finish before setState reveals the app below, so
       // every Project any screen reads already has its customConstellationId.
@@ -102,6 +105,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
         _habitRepository = habitRepository;
         _habitCompletionRepository = habitCompletionRepository;
         _customConstellationRepository = customConstellationRepository;
+        _areaVisionRepository = areaVisionRepository;
         _reminderService = reminderService;
       });
 
@@ -156,6 +160,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
     final habitRepository = _habitRepository;
     final habitCompletionRepository = _habitCompletionRepository;
     final customConstellationRepository = _customConstellationRepository;
+    final areaVisionRepository = _areaVisionRepository;
     final reminderService = _reminderService;
     final loadError = _loadError;
     if (loadError != null) {
@@ -183,6 +188,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
         habitRepository == null ||
         habitCompletionRepository == null ||
         customConstellationRepository == null ||
+        areaVisionRepository == null ||
         reminderService == null) {
       // Nothing is known yet — a neutral, static splash rather than
       // guessing defaults that might flash-swap once everything loads.
@@ -231,10 +237,14 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
             // extends behind the bar automatically — show through.
             value: SystemUiOverlayStyle(
               statusBarColor: Colors.transparent,
-              statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+              statusBarIconBrightness: isDark
+                  ? Brightness.light
+                  : Brightness.dark,
               statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
               systemNavigationBarColor: Colors.transparent,
-              systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+              systemNavigationBarIconBrightness: isDark
+                  ? Brightness.light
+                  : Brightness.dark,
               systemNavigationBarDividerColor: Colors.transparent,
               systemNavigationBarContrastEnforced: false,
             ),
@@ -245,6 +255,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
               habitRepository: habitRepository,
               habitCompletionRepository: habitCompletionRepository,
               customConstellationRepository: customConstellationRepository,
+              areaVisionRepository: areaVisionRepository,
               reminderService: reminderService,
             ),
           );

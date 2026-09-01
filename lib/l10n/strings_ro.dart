@@ -120,6 +120,14 @@ class StringsRo implements AppStrings {
   String get listModeLabel => 'Stele';
 
   @override
+  String get areaVisionLabel => 'Viziunea ta pentru această zonă';
+  @override
+  String get areaVisionHint =>
+      'Ce fel de realitate îți dorești aici? Spre ce vrei să lucrezi?';
+  @override
+  String get areaViewProjectsAction => 'Vezi constelații și stele';
+
+  @override
   String get dataSection => 'Date';
   @override
   String get seedSampleData => 'Generează date de exemplu';

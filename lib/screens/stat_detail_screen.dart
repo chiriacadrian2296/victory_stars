@@ -283,7 +283,12 @@ class _StatDetailScaffold extends StatelessWidget {
               ),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(28, 4, 28, 32),
+                  // Top padding has to be generous, not just a small gap
+                  // below the back button — the icon's own glow (28px blur)
+                  // paints outside its 84x84 circle, and a scrollable clips
+                  // to its own viewport bounds regardless of scroll
+                  // position, so too little room here clips the glow itself.
+                  padding: const EdgeInsets.fromLTRB(28, 28, 28, 32),
                   child: ResponsiveContent(
                     child: Column(
                       children: [

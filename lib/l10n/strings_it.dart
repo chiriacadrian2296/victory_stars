@@ -189,7 +189,7 @@ class StringsIt implements AppStrings {
   @override
   String get redoAction => 'Ripeti';
   @override
-  String get deletePointAction => 'Elimina stella';
+  String get deletePointAction => 'Elimina';
   @override
   String get saveConstellationAction => 'Salva';
   @override

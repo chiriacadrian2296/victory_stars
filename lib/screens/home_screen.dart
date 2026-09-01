@@ -307,7 +307,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 32, 20, 100),
+          // Bottom padding used to be much taller (100) to clear the
+          // floating add/admire buttons below the streak cards that used to
+          // end this screen — now that Home ends with the activity
+          // calendar (streaks moved to the Statistics tab), that much
+          // padding just reads as empty space under the calendar.
+          padding: const EdgeInsets.fromLTRB(20, 32, 20, 40),
           // The scrollable itself spans the full window width (so its
           // auto-attached Scrollbar sits at the true page edge on wide
           // viewports); only its content is capped/centered.

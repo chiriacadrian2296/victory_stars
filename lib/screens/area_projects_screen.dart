@@ -291,12 +291,13 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                       // A Row, not a Wrap — with 4 chips a label+count Wrap
                       // easily drops to a second line (worse on longer IT/RO
-                      // translations), so the label was dropped in favor of
-                      // just icon+count (see _KindFilterChip), which always
-                      // fits four-across on one line; the full kind name is
-                      // still available via each chip's tooltip.
+                      // translations), so the label lives below each chip
+                      // instead (see _KindFilterChip); centered as a tight
+                      // group rather than spread across the full width, so
+                      // the four chips read as one control, easier to reach.
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _KindFilterChip(
                             icon: Icons.star,
@@ -308,6 +309,7 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
                             color: colors.gold,
                             onTap: () => _toggleKind(StarKind.victory),
                           ),
+                          const SizedBox(width: 10),
                           _KindFilterChip(
                             icon: Icons.flag_outlined,
                             label: strings.starKindGoalLabel,
@@ -318,6 +320,7 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
                             color: colors.goldDim,
                             onTap: () => _toggleKind(StarKind.goal),
                           ),
+                          const SizedBox(width: 10),
                           _KindFilterChip(
                             icon: Icons.star_outline,
                             label: strings.starKindDeadLabel,
@@ -328,6 +331,7 @@ class _AreaProjectsScreenState extends State<AreaProjectsScreen> {
                             color: colors.muted,
                             onTap: () => _toggleKind(StarKind.dead),
                           ),
+                          const SizedBox(width: 10),
                           _KindFilterChip(
                             icon: Icons.repeat,
                             label: strings.starKindPulsarChipLabel,
@@ -587,39 +591,55 @@ class _KindFilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Tooltip(
-      message: '$label · $count',
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: selected
-                ? color.withValues(alpha: 0.14)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: selected
-                  ? color.withValues(alpha: 0.5)
-                  : colors.nightBorder,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 16, color: selected ? color : colors.muted),
-              const SizedBox(width: 6),
-              Text(
-                '$count',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: selected ? colors.text : colors.muted,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: selected
+                    ? color.withValues(alpha: 0.14)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: selected
+                      ? color.withValues(alpha: 0.5)
+                      : colors.nightBorder,
                 ),
               ),
-            ],
-          ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 16, color: selected ? color : colors.muted),
+                  const SizedBox(width: 6),
+                  Text(
+                    '$count',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: selected ? colors.text : colors.muted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+            // Just the kind name — the count already sits inside the pill
+            // above, so it isn't repeated here.
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                color: selected ? color : colors.muted,
+              ),
+            ),
+          ],
         ),
       ),
     );

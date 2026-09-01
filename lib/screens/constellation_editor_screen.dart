@@ -747,12 +747,15 @@ class _EditorActionButton extends StatelessWidget {
             children: [
               Icon(icon, color: foreground, size: 18),
               const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  color: foreground,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: foreground,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
                 ),
               ),
             ],

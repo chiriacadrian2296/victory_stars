@@ -189,7 +189,7 @@ class StringsEn implements AppStrings {
   @override
   String get redoAction => 'Redo';
   @override
-  String get deletePointAction => 'Delete star';
+  String get deletePointAction => 'Delete';
   @override
   String get saveConstellationAction => 'Save';
   @override

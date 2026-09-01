@@ -4,15 +4,15 @@ import '../l10n/strings_scope.dart';
 import '../models/habit.dart';
 import '../models/project.dart';
 import '../theme/app_colors.dart';
-import 'area_kind_badge.dart';
+import 'area_tag.dart';
 import 'project_tag.dart';
+import 'star_kind_label.dart';
 
-/// A pulsar (habit) in a flat star list. Visually its own family — smaller
-/// accent color than a victory's gold, a repeat icon instead of a star, and
-/// a streak badge instead of a date/intensity row — matching how pulsars
-/// already read as a separate family of star in the constellation view.
-/// [isLit] dims the whole card the same way [DeadStarCard] dims a
-/// tombstoned star, since a dark pulsar is just as "not currently shining".
+/// A pulsar (habit) in a flat star list — a repeat icon and a streak badge
+/// instead of a date/intensity block. [isLit] dims the title, border, and
+/// streak the same way [DeadStarCard] dims a tombstoned star; the kind
+/// label itself stays the same gold-icon/white-text look regardless, like
+/// every other card's.
 class HabitCard extends StatelessWidget {
   const HabitCard({
     super.key,
@@ -56,17 +56,32 @@ class HabitCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AreaKindBadge(
-                      area: project?.area,
-                      kindIcon: Icons.repeat,
-                      kindLabel: strings.starKindPulsarTagLabel,
-                      kindColor: accent,
+                    StarKindLabel(
+                      icon: Icons.repeat,
+                      label: strings.starKindPulsarTagLabel,
                     ),
                     if (project != null) ...[
-                      const SizedBox(height: 8),
-                      ProjectTag(project: project!),
+                      const SizedBox(height: 10),
+                      Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            AreaTag(
+                              area: project!.area,
+                              iconSize: 18,
+                              fontSize: 15,
+                            ),
+                            const SizedBox(width: 14),
+                            ProjectTag(
+                              project: project!,
+                              iconSize: 15,
+                              fontSize: 14,
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Text(
                       habit.title,
                       style: TextStyle(

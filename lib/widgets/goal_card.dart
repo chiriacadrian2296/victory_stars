@@ -5,13 +5,12 @@ import '../models/project.dart';
 import '../models/star.dart';
 import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
-import 'area_kind_badge.dart';
+import 'area_tag.dart';
 import 'project_tag.dart';
+import 'star_kind_label.dart';
 
 /// A still-unlit goal in a flat star list — [star] is always expected to
-/// satisfy [Star.isGoal]. Dim-gold accents (instead of the solid gold a
-/// [StarCard] uses) mark it as "not yet a victory", and its own tag plus
-/// optional target date make that legible even out of context.
+/// satisfy [Star.isGoal].
 class GoalCard extends StatelessWidget {
   const GoalCard({super.key, required this.star, this.onTap, this.project});
 
@@ -43,17 +42,32 @@ class GoalCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AreaKindBadge(
-                      area: project?.area,
-                      kindIcon: Icons.flag_outlined,
-                      kindLabel: strings.achievedToggleOff,
-                      kindColor: colors.goldDim,
+                    StarKindLabel(
+                      icon: Icons.flag_outlined,
+                      label: strings.achievedToggleOff,
                     ),
                     if (project != null) ...[
-                      const SizedBox(height: 8),
-                      ProjectTag(project: project!),
+                      const SizedBox(height: 10),
+                      Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            AreaTag(
+                              area: project!.area,
+                              iconSize: 18,
+                              fontSize: 15,
+                            ),
+                            const SizedBox(width: 14),
+                            ProjectTag(
+                              project: project!,
+                              iconSize: 15,
+                              fontSize: 14,
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Text(
                       star.title,
                       style: TextStyle(
@@ -76,19 +90,17 @@ class GoalCard extends StatelessWidget {
                   ],
                 ),
               ),
-              // Not gold, unlike the other cards' top-right indicator —
-              // it's just an aspiration, not something already true.
               if (star.targetDate != null)
                 Positioned(
                   top: 14,
                   right: 14,
                   child: Row(
                     children: [
-                      Icon(Icons.event_outlined, size: 13, color: colors.muted),
+                      Icon(Icons.event_outlined, size: 13, color: colors.gold),
                       const SizedBox(width: 5),
                       Text(
                         formatDisplayDate(star.targetDate!, strings),
-                        style: TextStyle(fontSize: 12, color: colors.muted),
+                        style: TextStyle(fontSize: 12, color: colors.gold),
                       ),
                     ],
                   ),

@@ -5,16 +5,15 @@ import '../models/project.dart';
 import '../models/star.dart';
 import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
-import 'area_kind_badge.dart';
+import 'area_tag.dart';
 import 'project_tag.dart';
+import 'star_kind_label.dart';
 
 /// A tombstoned star in a flat star list — [star] is always expected to
-/// satisfy `star.dead`. Rendered in muted tones (title included) so it
-/// visibly reads as "spent" next to lit victories and dim-gold goals — the
-/// one exception is its death date, deliberately gold like every other
-/// card's top-right indicator, since that's the one fact about a dead star
-/// still worth drawing the eye to. Tapping it opens the reader's
-/// "resurrect" flow.
+/// satisfy `star.dead`. The title stays muted so it visibly reads as
+/// "spent" next to lit victories and goals; everything else (kind label,
+/// area/project, death date) uses the same gold-accented look every other
+/// card does. Tapping it opens the reader's "resurrect" flow.
 class DeadStarCard extends StatelessWidget {
   const DeadStarCard({super.key, required this.star, this.onTap, this.project});
 
@@ -46,21 +45,32 @@ class DeadStarCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AreaKindBadge(
-                      area: project?.area,
-                      kindIcon: Icons.star_outline,
-                      kindLabel: strings.deadStarTitle,
-                      kindColor: colors.muted,
+                    StarKindLabel(
+                      icon: Icons.star_outline,
+                      label: strings.deadStarTitle,
                     ),
                     if (project != null) ...[
-                      const SizedBox(height: 8),
-                      ProjectTag(
-                        project: project!,
-                        textColor: colors.muted,
-                        iconColor: colors.muted,
+                      const SizedBox(height: 10),
+                      Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            AreaTag(
+                              area: project!.area,
+                              iconSize: 18,
+                              fontSize: 15,
+                            ),
+                            const SizedBox(width: 14),
+                            ProjectTag(
+                              project: project!,
+                              iconSize: 15,
+                              fontSize: 14,
+                            ),
+                          ],
+                        ),
                       ),
                     ],
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Text(
                       star.title,
                       style: TextStyle(

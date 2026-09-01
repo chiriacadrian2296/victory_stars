@@ -5,9 +5,10 @@ import '../models/project.dart';
 import '../models/star.dart';
 import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
-import 'area_kind_badge.dart';
+import 'area_tag.dart';
 import 'intensity_bolts.dart';
 import 'project_tag.dart';
+import 'star_kind_label.dart';
 
 /// A single achieved star (victory) in a flat list — [star] is always
 /// expected to satisfy [Star.isAchieved]; every list this card appears in
@@ -48,17 +49,35 @@ class StarCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AreaKindBadge(
-                      area: project?.area,
-                      kindIcon: Icons.star,
-                      kindLabel: strings.starKindVictoryTagLabel,
-                      kindColor: colors.gold,
+                    // A victory reads as fully "lit" (gold icon and text),
+                    // unlike the other kinds' gold-icon/white-text look.
+                    StarKindLabel(
+                      icon: Icons.star,
+                      label: strings.starKindVictoryTagLabel,
+                      textColor: colors.gold,
                     ),
                     if (project != null) ...[
-                      const SizedBox(height: 8),
-                      ProjectTag(project: project!),
+                      const SizedBox(height: 10),
+                      Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            AreaTag(
+                              area: project!.area,
+                              iconSize: 18,
+                              fontSize: 15,
+                            ),
+                            const SizedBox(width: 14),
+                            ProjectTag(
+                              project: project!,
+                              iconSize: 15,
+                              fontSize: 14,
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Text(
                       star.title,
                       style: TextStyle(
@@ -82,8 +101,8 @@ class StarCard extends StatelessWidget {
                     Center(
                       child: IntensityBolts(
                         intensity: star.intensity!,
-                        size: 16,
-                        spacing: 3,
+                        size: 20,
+                        spacing: 4,
                         emphasizeLast: true,
                       ),
                     ),

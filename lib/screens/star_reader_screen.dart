@@ -1,11 +1,9 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../data/custom_constellation_repository.dart';
@@ -19,6 +17,7 @@ import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
 import '../widgets/area_tag.dart';
 import '../widgets/intensity_bolts.dart';
+import '../widgets/photo_image.dart';
 import '../widgets/photo_picker.dart';
 import '../widgets/project_tag.dart';
 import '../widgets/responsive_content.dart';
@@ -103,14 +102,14 @@ class _StarReaderScreenState extends State<StarReaderScreen> {
       );
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null) throw StateError('toByteData returned null');
-      final dir = await getTemporaryDirectory();
-      final file = File(
-        '${dir.path}/star_${DateTime.now().microsecondsSinceEpoch}.png',
-      );
-      await file.writeAsBytes(byteData.buffer.asUint8List());
       if (!mounted) return;
+      final shareFile = XFile.fromData(
+        byteData.buffer.asUint8List(),
+        name: 'star_${DateTime.now().microsecondsSinceEpoch}.png',
+        mimeType: 'image/png',
+      );
       await SharePlus.instance.share(
-        ShareParams(files: [XFile(file.path)], text: _stars[_index].title),
+        ShareParams(files: [shareFile], text: _stars[_index].title),
       );
     } catch (_) {
       if (mounted) {
@@ -255,8 +254,8 @@ class _StarReaderScreenState extends State<StarReaderScreen> {
                 fit: StackFit.expand,
                 children: [
                   if (photoPath != null)
-                    Image.file(
-                      File(photoPath),
+                    PhotoImage(
+                      photoPath: photoPath,
                       fit: BoxFit.cover,
                       alignment: Alignment.center,
                     ),
@@ -531,8 +530,8 @@ class _ShareableStarCard extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         if (photoPath != null)
-          Image.file(
-            File(photoPath),
+          PhotoImage(
+            photoPath: photoPath,
             fit: BoxFit.cover,
             alignment: Alignment.center,
           ),
@@ -819,7 +818,7 @@ class _MarkAchievedSheetState extends State<_MarkAchievedSheet> {
 
       final croppedBytes = await Navigator.of(context).push<Uint8List>(
         MaterialPageRoute(
-          builder: (_) => PhotoCropScreen(imageFile: File(picked.path)),
+          builder: (_) => PhotoCropScreen(imageFile: picked),
         ),
       );
       if (croppedBytes == null || !mounted) return;

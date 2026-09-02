@@ -52,6 +52,8 @@ class StringsIt implements AppStrings {
   @override
   String get navSky => 'Cielo';
   @override
+  String get navNebula => 'Nebulosa';
+  @override
   String get navStats => 'Statistiche';
   @override
   String get navSettings => 'Impostazioni';
@@ -170,7 +172,7 @@ class StringsIt implements AppStrings {
   String get areaIntensityStatLabel => 'Intensità';
 
   @override
-  String get dataSection => 'Dati';
+  String get dataSection => 'Strumenti di debug';
   @override
   String get seedSampleData => 'Genera dati di esempio';
   @override
@@ -586,6 +588,63 @@ class StringsIt implements AppStrings {
   @override
   String monthTitle(DateTime month) =>
       '${_fullMonths[month.month - 1]} ${month.year}';
+
+  @override
+  String get onboardingIntroTitle => 'Benvenuto nel tuo Cielo';
+  @override
+  String get onboardingIntroBody =>
+      'Victory Stars trasforma le cose che realizzi nel tuo cielo notturno '
+      'personale — un posto dove guardare indietro a tutto ciò che hai '
+      'attraversato.';
+  @override
+  String get onboardingVictoriesTitle => 'Ogni vittoria diventa una stella';
+  @override
+  String get onboardingVictoriesBody =>
+      'Nel momento in cui superi qualcosa che contava, accendi una '
+      'stella. Resta lì — la prova di ciò che hai fatto, ogni volta che '
+      'vuoi rivederla.';
+  @override
+  String get onboardingGoalsTitle => 'Non tutte le stelle sono già accese';
+  @override
+  String get onboardingGoalsBody =>
+      'Fissa un obiettivo per qualcosa a cui stai lavorando. Raggiungilo e '
+      'si accenderà come le altre stelle — oppure lascialo andare, e '
+      'diventerà una stella morta. In ogni caso, resta parte del tuo '
+      'cielo.';
+  @override
+  String get onboardingHabitsTitle => 'Le abitudini pulsano come pulsar';
+  @override
+  String get onboardingHabitsBody =>
+      "Un'abitudine che continui a portare avanti è una pulsar — resta "
+      'accesa finché mantieni il ritmo.';
+  @override
+  String get onboardingConstellationsTitle => 'Raggruppale in costellazioni';
+  @override
+  String get onboardingConstellationsBody =>
+      'Stelle e pulsar che riguardano la stessa cosa — un progetto, una '
+      'relazione, qualsiasi cosa — appartengono a una costellazione che '
+      'nomini tu.';
+  @override
+  String get onboardingAreasTitle => 'Le costellazioni vivono nelle supernove';
+  @override
+  String get onboardingAreasBody =>
+      'Ogni costellazione si trova dentro una delle 8 supernove — le aree '
+      'fisse della tua vita, dalla fisica alla sociale alla spirituale. '
+      'Insieme, sono il tuo Cielo.';
+  @override
+  String get onboardingOutroTitle => 'Pronto ad accendere la tua prima stella?';
+  @override
+  String get onboardingOutroBody =>
+      'Vai al tab Cielo quando vuoi guardare indietro, oppure inizia '
+      'subito ad aggiungere le tue vittorie.';
+  @override
+  String get onboardingNextAction => 'Avanti';
+  @override
+  String get onboardingGetStartedAction => 'Inizia';
+  @override
+  String get onboardingSkipTooltip => 'Salta';
+  @override
+  String get replayOnboardingAction => 'Rivedi onboarding';
 }
 
 const _fullMonths = [

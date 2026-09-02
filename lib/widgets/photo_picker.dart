@@ -1,9 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 
 import '../l10n/strings_scope.dart';
 import '../theme/app_colors.dart';
+import 'photo_image.dart';
 
 /// Either an empty tappable placeholder (no photo yet) or a preview of the
 /// current photo, with a small remove button over its corner. Shared by
@@ -67,8 +66,8 @@ class PhotoPicker extends StatelessWidget {
               borderRadius: borderRadius,
               child: ClipRRect(
                 borderRadius: borderRadius,
-                child: Image.file(
-                  File(path),
+                child: PhotoImage(
+                  photoPath: path,
                   width: previewWidth,
                   height: previewHeight,
                   fit: BoxFit.cover,

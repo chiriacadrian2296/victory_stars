@@ -60,6 +60,12 @@ class _AreaDetailScreenState extends State<AreaDetailScreen> {
     _visionFocusNode.requestFocus();
   }
 
+  Future<void> _confirmVision() async {
+    await _saveVision();
+    if (!mounted) return;
+    setState(() => _editingVision = false);
+  }
+
   @override
   void dispose() {
     _visionFocusNode.removeListener(_handleFocusChange);
@@ -188,29 +194,32 @@ class _AreaDetailScreenState extends State<AreaDetailScreen> {
                       ),
                     ),
                   const SizedBox(height: 16),
-                  if (!_editingVision)
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _startEditingVision,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: colors.gold,
-                          side: BorderSide(color: colors.gold),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _editingVision
+                          ? _confirmVision
+                          : _startEditingVision,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: colors.gold,
+                        side: BorderSide(color: colors.gold),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        icon: const Icon(Icons.edit),
-                        label: Text(
-                          strings.editVisionAction,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                          ),
+                      ),
+                      icon: Icon(_editingVision ? Icons.check : Icons.edit),
+                      label: Text(
+                        _editingVision
+                            ? strings.saveChanges
+                            : strings.editVisionAction,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
                         ),
                       ),
                     ),
+                  ),
                 ],
               ),
             ),

@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -6,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:image/image.dart' as img;
+import 'package:image_picker/image_picker.dart';
 
 import '../l10n/strings_scope.dart';
 import '../theme/app_colors.dart';
@@ -24,6 +24,27 @@ Uint8List _bakeOrientation(Uint8List bytes) {
   return img.encodeJpg(img.bakeOrientation(decoded), quality: 92);
 }
 
+/// The rendered crop frame's raw RGBA pixels (from [RenderRepaintBoundary]),
+/// bundled into one payload so [_encodeJpeg] can run through [compute] —
+/// which takes a single argument.
+typedef _RawFrame = ({int width, int height, Uint8List rgba});
+
+/// Re-encodes the cropped frame as JPEG rather than keeping the PNG
+/// [RenderRepaintBoundary.toImage] naturally produces — PNG is lossless but
+/// far bigger for a photo, and on web every saved photo lives as a
+/// base64-encoded [SharedPreferences] entry (see `PhotoStorage`), where
+/// [SharedPreferences]'s underlying localStorage has only a few MB of quota
+/// for the *entire* app to share.
+Uint8List _encodeJpeg(_RawFrame frame) {
+  final image = img.Image.fromBytes(
+    width: frame.width,
+    height: frame.height,
+    bytes: frame.rgba.buffer,
+    numChannels: 4,
+  );
+  return img.encodeJpg(image, quality: 85);
+}
+
 /// Forces every star photo through the same 9:16 crop before it's saved —
 /// whether it came from the camera or an arbitrarily-shaped gallery photo —
 /// since a win's photo is always used as a full-bleed background (see
@@ -31,12 +52,15 @@ Uint8List _bakeOrientation(Uint8List bytes) {
 /// shape there matters more than preserving whatever shape the source photo
 /// happened to have.
 ///
-/// Pops with the cropped image's encoded PNG bytes, or null if the user
+/// Pops with the cropped image's encoded JPEG bytes, or null if the user
 /// backed out without confirming.
 class PhotoCropScreen extends StatefulWidget {
   const PhotoCropScreen({super.key, required this.imageFile});
 
-  final File imageFile;
+  // XFile (not dart:io's File) so this works on web too — its readAsBytes
+  // reads from the picker's blob URL there, where File is a non-functional
+  // stub.
+  final XFile imageFile;
 
   @override
   State<PhotoCropScreen> createState() => _PhotoCropScreenState();
@@ -44,7 +68,11 @@ class PhotoCropScreen extends StatefulWidget {
 
 class _PhotoCropScreenState extends State<PhotoCropScreen> {
   static const _aspectRatio = 9 / 16;
-  static const _outputWidth = 1600.0;
+  // Smaller on web: every photo there is a base64 string sharing a few MB of
+  // total localStorage quota with the rest of the app's data (see
+  // `PhotoStorage`), so it needs to be far more frugal than native's own
+  // filesystem, which has no such shared cap.
+  static const _outputWidth = kIsWeb ? 800.0 : 1600.0;
 
   final _boundaryKey = GlobalKey();
   final _transformController = TransformationController();
@@ -107,10 +135,18 @@ class _PhotoCropScreenState extends State<PhotoCropScreen> {
       // across devices.
       final pixelRatio = _outputWidth / boundary.size.width;
       final rendered = await boundary.toImage(pixelRatio: pixelRatio);
-      final byteData = await rendered.toByteData(format: ui.ImageByteFormat.png);
+      final byteData = await rendered.toByteData(
+        format: ui.ImageByteFormat.rawRgba,
+      );
       if (!mounted) return;
       if (byteData == null) throw StateError('toByteData returned null');
-      Navigator.of(context).pop(byteData.buffer.asUint8List());
+      final jpegBytes = await compute(_encodeJpeg, (
+        width: rendered.width,
+        height: rendered.height,
+        rgba: byteData.buffer.asUint8List(),
+      ));
+      if (!mounted) return;
+      Navigator.of(context).pop(jpegBytes);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.strings.photoPickError)));

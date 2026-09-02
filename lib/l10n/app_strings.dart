@@ -29,6 +29,7 @@ abstract class AppStrings {
   // Bottom navigation
   String get navHome;
   String get navSky;
+  String get navNebula;
   String get navStats;
   String get navSettings;
   String get collapseSidebarAction;
@@ -312,4 +313,26 @@ abstract class AppStrings {
 
   /// The dashboard calendar's month heading, e.g. "August 2026".
   String monthTitle(DateTime month);
+
+  // Onboarding — the first-launch "stories" tutorial explaining the
+  // star/goal/dead-star, pulsar, constellation, supernova metaphor. Also
+  // reachable from Settings' Data section (debug builds only) to replay it.
+  String get onboardingIntroTitle;
+  String get onboardingIntroBody;
+  String get onboardingVictoriesTitle;
+  String get onboardingVictoriesBody;
+  String get onboardingGoalsTitle;
+  String get onboardingGoalsBody;
+  String get onboardingHabitsTitle;
+  String get onboardingHabitsBody;
+  String get onboardingConstellationsTitle;
+  String get onboardingConstellationsBody;
+  String get onboardingAreasTitle;
+  String get onboardingAreasBody;
+  String get onboardingOutroTitle;
+  String get onboardingOutroBody;
+  String get onboardingNextAction;
+  String get onboardingGetStartedAction;
+  String get onboardingSkipTooltip;
+  String get replayOnboardingAction;
 }

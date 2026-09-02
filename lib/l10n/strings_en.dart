@@ -52,6 +52,8 @@ class StringsEn implements AppStrings {
   @override
   String get navSky => 'Sky';
   @override
+  String get navNebula => 'Nebula';
+  @override
   String get navStats => 'Stats';
   @override
   String get navSettings => 'Settings';
@@ -170,7 +172,7 @@ class StringsEn implements AppStrings {
   String get areaIntensityStatLabel => 'Intensity';
 
   @override
-  String get dataSection => 'Data';
+  String get dataSection => 'Debug tools';
   @override
   String get seedSampleData => 'Seed sample data';
   @override
@@ -580,6 +582,60 @@ class StringsEn implements AppStrings {
   @override
   String monthTitle(DateTime month) =>
       '${_fullMonths[month.month - 1]} ${month.year}';
+
+  @override
+  String get onboardingIntroTitle => 'Welcome to your Sky';
+  @override
+  String get onboardingIntroBody =>
+      'Victory Stars turns the things you accomplish into your own night '
+      "sky — a place to look back on everything you've been through.";
+  @override
+  String get onboardingVictoriesTitle => 'Every win becomes a star';
+  @override
+  String get onboardingVictoriesBody =>
+      'The moment you get through something that mattered, you light a '
+      'star. It stays there — proof of what you did, whenever you need to '
+      'see it again.';
+  @override
+  String get onboardingGoalsTitle => 'Not every star is lit yet';
+  @override
+  String get onboardingGoalsBody =>
+      "Set a goal for something you're working toward. Reach it and it "
+      "lights up like any other star — let it go instead, and it becomes "
+      "a dead star. Either way, it's still part of your sky.";
+  @override
+  String get onboardingHabitsTitle => 'Habits pulse like pulsars';
+  @override
+  String get onboardingHabitsBody =>
+      'A habit you keep showing up for is a pulsar — it stays lit as long '
+      'as you keep the rhythm going.';
+  @override
+  String get onboardingConstellationsTitle => 'Group them into constellations';
+  @override
+  String get onboardingConstellationsBody =>
+      'Stars and pulsars about the same thing — a project, a relationship, '
+      'anything — belong to a constellation you name yourself.';
+  @override
+  String get onboardingAreasTitle => 'Constellations live in supernovas';
+  @override
+  String get onboardingAreasBody =>
+      'Every constellation sits inside one of 8 supernovas — the fixed '
+      'areas of your life, from physical to social to spiritual. Together, '
+      "they're your Sky.";
+  @override
+  String get onboardingOutroTitle => 'Ready to light your first star?';
+  @override
+  String get onboardingOutroBody =>
+      'Head to the Sky tab any time to look back, or start adding wins '
+      'right away.';
+  @override
+  String get onboardingNextAction => 'Next';
+  @override
+  String get onboardingGetStartedAction => 'Get started';
+  @override
+  String get onboardingSkipTooltip => 'Skip';
+  @override
+  String get replayOnboardingAction => 'Replay onboarding';
 }
 
 const _fullMonths = [

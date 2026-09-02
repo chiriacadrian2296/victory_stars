@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -340,7 +339,7 @@ class _AddStarScreenState extends State<AddStarScreen> {
 
       final croppedBytes = await Navigator.of(context).push<Uint8List>(
         MaterialPageRoute(
-          builder: (_) => PhotoCropScreen(imageFile: File(picked.path)),
+          builder: (_) => PhotoCropScreen(imageFile: picked),
         ),
       );
       if (croppedBytes == null || !mounted) return;

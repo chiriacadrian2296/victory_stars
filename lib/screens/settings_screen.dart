@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -14,12 +15,13 @@ import '../notifications/reminder_service.dart';
 import '../settings/settings_controller.dart';
 import '../theme/app_colors.dart';
 import '../widgets/responsive_content.dart';
+import 'onboarding_screen.dart';
 
 /// The Settings tab: appearance (light/dark), language, the daily reminder
-/// notification, a "Data" section (seed/reset — dev tooling that lives here
-/// rather than cluttering the dashboard), and a short "about" block. Reads/
-/// writes through [SettingsController], which persists each change
-/// immediately.
+/// notification, a debug-only tools section (seed/reset data, replay
+/// onboarding — visible only in debug builds, via `kDebugMode`), and a short
+/// "about" block. Reads/writes through [SettingsController], which persists
+/// each change immediately.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
     super.key,
@@ -360,39 +362,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 28),
-
-                  _SectionLabel(strings.dataSection),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 4,
-                    children: [
-                      TextButton.icon(
-                        onPressed: _seedSampleData,
-                        icon: Icon(
-                          Icons.science_outlined,
-                          size: 16,
-                          color: colors.muted,
+                  // Dev-only tooling (seed/reset data, replay onboarding) —
+                  // gated on kDebugMode (not a runtime setting), header
+                  // included, so the whole section disappears from release
+                  // builds automatically instead of needing to be stripped
+                  // out by hand before shipping.
+                  if (kDebugMode) ...[
+                    const SizedBox(height: 28),
+                    _SectionLabel(strings.dataSection),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 4,
+                      children: [
+                        TextButton.icon(
+                          onPressed: _seedSampleData,
+                          icon: Icon(
+                            Icons.science_outlined,
+                            size: 16,
+                            color: colors.muted,
+                          ),
+                          label: Text(
+                            strings.seedSampleData,
+                            style: TextStyle(
+                              color: colors.muted,
+                              fontSize: 12,
+                            ),
+                          ),
                         ),
-                        label: Text(
-                          strings.seedSampleData,
-                          style: TextStyle(color: colors.muted, fontSize: 12),
+                        TextButton.icon(
+                          onPressed: _resetAllData,
+                          icon: Icon(
+                            Icons.delete_outline,
+                            size: 16,
+                            color: colors.danger,
+                          ),
+                          label: Text(
+                            strings.resetAllData,
+                            style: TextStyle(
+                              color: colors.danger,
+                              fontSize: 12,
+                            ),
+                          ),
                         ),
-                      ),
-                      TextButton.icon(
-                        onPressed: _resetAllData,
-                        icon: Icon(
-                          Icons.delete_outline,
-                          size: 16,
-                          color: colors.danger,
+                        TextButton.icon(
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const OnboardingScreen(),
+                            ),
+                          ),
+                          icon: Icon(
+                            Icons.auto_stories_outlined,
+                            size: 16,
+                            color: colors.muted,
+                          ),
+                          label: Text(
+                            strings.replayOnboardingAction,
+                            style: TextStyle(
+                              color: colors.muted,
+                              fontSize: 12,
+                            ),
+                          ),
                         ),
-                        label: Text(
-                          strings.resetAllData,
-                          style: TextStyle(color: colors.danger, fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 28),
 
                   _SectionLabel(strings.aboutSection),

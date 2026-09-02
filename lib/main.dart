@@ -7,11 +7,13 @@ import 'data/custom_constellation_repository.dart';
 import 'data/habit_completion_repository.dart';
 import 'data/habit_repository.dart';
 import 'data/legacy_constellation_migration.dart';
+import 'data/onboarding_prefs.dart';
 import 'data/project_repository.dart';
 import 'data/star_repository.dart';
 import 'l10n/strings_scope.dart';
 import 'notifications/reminder_service.dart';
 import 'screens/add_star_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/root_screen.dart';
 import 'settings/settings_controller.dart';
 import 'theme/app_theme.dart';
@@ -70,6 +72,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
       final customConstellationRepository =
           await CustomConstellationRepository.create();
       final areaVisionRepository = await AreaVisionRepository.create();
+      final onboardingPrefs = await OnboardingPrefs.create();
       // Idempotent — safe (and cheap once everything's migrated) to run on
       // every launch. Must finish before setState reveals the app below, so
       // every Project any screen reads already has its customConstellationId.
@@ -113,10 +116,28 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
         WidgetsBinding.instance.addPostFrameCallback(
           (_) => _openAddStarFromNotification(),
         );
+      } else if (!onboardingPrefs.hasSeenOnboarding) {
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _showOnboarding(onboardingPrefs),
+        );
       }
     } catch (error) {
       setState(() => _loadError = error);
     }
+  }
+
+  /// Pushed once, the first time the app is ever opened (see the
+  /// `!onboardingPrefs.hasSeenOnboarding` check in [_load]) — but however it
+  /// closes (finished, skipped, or just backed out of), that's the signal to
+  /// mark it seen, so it never auto-shows again regardless of how the user
+  /// left it.
+  Future<void> _showOnboarding(OnboardingPrefs prefs) async {
+    final navigator = _navigatorKey.currentState;
+    if (navigator == null) return;
+    await navigator.push(
+      MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+    );
+    await prefs.setSeenOnboarding(true);
   }
 
   Future<void> _openAddStarFromNotification() async {

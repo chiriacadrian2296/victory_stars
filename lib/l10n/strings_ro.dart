@@ -52,6 +52,8 @@ class StringsRo implements AppStrings {
   @override
   String get navSky => 'Cer';
   @override
+  String get navNebula => 'Nebuloasă';
+  @override
   String get navStats => 'Statistici';
   @override
   String get navSettings => 'Setări';
@@ -170,7 +172,7 @@ class StringsRo implements AppStrings {
   String get areaIntensityStatLabel => 'Intensitate';
 
   @override
-  String get dataSection => 'Date';
+  String get dataSection => 'Instrumente de depanare';
   @override
   String get seedSampleData => 'Generează date de exemplu';
   @override
@@ -585,6 +587,61 @@ class StringsRo implements AppStrings {
   @override
   String monthTitle(DateTime month) =>
       '${_fullMonths[month.month - 1]} ${month.year}';
+
+  @override
+  String get onboardingIntroTitle => 'Bine ai venit pe cerul tău';
+  @override
+  String get onboardingIntroBody =>
+      'Victory Stars transformă lucrurile pe care le realizezi în propriul '
+      'tău cer nocturn — un loc unde să privești înapoi la tot ce ai '
+      'trecut.';
+  @override
+  String get onboardingVictoriesTitle => 'Fiecare victorie devine o stea';
+  @override
+  String get onboardingVictoriesBody =>
+      'În momentul în care treci peste ceva important, aprinzi o stea. '
+      'Rămâne acolo — dovada a ceea ce ai făcut, oricând vrei să o '
+      'revezi.';
+  @override
+  String get onboardingGoalsTitle => 'Nu toate stelele sunt încă aprinse';
+  @override
+  String get onboardingGoalsBody =>
+      'Stabilește un obiectiv pentru ceva la care lucrezi. Atinge-l și se '
+      'va aprinde ca orice altă stea — sau renunță, și va deveni o stea '
+      'moartă. Oricum, rămâne parte din cerul tău.';
+  @override
+  String get onboardingHabitsTitle => 'Obiceiurile pulsează ca niște pulsari';
+  @override
+  String get onboardingHabitsBody =>
+      'Un obicei pe care continui să-l urmezi este un pulsar — rămâne '
+      'aprins atât timp cât păstrezi ritmul.';
+  @override
+  String get onboardingConstellationsTitle => 'Grupează-le în constelații';
+  @override
+  String get onboardingConstellationsBody =>
+      'Stelele și pulsarii legați de același lucru — un proiect, o '
+      'relație, orice — aparțin unei constelații pe care o numești tu.';
+  @override
+  String get onboardingAreasTitle => 'Constelațiile trăiesc în supernove';
+  @override
+  String get onboardingAreasBody =>
+      'Fiecare constelație se află într-una din cele 8 supernove — zonele '
+      'fixe ale vieții tale, de la fizic la social la spiritual. Împreună, '
+      'sunt Cerul tău.';
+  @override
+  String get onboardingOutroTitle => 'Gata să aprinzi prima ta stea?';
+  @override
+  String get onboardingOutroBody =>
+      'Mergi oricând la tab-ul Cer ca să privești înapoi, sau începe '
+      'chiar acum să-ți adaugi victoriile.';
+  @override
+  String get onboardingNextAction => 'Următorul';
+  @override
+  String get onboardingGetStartedAction => 'Începe';
+  @override
+  String get onboardingSkipTooltip => 'Sari peste';
+  @override
+  String get replayOnboardingAction => 'Revezi onboarding-ul';
 }
 
 const _fullMonths = [

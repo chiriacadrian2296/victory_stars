@@ -12,13 +12,16 @@ import '../settings/settings_controller.dart';
 import '../theme/app_colors.dart';
 import '../utils/responsive.dart';
 import 'home_screen.dart';
+import 'nebula_screen.dart';
 import 'settings_screen.dart';
 import 'sky_screen.dart';
 import 'stats_screen.dart';
 
 /// The app's root scaffold: switches between the dashboard (Home), the
 /// life-areas hub (Sky — constellations and the flat searchable star list
-/// live together there now, switched per-area), and app Settings. Below
+/// live together there now, switched per-area), the animated nebula preview
+/// (Nebula — still exploratory, see [NebulaScreen]), Stats, and Settings.
+/// Below
 /// [kWideLayoutBreakpoint] that's a bottom nav bar (phone chrome); at or
 /// above it, a custom side rail (desktop/web chrome, see [_RailHeader] and
 /// [_RailButton]) — see [isWideLayout]. Repositories and the reminder
@@ -75,6 +78,11 @@ class _RootScreenState extends State<RootScreen> {
         label: strings.navSky,
       ),
       (
+        icon: Icons.blur_on,
+        selected: Icons.blur_on,
+        label: strings.navNebula,
+      ),
+      (
         icon: Icons.bar_chart_outlined,
         selected: Icons.bar_chart,
         label: strings.navStats,
@@ -104,6 +112,7 @@ class _RootScreenState extends State<RootScreen> {
           customConstellationRepository: widget.customConstellationRepository,
           areaVisionRepository: widget.areaVisionRepository,
         ),
+        const NebulaScreen(),
         StatsScreen(
           starRepository: widget.starRepository,
           projectRepository: widget.projectRepository,

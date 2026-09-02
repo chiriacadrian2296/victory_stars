@@ -528,100 +528,128 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
                 ],
               ),
               Expanded(
-                // Split into two equal-flex regions around the fixed-size
-                // canvas, rather than centering the canvas (or a title+canvas
-                // group) as one block — that only balances the space *outside*
-                // the group, not the title's own position within it. Equal
-                // flex above and below puts the canvas in the true middle of
-                // this area; centering the title inside the top region alone
-                // (which spans exactly from the toolbar to the canvas) puts it
-                // equidistant from both, however tall that region ends up
-                // being.
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: widget.existing == null
-                          ? const SizedBox()
-                          : Center(
+                // The canvas is a square capped to whichever of the
+                // available width/height is smaller — sizing it off width
+                // alone (an AspectRatio taking the Column's full width)
+                // could ask for more height than this region actually has
+                // on a wide-but-short viewport (typical of a browser
+                // window), overflowing past the controls below it. Title
+                // (only shown when editing an existing shape) gets its own
+                // fixed slot above the canvas; equal flex above/below what's
+                // left centers the canvas in the remaining space.
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    const titleHeight = 44.0;
+                    final hasTitle = widget.existing != null;
+                    final availableForCanvas =
+                        constraints.maxHeight - (hasTitle ? titleHeight : 0);
+                    final canvasSize = math.min(
+                      constraints.maxWidth,
+                      availableForCanvas,
+                    );
+                    return Column(
+                      children: [
+                        if (hasTitle)
+                          SizedBox(
+                            height: titleHeight,
+                            child: Center(
                               child: _ExistingConstellationHeader(
                                 constellation: widget.existing!,
                               ),
                             ),
-                    ),
-                    AspectRatio(
-                      aspectRatio: 1,
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          _canvasSize = constraints.biggest;
-                          return Listener(
-                            behavior: HitTestBehavior.opaque,
-                            onPointerDown: _handlePointerDown,
-                            onPointerMove: _handlePointerMove,
-                            onPointerUp: _handlePointerUp,
-                            child: Container(
-                              clipBehavior: Clip.antiAlias,
-                              decoration: BoxDecoration(
-                                color: colors.nightPanel,
-                                border: Border.all(color: colors.nightBorder),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Stack(
-                                children: [
-                                  if (_gridEnabled)
-                                    Positioned.fill(
-                                      child: CustomPaint(
-                                        painter: _GridPainter(
-                                          divisions: _gridDivisions,
+                          ),
+                        Expanded(
+                          child: Center(
+                            child: SizedBox(
+                              width: canvasSize,
+                              height: canvasSize,
+                              child: LayoutBuilder(
+                                builder: (context, canvasConstraints) {
+                                  _canvasSize = canvasConstraints.biggest;
+                                  return Listener(
+                                    behavior: HitTestBehavior.opaque,
+                                    onPointerDown: _handlePointerDown,
+                                    onPointerMove: _handlePointerMove,
+                                    onPointerUp: _handlePointerUp,
+                                    child: Container(
+                                      clipBehavior: Clip.antiAlias,
+                                      decoration: BoxDecoration(
+                                        color: colors.nightPanel,
+                                        border: Border.all(
                                           color: colors.nightBorder,
-                                          // Just a touch brighter than the
-                                          // regular grid lines — a small blend
-                                          // toward `muted` rather than jumping
-                                          // straight to it, so the center reads
-                                          // as "the same grid, slightly lifted"
-                                          // rather than a visually distinct line.
-                                          centerColor: Color.lerp(
-                                            colors.nightBorder,
-                                            colors.muted,
-                                            0.3,
-                                          )!,
                                         ),
+                                        borderRadius: BorderRadius.circular(
+                                          12,
+                                        ),
+                                      ),
+                                      child: Stack(
+                                        children: [
+                                          if (_gridEnabled)
+                                            Positioned.fill(
+                                              child: CustomPaint(
+                                                painter: _GridPainter(
+                                                  divisions: _gridDivisions,
+                                                  color: colors.nightBorder,
+                                                  // Just a touch brighter than
+                                                  // the regular grid lines —
+                                                  // a small blend toward
+                                                  // `muted` rather than
+                                                  // jumping straight to it,
+                                                  // so the center reads as
+                                                  // "the same grid, slightly
+                                                  // lifted" rather than a
+                                                  // visually distinct line.
+                                                  centerColor: Color.lerp(
+                                                    colors.nightBorder,
+                                                    colors.muted,
+                                                    0.3,
+                                                  )!,
+                                                ),
+                                              ),
+                                            ),
+                                          if (_points.isEmpty)
+                                            Center(
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(
+                                                  24,
+                                                ),
+                                                child: Text(
+                                                  strings
+                                                      .constellationEditorEmptyHint,
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    color: colors.muted,
+                                                  ),
+                                                ),
+                                              ),
+                                            )
+                                          else
+                                            CustomPaint(
+                                              size: canvasConstraints.biggest,
+                                              painter: ConstellationEditorPainter(
+                                                points: _pixelPoints,
+                                                edges: _edges,
+                                                highlightedIndex:
+                                                    _armedIndex ??
+                                                    _draggingIndex,
+                                                pointColor: colors.text,
+                                                highlightColor: colors.gold,
+                                                lineColor: colors.gold
+                                                    .withValues(alpha: 0.5),
+                                              ),
+                                            ),
+                                        ],
                                       ),
                                     ),
-                                  if (_points.isEmpty)
-                                    Center(
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(24),
-                                        child: Text(
-                                          strings.constellationEditorEmptyHint,
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(color: colors.muted),
-                                        ),
-                                      ),
-                                    )
-                                  else
-                                    CustomPaint(
-                                      size: constraints.biggest,
-                                      painter: ConstellationEditorPainter(
-                                        points: _pixelPoints,
-                                        edges: _edges,
-                                        highlightedIndex:
-                                            _armedIndex ?? _draggingIndex,
-                                        pointColor: colors.text,
-                                        highlightColor: colors.gold,
-                                        lineColor: colors.gold.withValues(
-                                          alpha: 0.5,
-                                        ),
-                                      ),
-                                    ),
-                                ],
+                                  );
+                                },
                               ),
                             ),
-                          );
-                        },
-                      ),
-                    ),
-                    const Expanded(child: SizedBox()),
-                  ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
               Padding(
@@ -679,8 +707,7 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                child: SizedBox(
-                  width: double.infinity,
+                child: Center(
                   child: ElevatedButton(
                     onPressed: canSave ? _save : null,
                     style: ElevatedButton.styleFrom(
@@ -688,7 +715,10 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
                       foregroundColor: colors.onGold,
                       disabledBackgroundColor: colors.nightBorder,
                       disabledForegroundColor: colors.muted,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 40,
+                        vertical: 14,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),

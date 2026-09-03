@@ -16,7 +16,6 @@ import '../models/habit_completion.dart';
 import '../models/project.dart';
 import '../models/star.dart';
 import '../theme/app_colors.dart';
-import '../utils/habit_stats.dart';
 import '../widgets/constellation_painter.dart';
 import 'habit_reader_screen.dart';
 import 'star_reader_screen.dart';
@@ -112,58 +111,22 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
   }
 
   List<ConstellationStar> _buildRenderStars() {
-    final shape = _shape;
-    if (shape == null) {
-      _edges = const [];
-      _shapeStarCount = 0;
-      return const [];
-    }
-
-    _shapeStarCount = _stars.length;
-    final layout = buildConstellationLayout(shape, _stars.length);
-    _edges = layout.edges;
-
-    final result = <ConstellationStar>[];
-    for (var i = 0; i < _stars.length; i++) {
-      final star = _stars[i];
-      final position = i < layout.points.length
-          ? layout.points[i]
-          : seededOverflowPosition(star.id);
-      final kind = star.dead
-          ? StarKind.dead
-          : (star.isAchieved ? StarKind.victory : StarKind.goal);
-      result.add(
-        ConstellationStar(
-          entityId: star.id,
-          position: position,
-          kind: kind,
-          lit: star.isAchieved,
-        ),
-      );
-    }
-
     final completionsByHabit = <int, List<HabitCompletion>>{};
     for (final completion in widget.habitCompletionRepository.getAll()) {
       completionsByHabit
           .putIfAbsent(completion.habitId, () => [])
           .add(completion);
     }
-    for (final habit in _habits) {
-      final completedDays =
-          (completionsByHabit[habit.id] ?? const <HabitCompletion>[])
-              .map((c) => DateTime(c.date.year, c.date.month, c.date.day))
-              .toSet();
-      result.add(
-        ConstellationStar(
-          entityId: habit.id,
-          position: seededHabitPosition(habit.id),
-          kind: StarKind.habit,
-          lit: isHabitLit(completedDays),
-        ),
-      );
-    }
 
-    return result;
+    final built = buildConstellationRenderStars(
+      stars: _stars,
+      habits: _habits,
+      shape: _shape,
+      completionsByHabit: completionsByHabit,
+    );
+    _edges = built.edges;
+    _shapeStarCount = built.shapeStarCount;
+    return built.stars;
   }
 
   Rect _boundsPixels() {

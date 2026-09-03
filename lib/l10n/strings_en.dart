@@ -52,7 +52,7 @@ class StringsEn implements AppStrings {
   @override
   String get navSky => 'Sky';
   @override
-  String get navNebula => 'Nebula';
+  String get navGalaxy => 'Galaxy';
   @override
   String get navStats => 'Stats';
   @override

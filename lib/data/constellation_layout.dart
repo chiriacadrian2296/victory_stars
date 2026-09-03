@@ -1,6 +1,11 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import '../models/habit.dart';
+import '../models/habit_completion.dart';
+import '../models/star.dart';
+import '../utils/habit_stats.dart';
+import '../widgets/constellation_painter.dart';
 import 'constellation_shapes_v2.dart';
 
 /// A shape's graph grows this large before overflow stars stop being woven
@@ -100,3 +105,65 @@ Offset seededOverflowPosition(int seed) =>
 /// stars), seeded by the habit's own immutable id.
 Offset seededHabitPosition(int seed) =>
     _seededScatter(seed, minRadius: 0.15, maxRadius: 0.65);
+
+/// Turns one project's raw [stars]/[habits] into everything
+/// [ConstellationPainter] needs to draw it: every star positioned along the
+/// shape's grown graph (or scattered, past [maxChainedStars]), every habit
+/// scattered around/inside/outside that graph, and the edge list to connect
+/// them. Shared by `ConstellationScreen` (one project, framed to fill the
+/// screen) and the Nebula tab (every project at once, scattered across a
+/// pannable world) — same star-to-shape mapping either way, so a star's
+/// place in its own constellation never depends on which screen is looking
+/// at it.
+({List<ConstellationStar> stars, List<(int, int)> edges, int shapeStarCount})
+buildConstellationRenderStars({
+  required List<Star> stars,
+  required List<Habit> habits,
+  required ConstellationShape? shape,
+  required Map<int, List<HabitCompletion>> completionsByHabit,
+}) {
+  if (shape == null) {
+    return (stars: const [], edges: const [], shapeStarCount: 0);
+  }
+
+  final layout = buildConstellationLayout(shape, stars.length);
+  final renderStars = <ConstellationStar>[];
+  for (var i = 0; i < stars.length; i++) {
+    final star = stars[i];
+    final position = i < layout.points.length
+        ? layout.points[i]
+        : seededOverflowPosition(star.id);
+    final kind = star.dead
+        ? StarKind.dead
+        : (star.isAchieved ? StarKind.victory : StarKind.goal);
+    renderStars.add(
+      ConstellationStar(
+        entityId: star.id,
+        position: position,
+        kind: kind,
+        lit: star.isAchieved,
+      ),
+    );
+  }
+
+  for (final habit in habits) {
+    final completedDays =
+        (completionsByHabit[habit.id] ?? const <HabitCompletion>[])
+            .map((c) => DateTime(c.date.year, c.date.month, c.date.day))
+            .toSet();
+    renderStars.add(
+      ConstellationStar(
+        entityId: habit.id,
+        position: seededHabitPosition(habit.id),
+        kind: StarKind.habit,
+        lit: isHabitLit(completedDays),
+      ),
+    );
+  }
+
+  return (
+    stars: renderStars,
+    edges: layout.edges,
+    shapeStarCount: stars.length,
+  );
+}

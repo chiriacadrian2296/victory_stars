@@ -59,6 +59,10 @@ class ConstellationPainter extends CustomPainter {
     this.edges = const [],
     this.linkThreshold = 0,
     required this.shapeStarCount,
+    this.lineWidthScale = 1,
+    this.lineAlpha = 0.35,
+    this.sparkleScale = 1,
+    this.glowScale = 1,
   });
 
   final List<ConstellationStar> stars;
@@ -92,6 +96,19 @@ class ConstellationPainter extends CustomPainter {
   /// lines on a barely-started constellation.
   final int shapeStarCount;
 
+  /// Multiply the connecting-line stroke width/alpha and the star/glow
+  /// sizes below — all default to 1/0.35 (i.e. no change from before this
+  /// existed), leaving `ConstellationScreen`'s own single-project view
+  /// untouched. Added for the Galaxy tab (see `ConstellationFieldPainter`),
+  /// where constellations sit small and far away in a wide field of view —
+  /// making the shape itself much bigger there turned out to look
+  /// distorted near the screen edges, so instead these make the same
+  /// small shape read clearly through bolder strokes/icons/glow.
+  final double lineWidthScale;
+  final double lineAlpha;
+  final double sparkleScale;
+  final double glowScale;
+
   /// Bumped by the caller whenever [stars] actually changes in a way that
   /// affects rendering (a star added/achieved/deleted/resurrected, a habit
   /// completed) — deliberately NOT a deep list comparison, so pan/zoom
@@ -102,6 +119,17 @@ class ConstellationPainter extends CustomPainter {
   /// detect that change itself.
   final int revision;
 
+  // Tuned against ConstellationScreen's own fixed 1000x1000 canvas — every
+  // fixed-pixel size below (sparkle radius, glow sprite scale, line width)
+  // is expressed relative to it via [_sizeScale], so this class draws
+  // identically there (size is always exactly 1000) while actually
+  // shrinking/growing with the Nebula tab's zoom (where `size` is
+  // `localSizePx`, which does vary — see ConstellationFieldPainter). Without
+  // this, a star's glow stayed a fixed screen-pixel blob regardless of zoom
+  // there, quickly looking wildly oversized on a zoomed-out constellation or
+  // undersized on a zoomed-in one, while everything else about the shape
+  // (star positions, via [_toCanvas]) scaled correctly.
+  static const _referenceSize = 1000.0;
   static const _sparkleRadius = 5.5;
   static const _habitSparkleRadius = 3.5;
   static const _dimAlpha = 0.35;
@@ -111,11 +139,12 @@ class ConstellationPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final sprite = glowSprite;
     if (sprite == null || stars.isEmpty) return;
+    final sizeScale = size.width / _referenceSize;
 
     if (shapeStarCount >= linkThreshold && linkThreshold > 0) {
       final linePaint = Paint()
-        ..color = starColor.withValues(alpha: 0.35)
-        ..strokeWidth = 1.2
+        ..color = starColor.withValues(alpha: lineAlpha)
+        ..strokeWidth = 1.2 * sizeScale * lineWidthScale
         ..style = PaintingStyle.stroke;
       final shapeStars = stars.where((s) => s.kind != StarKind.habit).toList();
       for (final (a, b) in edges) {
@@ -147,21 +176,22 @@ class ConstellationPainter extends CustomPainter {
       lit,
       tint: starColor,
       sparkleColor: coreColor,
-      sparkleRadius: _sparkleRadius,
+      sparkleRadius: _sparkleRadius * sizeScale * sparkleScale,
+      spriteScale: sizeScale * glowScale,
     );
     _drawSparkleOnly(
       canvas,
       size,
       unlitGoals,
       color: coreColor.withValues(alpha: _dimAlpha),
-      radius: _sparkleRadius,
+      radius: _sparkleRadius * sizeScale * sparkleScale,
     );
     _drawSparkleOnly(
       canvas,
       size,
       dead,
       color: coreColor.withValues(alpha: _deadAlpha),
-      radius: _sparkleRadius,
+      radius: _sparkleRadius * sizeScale * sparkleScale,
       outlineOnly: true,
     );
     _drawGlowAndSparkle(
@@ -171,15 +201,15 @@ class ConstellationPainter extends CustomPainter {
       litHabits,
       tint: habitColor,
       sparkleColor: habitColor,
-      sparkleRadius: _habitSparkleRadius,
-      spriteScale: 0.55,
+      sparkleRadius: _habitSparkleRadius * sizeScale * sparkleScale,
+      spriteScale: sizeScale * 0.55 * glowScale,
     );
     _drawSparkleOnly(
       canvas,
       size,
       unlitHabits,
       color: habitColor.withValues(alpha: _deadAlpha),
-      radius: _habitSparkleRadius,
+      radius: _habitSparkleRadius * sizeScale * sparkleScale,
     );
   }
 

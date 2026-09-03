@@ -29,7 +29,7 @@ abstract class AppStrings {
   // Bottom navigation
   String get navHome;
   String get navSky;
-  String get navNebula;
+  String get navGalaxy;
   String get navStats;
   String get navSettings;
   String get collapseSidebarAction;

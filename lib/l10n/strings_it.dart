@@ -52,7 +52,7 @@ class StringsIt implements AppStrings {
   @override
   String get navSky => 'Cielo';
   @override
-  String get navNebula => 'Nebulosa';
+  String get navGalaxy => 'Galassia';
   @override
   String get navStats => 'Statistiche';
   @override

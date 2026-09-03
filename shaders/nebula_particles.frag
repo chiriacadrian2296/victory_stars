@@ -12,8 +12,11 @@ precision highp float;
 
 uniform vec2 uResolution;
 uniform float uTime;
-uniform vec2 uPan;
+uniform vec3 uForward;
+uniform vec3 uRight;
+uniform vec3 uUp;
 uniform float uZoom;
+uniform float uShowGrid;
 
 out vec4 fragColor;
 
@@ -25,7 +28,7 @@ const vec3 kDeepMid = vec3(0.0627, 0.0863, 0.1686);    // #10162B
 const vec3 kDeepCenter = vec3(0.1098, 0.1529, 0.2784); // #1C2747
 const vec3 kGold = vec3(0.9490, 0.7216, 0.2941);       // #F2B84B
 
-float hash(vec2 p) {
+float hash3(vec3 p) {
   // Wrapping the input keeps sin()'s argument bounded — without this,
   // coordinates that grow large (through fbm's octave doubling, or just
   // uTime accumulating over a long session) push sin() into a range where
@@ -33,46 +36,72 @@ float hash(vec2 p) {
   // (desktop/emulator GPUs mostly don't show this, which is why it wasn't
   // caught until testing on the real phone).
   p = mod(p, 289.0);
-  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+  return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453123);
 }
 
-float valueNoise(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = fract(p);
-  float a = hash(i);
-  float b = hash(i + vec2(1.0, 0.0));
-  float c = hash(i + vec2(0.0, 1.0));
-  float d = hash(i + vec2(1.0, 1.0));
-  vec2 u = f * f * (3.0 - 2.0 * f);
-  return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+// Trilinear value noise over a 3D lattice — sampled from a point already
+// projected onto the sky sphere (see main()), never from a flat 2D
+// azimuth/elevation pair. That's deliberate: a 2D (azimuth, elevation)
+// coordinate has to wrap at the azimuth seam and do something special at
+// the poles, and both of those show up as a visible cut in a smooth cloud
+// field no matter how carefully the wrap is patched. A 3D point on the
+// sphere has neither problem — there's no seam or pole in 3D space to
+// begin with, so the noise it produces is seamless everywhere for free.
+float valueNoise3(vec3 p) {
+  vec3 i = floor(p);
+  vec3 f = fract(p);
+  vec3 u = f * f * (3.0 - 2.0 * f);
+
+  float c000 = hash3(i + vec3(0.0, 0.0, 0.0));
+  float c100 = hash3(i + vec3(1.0, 0.0, 0.0));
+  float c010 = hash3(i + vec3(0.0, 1.0, 0.0));
+  float c110 = hash3(i + vec3(1.0, 1.0, 0.0));
+  float c001 = hash3(i + vec3(0.0, 0.0, 1.0));
+  float c101 = hash3(i + vec3(1.0, 0.0, 1.0));
+  float c011 = hash3(i + vec3(0.0, 1.0, 1.0));
+  float c111 = hash3(i + vec3(1.0, 1.0, 1.0));
+
+  float x00 = mix(c000, c100, u.x);
+  float x10 = mix(c010, c110, u.x);
+  float x01 = mix(c001, c101, u.x);
+  float x11 = mix(c011, c111, u.x);
+  float y0 = mix(x00, x10, u.y);
+  float y1 = mix(x01, x11, u.y);
+  return mix(y0, y1, u.z);
 }
 
-// Fractal Brownian motion — a handful of octaves of valueNoise stacked at
+// Fractal Brownian motion — a handful of octaves of valueNoise3 stacked at
 // shrinking amplitude/growing frequency, which is what turns flat noise
 // into the soft, cloud-like drift a nebula needs.
-float fbm(vec2 p) {
+float fbm3(vec3 p) {
   float total = 0.0;
   float amplitude = 0.5;
   for (int i = 0; i < 5; i++) {
-    total += amplitude * valueNoise(p);
+    total += amplitude * valueNoise3(p);
     p *= 2.0;
     amplitude *= 0.5;
   }
   return total;
 }
 
-// One layer of a procedural starfield: a grid of cells, each with a
-// pseudo-random chance of holding a star at a pseudo-random offset within
-// the cell, glowing and twinkling. No texture asset needed — every star is
-// generated purely from its cell's hash.
-float starLayer(vec2 uv, float density, float twinkleSpeed, float seed) {
-  vec2 grid = uv * density;
-  vec2 cell = floor(grid);
-  vec2 local = fract(grid) - 0.5;
+// One layer of a procedural starfield: a cubic lattice of cells (through
+// which the sky sphere passes), each with a pseudo-random chance of
+// holding a star at a pseudo-random offset within the cell, glowing and
+// twinkling. No texture asset needed — every star is generated purely
+// from its cell's hash. Same seamless-for-free reasoning as valueNoise3:
+// a 3D lattice has no wrap seam or pole to patch around.
+float starLayer(vec3 dir, float density, float twinkleSpeed, float seed) {
+  vec3 grid = dir * density;
+  vec3 cell = floor(grid);
+  vec3 local = fract(grid) - 0.5;
 
-  float h = hash(cell + seed);
-  vec2 starPos =
-      (vec2(hash(cell + seed * 2.0), hash(cell + seed * 3.0)) - 0.5) * 0.7;
+  float h = hash3(cell + seed);
+  vec3 starPos =
+      (vec3(
+        hash3(cell + seed * 2.0),
+        hash3(cell + seed * 3.0),
+        hash3(cell + seed * 4.0)
+      ) - 0.5) * 0.7;
   float dist = length(local - starPos);
 
   float twinkle = 0.6 + 0.4 * sin(uTime * twinkleSpeed + h * 6.2831853);
@@ -81,18 +110,54 @@ float starLayer(vec2 uv, float density, float twinkleSpeed, float seed) {
 }
 
 void main() {
-  vec2 uv = FlutterFragCoord().xy / uResolution;
-  vec2 aspectUv = vec2(uv.x * uResolution.x / uResolution.y, uv.y);
+  // A free-orientation camera at the center of the sky sphere — uForward/
+  // uRight/uUp are its already-orthonormal basis, straight from
+  // constellation_field.dart's SkyCamera (see that class's own comment
+  // for why it's a full free orientation rather than an azimuth/elevation
+  // pair: the latter always has poles, this doesn't). No trig needed here
+  // at all — that's computed once on the Dart side, not per pixel.
+  // tangent is this pixel's position on the camera's flat tangent plane,
+  // in "zoom = focal length in screen-heights" units — dividing by
+  // uResolution.y for *both* axes (not width) is what keeps 1 world unit
+  // equal to 1 screen height regardless of aspect ratio, matching every
+  // other camera calculation in this app.
+  vec2 centered = FlutterFragCoord().xy - uResolution * 0.5;
+  vec2 tangent = centered / uResolution.y / uZoom;
 
-  // Pan/zoom applied here, in world space, rather than scaling the
-  // rendered bitmap — since the nebula/stars are procedural (not a fixed
-  // texture), this stays perfectly sharp at any zoom level instead of
-  // blurring like a scaled-up image would.
-  aspectUv = (aspectUv - 0.5) / uZoom + 0.5 + uPan;
+  vec3 forward = uForward;
+  vec3 right = uRight;
+  vec3 up = uUp;
 
-  vec2 flow = aspectUv * 1.6 + vec2(uTime * 0.02, -uTime * 0.015);
-  float n = fbm(flow);
-  float n2 = fbm(flow * 1.7 + 4.0);
+  // Inverse stereographic projection — tangent is treated as a
+  // stereographic-plane point, not a gnomonic (plain divide-by-depth)
+  // one, matching constellation_field.dart's worldToScreen exactly (see
+  // its own comment for why gnomonic isn't used: it stretches things into
+  // ellipses toward the edge of a wide field of view, an oblong
+  // "football" look rather than a sphere; stereographic doesn't). tangent.y
+  // is negated first because screen Y grows downward while "up" (and
+  // elevation) grow upward — without that the sky would pan backwards
+  // vertically relative to how NebulaScreen's gestures move it.
+  float tx = tangent.x;
+  float ty = -tangent.y;
+  float rho2 = tx * tx + ty * ty;
+  float denom = 4.0 + rho2;
+  vec3 dir = normalize(
+    right * (4.0 * tx / denom) +
+    up * (4.0 * ty / denom) +
+    forward * ((4.0 - rho2) / denom)
+  );
+
+  // A bigger sky sphere reads as one with finer, denser detail — more (and
+  // smaller) stars, and finer-grained gas structure — the same way a
+  // deeper, more distant starfield looks busier than a small one right in
+  // front of you. Bumped up again from the previous pass, in step with
+  // NebulaScreen's own zoom range moving farther back (see
+  // NebulaScreen._maxZoom's comment) — the same visible field of view now
+  // covers noticeably more of the sky than before, so it needs more detail
+  // packed into it to read as "farther away" rather than just "emptier."
+  vec3 timeDrift = vec3(uTime * 0.02, -uTime * 0.015, uTime * 0.008);
+  float n = fbm3(dir * 6.0 + timeDrift);
+  float n2 = fbm3(dir * 10.0 + timeDrift * 1.7 + 4.0);
 
   // Mostly the deep blue palette, with gold reserved for the brightest
   // noise peaks only (pow(n2, 4.0) stays low until n2 is high, so it reads
@@ -101,10 +166,39 @@ void main() {
   nebula = mix(nebula, kGold, pow(n2, 4.0) * 0.65);
 
   float stars = 0.0;
-  stars += starLayer(aspectUv, 18.0, 1.6, 1.0);
-  stars += starLayer(aspectUv, 34.0, 2.3, 7.0) * 0.8;
-  stars += starLayer(aspectUv, 60.0, 3.1, 13.0) * 0.6;
+  stars += starLayer(dir, 15.0, 1.6, 1.0);
+  stars += starLayer(dir, 27.0, 2.3, 7.0) * 0.8;
+  stars += starLayer(dir, 48.0, 3.1, 13.0) * 0.6;
+  stars += starLayer(dir, 75.0, 4.0, 19.0) * 0.4;
 
   vec3 color = nebula + kGold * stars;
+
+  // Debug aid, toggled from NebulaScreen's own switch (uShowGrid) —
+  // meridians/parallels every 15°, so panning/zoom can be calibrated by
+  // eye (how close to a pole, how much of the sky is visible at once)
+  // instead of guessing. Computed from the true (asin/atan2)
+  // elevation/azimuth of this pixel's own ray direction, so the lines
+  // land at their real position on the sphere regardless of camera
+  // orientation.
+  if (uShowGrid > 0.5) {
+    float trueAzimuthTurns = atan(dir.z, dir.x) / 6.28318530718;
+    float trueElevationTurns = asin(clamp(dir.y, -1.0, 1.0)) / 6.28318530718;
+    float meridianDist = abs(fract(trueAzimuthTurns * 24.0 + 0.5) - 0.5);
+    float parallelDist = abs(
+      fract((trueElevationTurns + 0.25) * 12.0 + 0.5) - 0.5
+    );
+    // The poles should read as a single point where every meridian
+    // converges, not another ring — which is what the parallel closest
+    // to ±0.25 turns would otherwise draw right on top of. Fading both
+    // grid lines out over a small cap there leaves a clean point,
+    // meridians included (they naturally taper to a point on their own
+    // as they approach it, so fading them too doesn't lose the "lines
+    // converge here" cue).
+    float poleFade = smoothstep(0.22, 0.25, abs(trueElevationTurns));
+    float gridLine = (smoothstep(0.03, 0.0, meridianDist) +
+        smoothstep(0.03, 0.0, parallelDist)) * (1.0 - poleFade);
+    color = mix(color, vec3(1.0), clamp(gridLine, 0.0, 1.0) * 0.3);
+  }
+
   fragColor = vec4(color, 1.0);
 }

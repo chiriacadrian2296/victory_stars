@@ -52,7 +52,7 @@ class StringsRo implements AppStrings {
   @override
   String get navSky => 'Cer';
   @override
-  String get navNebula => 'Nebuloasă';
+  String get navGalaxy => 'Galaxie';
   @override
   String get navStats => 'Statistici';
   @override

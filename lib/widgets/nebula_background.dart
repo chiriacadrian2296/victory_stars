@@ -4,19 +4,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 import '../theme/app_colors.dart';
+import 'constellation_field.dart';
 
 /// A fullscreen animated nebula/starfield, rendered entirely on the GPU by
 /// `shaders/nebula_particles.frag` — no image assets, no 3D engine, just a
-/// procedural fragment shader repainted every frame. See
-/// `ShaderPlaygroundScreen`, the only current place this is used: a
-/// debug-only preview, not wired into any real screen yet.
+/// procedural fragment shader repainted every frame. Purely presentational:
+/// [camera]/[zoom] are owned by the caller (see `NebulaScreen`), which also
+/// drives a scattered field of constellations over the same camera — both
+/// need to move together, so there's one shared source of truth for the
+/// gesture rather than this widget tracking its own.
 class NebulaBackground extends StatefulWidget {
-  const NebulaBackground({super.key, this.interactive = false});
+  const NebulaBackground({
+    super.key,
+    required this.camera,
+    required this.zoom,
+    this.showGrid = false,
+  });
 
-  /// Whether drag-to-pan and pinch-to-zoom are enabled. Off by default —
-  /// only the playground preview wants hands-on exploration; a decorative
-  /// background elsewhere wouldn't.
-  final bool interactive;
+  final SkyCamera camera;
+  final double zoom;
+
+  /// Debug aid: overlays meridian/parallel lines on the sky sphere so
+  /// pole proximity and field of view can be gauged by eye — see
+  /// `NebulaScreen`'s own toggle for this.
+  final bool showGrid;
 
   @override
   State<NebulaBackground> createState() => _NebulaBackgroundState();
@@ -27,10 +38,6 @@ class _NebulaBackgroundState extends State<NebulaBackground>
   ui.FragmentShader? _shader;
   late final Ticker _ticker;
   Duration _elapsed = Duration.zero;
-
-  Offset _pan = Offset.zero;
-  double _zoom = 1;
-  double _zoomAtGestureStart = 1;
 
   @override
   void initState() {
@@ -46,26 +53,6 @@ class _NebulaBackgroundState extends State<NebulaBackground>
     );
     if (!mounted) return;
     setState(() => _shader = program.fragmentShader());
-  }
-
-  void _handleScaleStart(ScaleStartDetails details) {
-    _zoomAtGestureStart = _zoom;
-  }
-
-  void _handleScaleUpdate(ScaleUpdateDetails details) {
-    final size = context.size;
-    setState(() {
-      _zoom = (_zoomAtGestureStart * details.scale).clamp(0.3, 6.0);
-      // Dividing by size.height (not width) keeps pan speed consistent with
-      // the shader's own aspect-correction, which normalizes against
-      // height too (see nebula_particles.frag's aspectUv). Subtracting
-      // (not adding) the delta is what makes the content follow the
-      // finger — dragging right should reveal what was off-screen to the
-      // left, which means the sampled world position moves left.
-      if (size != null && size.height > 0) {
-        _pan -= details.focalPointDelta / size.height / _zoom;
-      }
-    });
   }
 
   @override
@@ -85,22 +72,15 @@ class _NebulaBackgroundState extends State<NebulaBackground>
       return ColoredBox(color: colors.night);
     }
 
-    final painter = CustomPaint(
+    return CustomPaint(
       size: Size.infinite,
       painter: _NebulaPainter(
         shader: shader,
         time: _elapsed.inMicroseconds / Duration.microsecondsPerSecond,
-        pan: _pan,
-        zoom: _zoom,
+        camera: widget.camera,
+        zoom: widget.zoom,
+        showGrid: widget.showGrid,
       ),
-    );
-
-    if (!widget.interactive) return painter;
-
-    return GestureDetector(
-      onScaleStart: _handleScaleStart,
-      onScaleUpdate: _handleScaleUpdate,
-      child: painter,
     );
   }
 }
@@ -109,14 +89,16 @@ class _NebulaPainter extends CustomPainter {
   const _NebulaPainter({
     required this.shader,
     required this.time,
-    required this.pan,
+    required this.camera,
     required this.zoom,
+    required this.showGrid,
   });
 
   final ui.FragmentShader shader;
   final double time;
-  final Offset pan;
+  final SkyCamera camera;
   final double zoom;
+  final bool showGrid;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -124,15 +106,24 @@ class _NebulaPainter extends CustomPainter {
       ..setFloat(0, size.width)
       ..setFloat(1, size.height)
       ..setFloat(2, time)
-      ..setFloat(3, pan.dx)
-      ..setFloat(4, pan.dy)
-      ..setFloat(5, zoom);
+      ..setFloat(3, camera.forward.$1)
+      ..setFloat(4, camera.forward.$2)
+      ..setFloat(5, camera.forward.$3)
+      ..setFloat(6, camera.right.$1)
+      ..setFloat(7, camera.right.$2)
+      ..setFloat(8, camera.right.$3)
+      ..setFloat(9, camera.up.$1)
+      ..setFloat(10, camera.up.$2)
+      ..setFloat(11, camera.up.$3)
+      ..setFloat(12, zoom)
+      ..setFloat(13, showGrid ? 1.0 : 0.0);
     canvas.drawRect(Offset.zero & size, Paint()..shader = shader);
   }
 
   @override
   bool shouldRepaint(covariant _NebulaPainter oldDelegate) =>
       oldDelegate.time != time ||
-      oldDelegate.pan != pan ||
-      oldDelegate.zoom != zoom;
+      oldDelegate.camera != camera ||
+      oldDelegate.zoom != zoom ||
+      oldDelegate.showGrid != showGrid;
 }

@@ -3,6 +3,7 @@ import '../data/habit_repository.dart';
 import '../data/project_repository.dart';
 import '../data/star_repository.dart';
 import '../models/life_area.dart';
+import '../models/project.dart';
 
 /// How many wins each seed project gains every time [seedSampleData] runs.
 const winsPerSeedTap = 12;
@@ -40,32 +41,66 @@ const _dayOffsets = [
 /// constellation's slot capacity (~160) after enough taps and exercises the
 /// overflow fallback. Spiritual is left with no seed project, to exercise
 /// that area's empty state.
+///
+/// [languageCode] picks which translation of the seed content to use (see
+/// [_specsFor]) — matching [SettingsController.locale] so the seeded
+/// projects read naturally in whichever language the app is already set
+/// to, the same way every other piece of app-facing text does.
+///
+/// Idempotency is keyed on the project's position in the spec list (its
+/// index — the same conceptual project across [_specsEn]/[_specsIt]/
+/// [_specsRo]), not on its display name alone: a project already seeded
+/// under an *older* locale's name is found via [_alternateNamesAt] and
+/// renamed to the current locale's name in place (see
+/// [ProjectRepository.renameProject]) rather than spawning a same-shaped
+/// duplicate next to it. Switching the app's language and re-tapping "seed
+/// sample data" is what triggers this — every previously-seeded project
+/// just switches language along with the rest of the app instead of
+/// leaving stale foreign-language leftovers behind.
 Future<void> seedSampleData({
   required StarRepository starRepository,
   required ProjectRepository projectRepository,
   required HabitRepository habitRepository,
   required HabitCompletionRepository habitCompletionRepository,
+  required String languageCode,
 }) async {
+  final specs = _specsFor(languageCode);
+  final deadStarTitle = _deadStarTitleFor(languageCode);
+
   assert(
-    _specs.every((spec) => spec.iconSlug != spec.area.iconSlug),
+    specs.every((spec) => spec.iconSlug != spec.area.iconSlug),
     'A seed project is using its own area\'s reserved icon.',
   );
 
-  final existingByName = {
-    for (final project in projectRepository.getAll()) project.name: project,
-  };
+  final existingProjects = projectRepository.getAll();
 
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
   var globalIndex = 0;
 
-  for (final spec in _specs) {
+  for (var specIndex = 0; specIndex < specs.length; specIndex++) {
+    final spec = specs[specIndex];
+
     // Goals/dead stars/habits are only ever seeded the first time a project
     // is created — re-tapping "seed sample data" keeps growing the win
     // count (same as before) without piling up duplicate goals/habits on
     // every tap.
-    final isNewProject = existingByName[spec.name] == null;
-    var project = existingByName[spec.name];
+    final alternateNames = _alternateNamesAt(specIndex);
+    Project? project;
+    for (final candidate in existingProjects) {
+      if (alternateNames.contains(candidate.name)) {
+        project = candidate;
+        break;
+      }
+    }
+    final isNewProject = project == null;
+
+    if (project != null && project.name != spec.name) {
+      project = await projectRepository.renameProject(
+        projectId: project.id,
+        name: spec.name,
+      );
+    }
     project ??= await projectRepository.add(
       name: spec.name,
       area: spec.area,
@@ -110,7 +145,7 @@ Future<void> seedSampleData({
       // ready to exercise the "resurrect" flow without the user having to
       // delete one by hand first.
       final deadSeed = await starRepository.add(
-        title: 'An attempt I gave up on',
+        title: deadStarTitle,
         projectId: project.id,
       );
       await Future.delayed(const Duration(milliseconds: 2));
@@ -185,7 +220,47 @@ class _ProjectSeed {
   final bool seedDeadStar;
 }
 
-final _specs = [
+/// Picks [_specsEn]/[_specsIt]/[_specsRo] to match [languageCode] — the
+/// same three codes [SettingsScreen]'s own language picker offers ('en',
+/// 'it', 'ro'). Any other/unrecognized code falls back to English.
+List<_ProjectSeed> _specsFor(String languageCode) {
+  switch (languageCode) {
+    case 'it':
+      return _specsIt;
+    case 'ro':
+      return _specsRo;
+    default:
+      return _specsEn;
+  }
+}
+
+/// Every name [index]'s conceptual project has ever been seeded under,
+/// across all three languages — [_specsEn]/[_specsIt]/[_specsRo] are kept
+/// in the same order project-for-project, so index `i` in one is always
+/// the same project as index `i` in the others, just translated. Used to
+/// find an already-seeded project regardless of which language it was
+/// seeded in last (see [seedSampleData]'s own doc comment).
+Set<String> _alternateNamesAt(int index) => {
+  _specsEn[index].name,
+  _specsIt[index].name,
+  _specsRo[index].name,
+};
+
+/// The dead/tombstoned seed star's title (see [_ProjectSeed.seedDeadStar])
+/// — translated alongside everything else in [_specsFor], but kept
+/// separate since it isn't part of any one project's own win list.
+String _deadStarTitleFor(String languageCode) {
+  switch (languageCode) {
+    case 'it':
+      return 'Un tentativo a cui ho rinunciato';
+    case 'ro':
+      return 'O încercare la care am renunțat';
+    default:
+      return 'An attempt I gave up on';
+  }
+}
+
+final _specsEn = [
   _ProjectSeed(
     'Run a 10k',
     LifeArea.physical,
@@ -387,5 +462,415 @@ final _specs = [
     ),
     _WinSeed('Gave up a weekend to help a neighbor move'),
     _WinSeed("Donated instead of buying something I didn't need"),
+  ]),
+];
+
+final _specsIt = [
+  _ProjectSeed(
+    'Correre una 10 km',
+    LifeArea.physical,
+    'sports_gymnastics',
+    [
+      _WinSeed(
+        'Sono uscito a correre anche se non ne avevo davvero voglia',
+        "Pioveva e stavo quasi per rinunciare, ma alla fine mi sono allacciato le scarpe lo stesso.",
+      ),
+      _WinSeed('Ho finito il mio primo 5 km senza fermarmi'),
+      _WinSeed(
+        'Mi sono alzato per correre alle 6 del mattino per tre giorni di fila',
+        'Avevo le gambe indolenzite ma l\'ho fatto lo stesso.',
+      ),
+      _WinSeed('Ho continuato a correre nonostante un crampo invece di mollare'),
+      _WinSeed('Mi sono iscritto alla gara dei 10 km', 'Terrorizzato, ma l\'ho fatto.'),
+      _WinSeed(
+        'Ho corso al mio ritmo migliore di sempre',
+        'Due minuti più veloce del mese scorso.',
+      ),
+      _WinSeed('Ho tenuto duro nell\'ultimo chilometro quando volevo camminare'),
+      _WinSeed(
+        'Sono uscito a correre dopo una giornata di lavoro davvero pesante',
+        'Mi ha aiutato più di quanto pensassi.',
+      ),
+      _WinSeed('Ho fatto una sessione di scatti in salita che evitavo da settimane'),
+      _WinSeed('Ho corso al freddo senza lamentarmi (troppo)'),
+      _WinSeed(
+        'Mi sono ripreso da un piccolo infortunio e sono tornato a correre',
+        'Ci sono andato piano ma mi sono fatto vivo.',
+      ),
+      _WinSeed('Ho superato la distanza della settimana scorsa'),
+    ],
+    goals: ['Correre una mezza maratona', 'Scendere sotto i 50 minuti nei 10 km'],
+    habits: [
+      _HabitSeed('Stretching mattutino', _activeStreak(10)),
+      _HabitSeed('Bagno di ghiaccio', [4, 5, 6]),
+    ],
+    seedDeadStar: true,
+  ),
+  _ProjectSeed('Imparare a nuotare', LifeArea.physical, 'pool', [
+    _WinSeed('Ho messo la faccia in acqua senza farmi prendere dal panico'),
+    _WinSeed('Ho nuotato una vasca intera senza fermarmi per riprendere fiato'),
+    _WinSeed(
+      'Sono andato in piscina da solo per la prima volta',
+      'Nessuno dietro cui nascondermi, solo io e l\'acqua.',
+    ),
+    _WinSeed('Ho provato la parte profonda della piscina', 'Il cuore mi batteva forte ma l\'ho fatto.'),
+    _WinSeed('Ho fatto pratica con la respirazione per 20 minuti di fila'),
+    _WinSeed('Ho nuotato due vasche senza aver bisogno di fermarmi'),
+  ]),
+  _ProjectSeed(
+    'Meditazione quotidiana',
+    LifeArea.psychological,
+    'spa',
+    [
+      _WinSeed(
+        'Sono rimasto con una sensazione scomoda invece di scrollare il telefono',
+      ),
+      _WinSeed(
+        'Ho meditato per 10 minuti anche se la mente non voleva calmarsi',
+        'Conta comunque.',
+      ),
+      _WinSeed('Ho notato una spirale che iniziava e l\'ho bloccata in tempo'),
+      _WinSeed(
+        'Ho fatto una settimana intera di meditazione mattutina',
+        'Prima volta che mantengo una serie così lunga.',
+      ),
+      _WinSeed(
+        'Ho affrontato una sensazione di panico senza scappare',
+        'Ho respirato invece di fuggire.',
+      ),
+      _WinSeed('Ho scritto sinceramente nel diario su qualcosa che evitavo'),
+      _WinSeed(
+        'Ho meditato dopo un litigio invece di rimuginare',
+        'Mi ha aiutato a rispondere invece che reagire d\'istinto.',
+      ),
+      _WinSeed('Per una volta ho osservato i miei pensieri senza giudicarli'),
+      _WinSeed('Mi sono preso un giorno per la salute mentale senza sentirmi in colpa'),
+      _WinSeed(
+        'Ho fatto pratica stando in silenzio per 15 minuti',
+        'È stato difficile, ma l\'ho fatto lo stesso.',
+      ),
+      _WinSeed('Sono riuscito a calmarmi da una spirale usando quello che ho imparato'),
+      _WinSeed(
+        'Ho meditato in un giorno in cui non ne avevo proprio voglia',
+        'Mi sono fatto vivo lo stesso.',
+      ),
+    ],
+    goals: ['Completare un ritiro silenzioso di 10 giorni'],
+    habits: [
+      // Completato solo ieri, non ancora oggi — verifica il giorno di
+      // tolleranza: deve comunque risultare acceso.
+      _HabitSeed('Meditazione serale', [1]),
+    ],
+  ),
+  _ProjectSeed(
+    'Costruire questa app',
+    LifeArea.professional,
+    'rocket_launch',
+    [
+      _WinSeed('Ho fatto funzionare il modello dati dopo ore di debug'),
+      _WinSeed(
+        'Ho rilasciato la prima versione funzionante',
+        'Grezza qua e là ma funziona.',
+      ),
+      _WinSeed('Ho risolto un bug che mi faceva impazzire da due giorni'),
+      _WinSeed('Ho rifattorizzato il codice disordinato della settimana scorsa'),
+      _WinSeed('Ho scritto i test invece di saltarli'),
+      _WinSeed(
+        'Ho capito perché l\'animazione non funzionava',
+        'Ci ho messo molto più tempo del dovuto.',
+      ),
+      _WinSeed(
+        'Ho fatto partire la build sull\'emulatore dopo una configurazione frustrante',
+      ),
+      _WinSeed('Ho superato un muro di errori del compilatore'),
+      _WinSeed('Ho riprogettato una schermata che visivamente non funzionava'),
+      _WinSeed(
+        'Ho debuggato una race condition che si presentava solo a volte',
+        'Finalmente sono riuscito a riprodurla.',
+      ),
+      _WinSeed('Ho continuato dopo che la build era fallita tre volte di fila'),
+      _WinSeed('Ho scritto la documentazione invece di rimandarla'),
+    ],
+    goals: ['Pubblicare la v2 sullo store', 'Raggiungere 100 utenti'],
+  ),
+  _ProjectSeed(
+    'Trovare un nuovo lavoro',
+    LifeArea.professional,
+    'business_center',
+    [
+      _WinSeed('Ho inviato una candidatura anche se mi sentivo poco qualificato'),
+      _WinSeed('Sono sopravvissuto a un colloquio da far tremare i polsi'),
+      _WinSeed('Ho fatto un follow-up dopo settimane di silenzio'),
+      _WinSeed('Ho riscritto il mio curriculum invece di evitarlo'),
+      _WinSeed(
+        'Ho chiesto un feedback dopo un rifiuto',
+        'Ha fatto male, ma ho imparato qualcosa.',
+      ),
+    ],
+    goals: ['Ottenere 3 colloqui questo mese'],
+  ),
+  _ProjectSeed(
+    'Risparmiare per una casa',
+    LifeArea.financial,
+    'real_estate_agent',
+    [
+      _WinSeed('Ho rinunciato a un acquisto impulsivo e ho messo da parte i soldi'),
+      _WinSeed('Sono arrivato a fine mese restando sotto budget'),
+      _WinSeed(
+        'Ho dato un\'occhiata sincera alle mie spese',
+        'Scomodo ma necessario.',
+      ),
+      _WinSeed('Ho detto no a una serata fuori per proteggere i miei risparmi'),
+      _WinSeed('Ho raggiunto un traguardo di risparmio a cui puntavo da tempo'),
+      _WinSeed('Ho cancellato un abbonamento che non usavo'),
+    ],
+    goals: ['Raggiungere l\'obiettivo per l\'anticipo'],
+  ),
+  _ProjectSeed(
+    'Leggere più libri',
+    LifeArea.personal,
+    'explore',
+    [
+      _WinSeed('Ho finito un libro che rimandavo da mesi'),
+      _WinSeed('Ho letto invece di scrollare il telefono prima di dormire'),
+      _WinSeed('Ho iniziato un libro che mi intimidiva'),
+      _WinSeed('Ho finito un capitolo invece di fermarmi a metà'),
+    ],
+    habits: [_HabitSeed('Leggere prima di dormire', _activeStreak(7))],
+  ),
+  _ProjectSeed(
+    'Riallacciare i rapporti con vecchi amici',
+    LifeArea.social,
+    'connect_without_contact',
+    [
+      _WinSeed('Ho contattato un amico con cui non parlavo da anni'),
+      _WinSeed(
+        'Ho fatto il primo passo per chiarire le cose',
+        'All\'inizio imbarazzante, ma ne è valsa la pena.',
+      ),
+      _WinSeed('Mi sono presentato a un ritrovo che stavo per saltare'),
+      _WinSeed('Ho chiamato invece di limitarmi a scrivere un messaggio'),
+      _WinSeed('Ho detto qualcosa di sincero invece di restare zitto'),
+      _WinSeed(
+        'Ho ristabilito il contatto con qualcuno dopo un lungo silenzio',
+        'Nessuno dei due si è scusato, abbiamo solo ricominciato.',
+      ),
+      _WinSeed('Ho organizzato qualcosa invece di aspettare che lo facesse qualcun altro'),
+    ],
+  ),
+  _ProjectSeed('Fare volontariato ogni mese', LifeArea.philanthropic, 'campaign', [
+    _WinSeed('Mi sono presentato per fare volontariato anche se ero esausto'),
+    _WinSeed('Ho organizzato una piccola raccolta di donazioni'),
+    _WinSeed(
+      'Ho passato un sabato ad aiutare invece di riposare',
+      'Stanco, ma contento di averlo fatto.',
+    ),
+    _WinSeed('Ho rinunciato a un weekend per aiutare un vicino a traslocare'),
+    _WinSeed('Ho donato invece di comprare qualcosa di cui non avevo bisogno'),
+  ]),
+];
+
+final _specsRo = [
+  _ProjectSeed(
+    'Aleargă un 10k',
+    LifeArea.physical,
+    'sports_gymnastics',
+    [
+      _WinSeed(
+        'Am ieșit la alergat chiar dacă chiar nu aveam chef',
+        'Ploua și era să renunț, dar mi-am legat șireturile oricum.',
+      ),
+      _WinSeed('Mi-am terminat primul 5k fără să mă opresc'),
+      _WinSeed(
+        'M-am trezit să alerg la ora 6 dimineața trei zile la rând',
+        'Aveam picioarele dureroase, dar am făcut-o oricum.',
+      ),
+      _WinSeed('Am alergat cu o crampă în loc să renunț'),
+      _WinSeed('M-am înscris la cursa de 10k', 'Îngrozit, dar am făcut-o.'),
+      _WinSeed(
+        'Am alergat în cel mai bun ritm personal',
+        'Cu două minute mai repede decât luna trecută.',
+      ),
+      _WinSeed('Am dus-o până la capăt în ultimul kilometru când voiam să merg la pas'),
+      _WinSeed(
+        'Am ieșit la alergat după o zi foarte grea la muncă',
+        'M-a ajutat mai mult decât mă așteptam.',
+      ),
+      _WinSeed('Am făcut o sesiune de sprint pe deal pe care o evitam de săptămâni întregi'),
+      _WinSeed('Am alergat pe frig fără să mă plâng (prea mult)'),
+      _WinSeed(
+        'Mi-am revenit după o mică accidentare și am ieșit din nou',
+        'Am mers încet, dar m-am prezentat.',
+      ),
+      _WinSeed('Am depășit distanța din săptămâna trecută'),
+    ],
+    goals: ['Aleargă un semimaraton', 'Sub 50 de minute la 10k'],
+    habits: [
+      _HabitSeed('Întindere de dimineață', _activeStreak(10)),
+      _HabitSeed('Baie cu gheață', [4, 5, 6]),
+    ],
+    seedDeadStar: true,
+  ),
+  _ProjectSeed('Învăț să înot', LifeArea.physical, 'pool', [
+    _WinSeed('Mi-am băgat fața în apă fără să intru în panică'),
+    _WinSeed('Am înotat un bazin întreg fără să mă opresc să-mi trag răsuflarea'),
+    _WinSeed(
+      'Am mers singur la piscină pentru prima dată',
+      'Nimeni în spatele căruia să mă ascund, doar eu și apa.',
+    ),
+    _WinSeed('Am încercat partea adâncă', 'Inima îmi bătea cu putere, dar am făcut-o.'),
+    _WinSeed('Am exersat tehnica de respirație timp de 20 de minute în șir'),
+    _WinSeed('Am înotat două bazine fără să am nevoie să mă opresc'),
+  ]),
+  _ProjectSeed(
+    'Meditație zilnică',
+    LifeArea.psychological,
+    'spa',
+    [
+      _WinSeed(
+        'Am stat cu o senzație neplăcută în loc să dau scroll pe telefon',
+      ),
+      _WinSeed(
+        'Am meditat 10 minute chiar dacă mintea nu voia să se liniștească',
+        'Tot contează.',
+      ),
+      _WinSeed('Am observat o spirală care începea și am prins-o din timp'),
+      _WinSeed(
+        'Am făcut o săptămână întreagă de meditație de dimineață',
+        'Prima dată când am reușit o serie atât de lungă.',
+      ),
+      _WinSeed(
+        'Am rezistat unei senzații de panică fără să fug de ea',
+        'Am respirat în schimb.',
+      ),
+      _WinSeed('Am scris sincer în jurnal despre ceva ce evitam'),
+      _WinSeed(
+        'Am meditat după o ceartă în loc să mă frământ',
+        'M-a ajutat să răspund în loc să reacționez.',
+      ),
+      _WinSeed('Pentru o dată mi-am observat gândurile fără să le judec'),
+      _WinSeed('Mi-am luat o zi liberă pentru sănătatea mintală fără să mă simt vinovat'),
+      _WinSeed(
+        'Am exersat să stau în tăcere timp de 15 minute',
+        'A fost greu, dar am făcut-o oricum.',
+      ),
+      _WinSeed('M-am calmat dintr-o spirală folosind ce am învățat'),
+      _WinSeed(
+        'Am meditat într-o zi în care chiar nu aveam chef',
+        'M-am prezentat oricum.',
+      ),
+    ],
+    goals: ['Finalizează un retreat de tăcere de 10 zile'],
+    habits: [
+      // Bifat doar ieri, nu încă azi — verifică ziua de grație: tot
+      // trebuie să apară aprins.
+      _HabitSeed('Meditație de seară', [1]),
+    ],
+  ),
+  _ProjectSeed(
+    'Construiesc această aplicație',
+    LifeArea.professional,
+    'rocket_launch',
+    [
+      _WinSeed('Am făcut modelul de date să funcționeze după ore de depanare'),
+      _WinSeed(
+        'Am lansat prima versiune funcțională',
+        'Nefinisată pe alocuri, dar merge.',
+      ),
+      _WinSeed('Am rezolvat un bug care mă înnebunea de două zile'),
+      _WinSeed('Am refactorizat codul dezordonat din săptămâna trecută'),
+      _WinSeed('Am scris teste în loc să le sar peste'),
+      _WinSeed(
+        'Am rezolvat animația care nu funcționa',
+        'A durat mult mai mult decât ar fi trebuit.',
+      ),
+      _WinSeed(
+        'Am reușit să rulez build-ul pe emulator după o configurare frustrantă',
+      ),
+      _WinSeed('Am trecut printr-un zid de erori de compilare'),
+      _WinSeed('Am reproiectat un ecran care nu arăta bine'),
+      _WinSeed(
+        'Am depanat o race condition care apărea doar uneori',
+        'În sfârșit am reușit s-o reproduc.',
+      ),
+      _WinSeed('Am continuat după ce build-ul a eșuat de trei ori la rând'),
+      _WinSeed('Am scris documentația în loc să o amân'),
+    ],
+    goals: ['Lansează v2 în app store', 'Ajunge la 100 de utilizatori'],
+  ),
+  _ProjectSeed(
+    'Găsesc un job nou',
+    LifeArea.professional,
+    'business_center',
+    [
+      _WinSeed('Am trimis o candidatură chiar dacă mă simțeam nepregătit'),
+      _WinSeed('Am trecut printr-un interviu care mă făcea foarte agitat'),
+      _WinSeed('Am revenit cu un mesaj după săptămâni de tăcere'),
+      _WinSeed('Mi-am rescris CV-ul în loc să evit acest lucru'),
+      _WinSeed(
+        'Am cerut feedback după un refuz',
+        'A durut, dar am învățat ceva.',
+      ),
+    ],
+    goals: ['Obține 3 interviuri luna aceasta'],
+  ),
+  _ProjectSeed(
+    'Economisesc pentru o casă',
+    LifeArea.financial,
+    'real_estate_agent',
+    [
+      _WinSeed('Am renunțat la o cumpărătură impulsivă și am pus banii deoparte'),
+      _WinSeed('Am terminat luna sub buget'),
+      _WinSeed(
+        'Am analizat sincer cheltuielile mele',
+        'Neplăcut, dar necesar.',
+      ),
+      _WinSeed('Am spus nu unei ieșiri în oraș ca să-mi protejez economiile'),
+      _WinSeed('Am atins un obiectiv de economisire spre care lucram de mult timp'),
+      _WinSeed('Am anulat un abonament pe care nu-l foloseam'),
+    ],
+    goals: ['Atinge obiectivul pentru avans'],
+  ),
+  _ProjectSeed(
+    'Citesc mai multe cărți',
+    LifeArea.personal,
+    'explore',
+    [
+      _WinSeed('Am terminat o carte pe care o tot amânam de luni de zile'),
+      _WinSeed('Am citit în loc să dau scroll pe telefon înainte de culcare'),
+      _WinSeed('Am început o carte care mă intimida'),
+      _WinSeed('Am terminat un capitol în loc să mă opresc la jumătate'),
+    ],
+    habits: [_HabitSeed('Citesc înainte de culcare', _activeStreak(7))],
+  ),
+  _ProjectSeed(
+    'Reconectez cu vechi prieteni',
+    LifeArea.social,
+    'connect_without_contact',
+    [
+      _WinSeed('Am contactat un prieten cu care nu mai vorbisem de ani de zile'),
+      _WinSeed(
+        'Am făcut primul pas ca să repar lucrurile',
+        'Stânjenitor la început, dar a meritat.',
+      ),
+      _WinSeed('M-am prezentat la o întâlnire pe care era să o ratez'),
+      _WinSeed('Am sunat în loc să trimit doar un mesaj'),
+      _WinSeed('Am spus ceva sincer în loc să tac'),
+      _WinSeed(
+        'Am reluat legătura cu cineva după o tăcere lungă',
+        'Niciunul dintre noi nu și-a cerut scuze, am mers mai departe.',
+      ),
+      _WinSeed('Am făcut planuri în loc să aștept ca altcineva să o facă'),
+    ],
+  ),
+  _ProjectSeed('Fac voluntariat lunar', LifeArea.philanthropic, 'campaign', [
+    _WinSeed('M-am prezentat la voluntariat chiar dacă eram epuizat'),
+    _WinSeed('Am organizat o mică campanie de donații'),
+    _WinSeed(
+      'Mi-am petrecut o sâmbătă ajutând în loc să mă odihnesc',
+      'Obosit, dar mulțumit că am făcut-o.',
+    ),
+    _WinSeed('Am renunțat la un weekend ca să ajut un vecin să se mute'),
+    _WinSeed('Am donat în loc să cumpăr ceva de care nu aveam nevoie'),
   ]),
 ];

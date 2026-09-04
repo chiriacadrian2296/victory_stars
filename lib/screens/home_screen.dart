@@ -143,6 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (_) => AdmireStarsScreen(
           starRepository: widget.starRepository,
           projectRepository: widget.projectRepository,
+          customConstellationRepository: widget.customConstellationRepository,
         ),
       ),
     );

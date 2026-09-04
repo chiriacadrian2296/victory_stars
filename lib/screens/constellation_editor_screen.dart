@@ -413,43 +413,11 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
   }
 
   Future<void> _save() async {
-    final strings = context.strings;
-    final colors = context.colors;
-    final nameController = TextEditingController(
-      text: widget.existing?.name ?? '',
-    );
-
     final name = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: colors.nightPanel,
-        title: Text(
-          strings.nameYourConstellationTitle,
-          style: TextStyle(color: colors.text),
-        ),
-        content: TextField(
-          controller: nameController,
-          autofocus: true,
-          style: TextStyle(color: colors.text),
-          decoration: InputDecoration(hintText: strings.constellationNameHint),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(strings.cancel, style: TextStyle(color: colors.muted)),
-          ),
-          TextButton(
-            onPressed: () =>
-                Navigator.of(dialogContext).pop(nameController.text.trim()),
-            child: Text(
-              strings.saveConstellationAction,
-              style: TextStyle(color: colors.gold),
-            ),
-          ),
-        ],
-      ),
+      builder: (dialogContext) =>
+          _NameConstellationDialog(initialName: widget.existing?.name),
     );
-    nameController.dispose();
     if (name == null || name.isEmpty || !mounted) return;
 
     final normalized = normalizeEditorPoints(_points);
@@ -1205,5 +1173,72 @@ class _GridPainter extends CustomPainter {
     return divisions != oldDelegate.divisions ||
         color != oldDelegate.color ||
         centerColor != oldDelegate.centerColor;
+  }
+}
+
+/// The "name your constellation" prompt shown by [_ConstellationEditorScreenState._save]
+/// — its own [TextEditingController] lives and dies with *this widget's*
+/// element, not with the `showDialog` call's Future. `showDialog`'s Future
+/// resolves the instant `Navigator.pop` is called, before the dialog route's
+/// exit transition has actually finished removing this widget's `TextField`
+/// from the tree — disposing the controller right after that `await` (as
+/// this used to) could hit a still-animating, still-mounted `TextField`
+/// still holding the disposed controller, throwing "used after being
+/// disposed" for the transition's remaining frames (the app's own users
+/// reported this as a brief red error screen right after saving a shape,
+/// self-recovering once the dialog actually finished closing). Owning the
+/// controller here instead means Flutter disposes it at the correct moment
+/// on its own — when this widget's own `State` actually unmounts.
+class _NameConstellationDialog extends StatefulWidget {
+  const _NameConstellationDialog({this.initialName});
+
+  final String? initialName;
+
+  @override
+  State<_NameConstellationDialog> createState() =>
+      _NameConstellationDialogState();
+}
+
+class _NameConstellationDialogState extends State<_NameConstellationDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialName ?? '',
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = context.strings;
+    final colors = context.colors;
+    return AlertDialog(
+      backgroundColor: colors.nightPanel,
+      title: Text(
+        strings.nameYourConstellationTitle,
+        style: TextStyle(color: colors.text),
+      ),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        style: TextStyle(color: colors.text),
+        decoration: InputDecoration(hintText: strings.constellationNameHint),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(strings.cancel, style: TextStyle(color: colors.muted)),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
+          child: Text(
+            strings.saveConstellationAction,
+            style: TextStyle(color: colors.gold),
+          ),
+        ),
+      ],
+    );
   }
 }

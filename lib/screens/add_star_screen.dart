@@ -214,8 +214,9 @@ class _AddStarScreenState extends State<AddStarScreen> {
       body: context.strings.deleteStarConfirmBody,
       confirmLabel: context.strings.deleteStarAction,
     );
-    if (confirmed && mounted)
+    if (confirmed && mounted) {
       Navigator.of(context).pop(const AddStarDeleteRequested());
+    }
   }
 
   /// A yes/no dialog styled like the rest of the app's destructive

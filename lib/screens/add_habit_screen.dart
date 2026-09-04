@@ -136,8 +136,9 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       body: context.strings.deleteHabitConfirmBody,
       confirmLabel: context.strings.deleteHabitAction,
     );
-    if (confirmed && mounted)
+    if (confirmed && mounted) {
       Navigator.of(context).pop(const AddHabitDeleteRequested());
+    }
   }
 
   Future<bool> _confirm({

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../data/custom_constellation_repository.dart';
 import '../data/project_repository.dart';
 import '../data/star_repository.dart';
 import '../l10n/strings_scope.dart';
@@ -24,10 +25,12 @@ class AdmireStarsScreen extends StatefulWidget {
     super.key,
     required this.starRepository,
     required this.projectRepository,
+    required this.customConstellationRepository,
   });
 
   final StarRepository starRepository;
   final ProjectRepository projectRepository;
+  final CustomConstellationRepository customConstellationRepository;
 
   @override
   State<AdmireStarsScreen> createState() => _AdmireStarsScreenState();
@@ -101,6 +104,7 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
           allowEdit: true,
           projectsById: _projectsById(),
           projectRepository: widget.projectRepository,
+          customConstellationRepository: widget.customConstellationRepository,
           refreshStars: currentInShuffledOrder,
         ),
       ),

@@ -88,6 +88,27 @@ class ProjectRepository {
     return updated;
   }
 
+  /// Renames a project in place, keeping its id (and every star/habit tied
+  /// to it) intact — used by `seedSampleData` when the app's language has
+  /// changed since a project was last seeded, so it switches over to the
+  /// new locale's name instead of spawning a duplicate under it. Throws if
+  /// [projectId] doesn't match anything saved.
+  Future<Project> renameProject({
+    required int projectId,
+    required String name,
+  }) async {
+    final projects = getAll();
+    final index = projects.indexWhere((p) => p.id == projectId);
+    if (index == -1) {
+      throw StateError('No project found with id $projectId');
+    }
+
+    final updated = projects[index].copyWith(name: name);
+    projects[index] = updated;
+    await _saveAll(projects);
+    return updated;
+  }
+
   /// Permanently deletes every project. Used by the "reset all data" action
   /// — there's no undo.
   Future<void> clear() async {

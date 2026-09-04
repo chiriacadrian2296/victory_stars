@@ -1,5 +1,5 @@
 ---
-name: Deploy to Web
+name: deploy-to-web
 description: Build Victory Stars, run analyze/tests, and (re)launch it in the browser — closing and relaunching the same dev Chrome window rather than piling up new ones, so the user's browser is always left showing the latest build.
 argument-hint: "[debug|release]"
 allowed-tools: Bash(flutter *) Bash(taskkill *) PowerShell(Get-Process *) PowerShell(Get-CimInstance *)

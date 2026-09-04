@@ -570,6 +570,98 @@ _ConstellationTransform? _projectConstellationTransform(
   return null;
 }
 
+double _smoothstep(double edge0, double edge1, double x) {
+  final t = ((x - edge0) / (edge1 - edge0)).clamp(0.0, 1.0);
+  return t * t * (3 - 2 * t);
+}
+
+/// Star-name labels are implemented (see [ConstellationFieldPainter.paint])
+/// but switched off for now — with many stars close together they piled up
+/// and overlapped too much to read cleanly. Left in place, gated behind
+/// this flag, rather than deleted, since the plan is to revisit the
+/// crowding problem (spacing/collision-avoidance, most likely) and turn
+/// them back on later.
+const bool _kShowStarLabels = false;
+
+/// Where, on the log-zoom scale, constellation-name labels finish fading
+/// out and star-name labels finish fading in (see [ConstellationFieldPainter]
+/// — `_kLabelFadeLogRange` either side of this is the actual crossfade
+/// width). Log rather than linear zoom since [SkyCamera]/`NebulaScreen`
+/// zoom is inherently multiplicative (min 0.3 to max 30, a 100x span) —
+/// a fixed linear threshold would land at a wildly different *relative*
+/// zoom depending on where in that span it fell. Narrow range — the
+/// crossfade itself should happen quickly, over a small zoom change, not
+/// gradually over a huge one. Only matters while [_kShowStarLabels] is
+/// back on — with it off, the constellation label just stays fully
+/// visible at every zoom instead of ever handing off to anything.
+const double _kLabelSwitchLogZoom = 0.9; // ln(zoom) ≈ zoom 2.5
+const double _kLabelFadeLogRange = 0.25; // ≈ crossfades over a ~1.6x zoom span
+
+/// Shared by both constellation- and star-name labels — a single size
+/// (not a bigger one for one kind and a smaller one for the other, as
+/// tried first) reads as more consistent switching between the two.
+/// Slightly smaller now that the constellation label is the only one ever
+/// on screen (see [_kShowStarLabels]) and stays up throughout, rather than
+/// only briefly at the widest zoom-out.
+const double _kLabelFontSize = 11;
+
+/// A single small screen-space label: a white pill with dark-navy text,
+/// centered on [anchor] — always horizontal, never affected by
+/// [_projectConstellationTransform]'s own rotation/skew, so it stays
+/// readable no matter how the camera's turned. Colors are fixed rather
+/// than pulled from the active theme — the Galaxy tab's sky is dark
+/// regardless of light/dark mode, and these need to read clearly against
+/// it either way.
+/// Longer than this, a name gets cut short with a trailing ellipsis — a
+/// long title otherwise made its own pill wide enough to overlap
+/// neighboring labels, exactly what a short, fixed-width badge is meant
+/// to avoid.
+const int _kLabelMaxChars = 30;
+
+String _truncateLabel(String text) {
+  if (text.length <= _kLabelMaxChars) return text;
+  return '${text.substring(0, _kLabelMaxChars - 1)}…';
+}
+
+void _drawPillLabel(
+  Canvas canvas,
+  Offset anchor,
+  String text,
+  double fontSize,
+  double alpha,
+) {
+  if (alpha <= 0.01 || text.isEmpty) return;
+
+  final textPainter = TextPainter(
+    text: TextSpan(
+      text: _truncateLabel(text),
+      style: TextStyle(
+        color: const Color(0xFF0D1220).withValues(alpha: alpha),
+        fontSize: fontSize,
+        fontWeight: FontWeight.w600,
+        height: 1,
+      ),
+    ),
+    textDirection: TextDirection.ltr,
+  )..layout();
+
+  final paddingH = fontSize * 0.55;
+  final paddingV = fontSize * 0.3;
+  final rect = Rect.fromCenter(
+    center: anchor,
+    width: textPainter.width + paddingH * 2,
+    height: textPainter.height + paddingV * 2,
+  );
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(rect, Radius.circular(rect.height / 2)),
+    Paint()..color = Colors.white.withValues(alpha: alpha * 0.7),
+  );
+  textPainter.paint(
+    canvas,
+    Offset(anchor.dx - textPainter.width / 2, anchor.dy - textPainter.height / 2),
+  );
+}
+
 /// Paints every [placed] constellation over the shared [camera]/[zoom] —
 /// reuses [ConstellationPainter] completely unmodified, once per
 /// constellation, inside a save/transform/restore block that maps its own
@@ -608,6 +700,25 @@ class ConstellationFieldPainter extends CustomPainter {
     // of just disappearing off-screen like a real off-center object would.
     canvas.save();
     canvas.clipRect(Offset.zero & size);
+
+    // Shared by every constellation this frame — a crossfade between
+    // constellation-name and star-name labels driven by [zoom] alone (see
+    // `_kLabelSwitchLogZoom`'s own comment). Label *size* deliberately
+    // doesn't vary with zoom at all right now (each kind just draws at
+    // its own fixed size below) — simpler, and reads as more useful this
+    // way; a zoom-scaled size may come back later.
+    final logZoom = math.log(zoom);
+    final starLabelAlpha = _kShowStarLabels
+        ? _smoothstep(
+            _kLabelSwitchLogZoom - _kLabelFadeLogRange,
+            _kLabelSwitchLogZoom + _kLabelFadeLogRange,
+            logZoom,
+          )
+        : 0.0;
+    final constellationLabelAlpha = _kShowStarLabels
+        ? 1 - starLabelAlpha
+        : 1.0;
+
     for (final constellation in placed) {
       final transform = _projectConstellationTransform(
         constellation.worldPosition,
@@ -670,6 +781,60 @@ class ConstellationFieldPainter extends CustomPainter {
         glowScale: 1.8,
       ).paint(canvas, Size.square(localSizePx));
       canvas.restore();
+
+      // Labels are drawn *outside* the save/transform block above —
+      // plain screen space, deliberately never subjected to the same
+      // rotation/skew as the constellation itself, so they stay
+      // horizontal and readable no matter how the camera's turned.
+      if (constellationLabelAlpha > 0.01) {
+        _drawPillLabel(
+          canvas,
+          transform.center + Offset(0, localSizePx * 0.55 + 10),
+          constellation.project.name,
+          _kLabelFontSize,
+          constellationLabelAlpha,
+        );
+      }
+      if (_kShowStarLabels && starLabelAlpha > 0.01) {
+        for (final star in constellation.renderStars) {
+          final starScreenPos =
+              transform.center +
+              transform.right * (star.position.dx - 0.5) +
+              transform.up * (star.position.dy - 0.5);
+          // Pushed out *away from the constellation's own center*, along
+          // the same direction the star already sits from it — the
+          // connecting lines all run through/near that center, so
+          // radiating outward keeps a label clear of them without
+          // actually knowing where every line is. Falls back to straight
+          // down only for a star sitting right on the center itself,
+          // where that direction is meaningless.
+          //
+          // The *distance* is measured from the constellation's own
+          // center, like the constellation label's own offset just above
+          // — not a fixed step from the star's own position — so every
+          // star label clears the whole shape's outer edge the same way,
+          // rather than landing just past whichever one star happens to
+          // be closest to (and possibly still well inside the shape's
+          // overall footprint if that star sits near its center). Never
+          // closer than the star's own actual distance either, in case an
+          // overflow/habit star already sits past that edge itself.
+          final fromCenter = starScreenPos - transform.center;
+          final outward = fromCenter.distance > 4
+              ? fromCenter / fromCenter.distance
+              : const Offset(0, 1);
+          final labelDistance = math.max(
+            fromCenter.distance,
+            localSizePx * 0.55,
+          );
+          _drawPillLabel(
+            canvas,
+            transform.center + outward * (labelDistance + 14),
+            star.label,
+            _kLabelFontSize,
+            starLabelAlpha,
+          );
+        }
+      }
     }
     canvas.restore();
   }

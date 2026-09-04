@@ -1,5 +1,5 @@
 ---
-name: Deploy to Phone
+name: deploy-to-phone
 description: Build Victory Stars, run analyze/tests, and install the APK on the user's real Android phone — over USB if it's plugged in, otherwise over wireless adb (falls back to a connected emulator if no phone is reachable at all) — then always launch the app.
 argument-hint: "[debug|release]"
 allowed-tools: Bash(flutter *) Bash(adb *)
@@ -8,10 +8,14 @@ disable-model-invocation: true
 
 # Deploy Victory Stars to the phone
 
-Build mode: use the argument if given (`debug` or `release`), otherwise default to **release** —
-that's what real-device testing in this project has used so far, and it's the build type that
-actually surfaces plugin/resource bugs that debug mode hides (see the `tools:keep` fix in
-`android/app/src/main/res/raw/keep.xml` — a real bug that only ever showed up in release builds).
+Build mode: use the argument if given (`debug` or `release`), otherwise default to **debug** — the
+user's own standing preference while the app is under active development, so debug-only tooling
+(inspector, hot-reload-adjacent affordances, etc.) stays available on-device without asking each
+time. Reach for release only when the user actually says so (testing a release build occasionally,
+or explicitly asking to check something release-specific) — release is still the build type that
+surfaces plugin/resource bugs debug mode hides (see the `tools:keep` fix in
+`android/app/src/main/res/raw/keep.xml`, a real bug that only ever showed up in release builds), so
+don't skip a release check entirely before something like a store submission.
 
 Package name: `com.example.victory_stars`. Main activity exported name for a manual relaunch:
 `.MainActivity`.

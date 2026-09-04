@@ -1,5 +1,5 @@
 ---
-name: Deploy to All
+name: deploy-to-all
 description: Deploy Victory Stars to both targets in one go — the phone (USB if plugged in, else wireless) and the browser — running the shared checks once, then both deploys, then a combined report.
 argument-hint: "[debug|release]"
 allowed-tools: Bash(flutter *) Bash(adb *) Bash(taskkill *) PowerShell(Get-Process *) PowerShell(Get-CimInstance *)
@@ -11,10 +11,10 @@ disable-model-invocation: true
 Runs the **Deploy to Phone** and **Deploy to Web** skills back to back against the same build mode,
 sharing the analyze/test check between them instead of running it twice.
 
-Build mode: use the argument if given (`debug` or `release`), otherwise default to **release** —
-matching Deploy to Phone's own default, since real-device testing in this project has used release
-builds. Deploy to Web still deploys as debug regardless (see that skill's own reasoning for why its
-default differs) unless `release` was explicitly requested here.
+Build mode: use the argument if given (`debug` or `release`), otherwise default to **debug** —
+matching Deploy to Phone's own default (the user's standing preference while the app's under active
+development; see that skill's own reasoning). Deploy to Web already always deploys as debug
+regardless of this, so nothing changes for it either way.
 
 ## Steps
 

@@ -20,12 +20,20 @@ class ConstellationStar {
     required this.position,
     required this.kind,
     required this.lit,
+    required this.label,
   });
 
   final int entityId;
   final Offset position;
   final StarKind kind;
   final bool lit;
+
+  /// The underlying [Star]/[Habit]'s own title — only actually drawn by
+  /// the Galaxy tab (see `ConstellationFieldPainter`'s star-name labels);
+  /// `ConstellationScreen`'s own single-project view doesn't use it, but
+  /// every [ConstellationStar] carries it since both share the exact same
+  /// `buildConstellationRenderStars`.
+  final String label;
 }
 
 /// Renders a small white radial-gradient glow once and caches it as a

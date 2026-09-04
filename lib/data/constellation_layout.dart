@@ -52,6 +52,19 @@ ConstellationLayout buildConstellationLayout(
       edges: shape.edges,
     );
   }
+  if (shape.edges.isEmpty) {
+    // Nothing to grow by splitting — a shape with two or more points but no
+    // connections between them at all (the editor allows saving one, with
+    // only a non-blocking warning; a deliberate "scattered" style is a
+    // legitimate constellation to want). The loop below always indexes
+    // into edges' longest entry, which would throw a RangeError here since
+    // there's no edge to find at all. Stopping at the shape's own points
+    // instead doesn't lose a star: buildConstellationRenderStars already
+    // scatters any star beyond what a layout returns, the same fallback it
+    // uses past maxChainedStars, it just also covers this shape never
+    // "growing" past its own points.
+    return ConstellationLayout(points: basePoints, edges: const []);
+  }
 
   final points = List<Offset>.from(basePoints);
   final edges = List<(int, int)>.from(shape.edges);
@@ -142,6 +155,7 @@ buildConstellationRenderStars({
         position: position,
         kind: kind,
         lit: star.isAchieved,
+        label: star.title,
       ),
     );
   }
@@ -157,6 +171,7 @@ buildConstellationRenderStars({
         position: seededHabitPosition(habit.id),
         kind: StarKind.habit,
         lit: isHabitLit(completedDays),
+        label: habit.title,
       ),
     );
   }

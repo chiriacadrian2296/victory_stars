@@ -1,0 +1,5 @@
+{
+  "java.gradle.buildServer.enabled": "off",
+  "gradle.autoDetect": "off",
+  "java.jdt.ls.java.home": "C:\\Program Files\\Android\\Android Studio\\jbr"
+}

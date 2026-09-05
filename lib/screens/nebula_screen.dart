@@ -17,6 +17,13 @@ import '../theme/app_colors.dart';
 import '../widgets/constellation_field.dart';
 import '../widgets/constellation_painter.dart';
 import '../widgets/nebula_background.dart';
+// import '../widgets/sky_decorations.dart'; — the spiral-galaxy take on this
+// slot, disabled first in favor of SkyWisps, then SkyBlackHole, then
+// SkySupernova below; see the Stack in build().
+// import '../widgets/sky_wisps.dart'; — the wispy-nebula take, disabled too.
+// import '../widgets/sky_black_hole.dart'; — the lensed-black-hole take,
+// disabled too.
+import '../widgets/sky_supernova.dart';
 import 'habit_reader_screen.dart';
 import 'star_reader_screen.dart';
 
@@ -446,6 +453,14 @@ class _NebulaScreenState extends State<NebulaScreen>
                 zoom: _zoom,
                 showGrid: _showGrid,
               ),
+              // Alternative takes on this slot, tried in order —
+              // SkyDecorations (spiral nebula + supernova per area),
+              // SkyWisps (wispy Hubble-style filaments), SkyBlackHole (a
+              // lensed black hole) — all disabled in favor of SkySupernova
+              // (one simple lens-flare-style star) while the visual style
+              // is explored; swap which one's active here to compare, none
+              // of the files are deleted.
+              SkySupernova(camera: _camera, zoom: _zoom),
               CustomPaint(
                 painter: ConstellationFieldPainter(
                   placed: _placed,

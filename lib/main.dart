@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -10,6 +11,7 @@ import 'data/legacy_constellation_migration.dart';
 import 'data/onboarding_prefs.dart';
 import 'data/project_repository.dart';
 import 'data/star_repository.dart';
+import 'debug/seed_data.dart';
 import 'l10n/strings_scope.dart';
 import 'notifications/reminder_service.dart';
 import 'screens/add_star_screen.dart';
@@ -73,6 +75,26 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
           await CustomConstellationRepository.create();
       final areaVisionRepository = await AreaVisionRepository.create();
       final onboardingPrefs = await OnboardingPrefs.create();
+
+      // Debug builds only, and only for a genuinely empty install — the
+      // same seeding "Settings > Seed sample data" already does by hand
+      // (see `SettingsScreen._seedSampleData`), just run automatically so
+      // there's always something to explore without reaching for that
+      // button first. Matters most for the web: `flutter run -d chrome`
+      // opens a brand-new, disposable browser profile on every single
+      // launch, so without this every fresh web debug session would start
+      // from zero projects (and, on the Galaxy tab, zero constellations)
+      // regardless of what was seeded last time.
+      if (kDebugMode && projectRepository.getAll().isEmpty) {
+        await seedSampleData(
+          starRepository: starRepository,
+          projectRepository: projectRepository,
+          habitRepository: habitRepository,
+          habitCompletionRepository: habitCompletionRepository,
+          languageCode: settings.locale,
+        );
+      }
+
       // Idempotent — safe (and cheap once everything's migrated) to run on
       // every launch. Must finish before setState reveals the app below, so
       // every Project any screen reads already has its customConstellationId.

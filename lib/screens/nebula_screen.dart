@@ -12,6 +12,7 @@ import '../data/habit_repository.dart';
 import '../data/project_repository.dart';
 import '../data/star_repository.dart';
 import '../models/habit_completion.dart';
+import '../models/life_area.dart';
 import '../models/project.dart';
 import '../theme/app_colors.dart';
 import '../widgets/constellation_field.dart';
@@ -42,6 +43,8 @@ class NebulaScreen extends StatefulWidget {
     required this.habitRepository,
     required this.habitCompletionRepository,
     required this.customConstellationRepository,
+    required this.isFullscreen,
+    required this.onToggleFullscreen,
   });
 
   final ProjectRepository projectRepository;
@@ -50,22 +53,31 @@ class NebulaScreen extends StatefulWidget {
   final HabitCompletionRepository habitCompletionRepository;
   final CustomConstellationRepository customConstellationRepository;
 
+  /// Whether `RootScreen` currently has its own surrounding chrome (the
+  /// bottom nav bar / desktop side rail) hidden for this tab — owned by
+  /// `RootScreen`, not this screen, since hiding that chrome is only
+  /// possible from the parent that actually renders it. This screen just
+  /// reflects the current state (which icon its own toggle button shows)
+  /// and requests a change via [onToggleFullscreen]; it never flips the
+  /// flag itself.
+  final bool isFullscreen;
+
+  /// Requests entering/exiting fullscreen — see [isFullscreen].
+  final VoidCallback onToggleFullscreen;
+
   @override
   State<NebulaScreen> createState() => _NebulaScreenState();
 }
 
 class _NebulaScreenState extends State<NebulaScreen>
     with TickerProviderStateMixin {
-  // High enough that at max zoom a constellation (kSkyConstellationAngularSpan
-  // wide) renders at several times the screen's own height — so zooming
-  // all the way in shows one small part of it up close, never the whole
-  // shape. Picked freely, not tied to any hard geometric limit the way
-  // minZoomWithoutRepeats is — this just gives a wide, satisfying range
-  // above it. Halved along with minZoomWithoutRepeats and the starting
-  // _zoom below so the *entire* range sits farther back — max zoom-in
-  // isn't as close, max zoom-out isn't as close, and the default view
-  // isn't as close either — rather than only widening one end of it.
-  static const _maxZoom = 30.0;
+  // See kSkyMaxZoom's own doc comment (constellation_field.dart) for why
+  // this value, and why it's shared rather than private to this class.
+  // Halved along with minZoomWithoutRepeats and the starting _zoom below
+  // so the *entire* range sits farther back — max zoom-in isn't as close,
+  // max zoom-out isn't as close, and the default view isn't as close
+  // either — rather than only widening one end of it.
+  static const _maxZoom = kSkyMaxZoom;
 
   // Only used to seed the inertia glide's initial velocity now (see
   // _handleScaleEnd) — the live drag itself is an exact rotation (see
@@ -107,6 +119,17 @@ class _NebulaScreenState extends State<NebulaScreen>
 
   /// Debug aid, off by default — see [NebulaBackground.showGrid].
   bool _showGrid = false;
+
+  /// Whether each sky-overlay control is currently shown at all — not to
+  /// be confused with [_showGrid] (that one toggles the grid *content*
+  /// drawn on the sky itself; these toggle the little UI controls
+  /// sitting on top of it). All on by default; see [_showUiControlsMenu]
+  /// for the menu that flips them, opened via its own dedicated button —
+  /// which, deliberately, isn't itself one of the three controls this
+  /// list can hide, or there'd be no way back in once it was off.
+  bool _showGridControl = true;
+  bool _showZoomControl = true;
+  bool _showRotationControl = true;
 
   @override
   void initState() {
@@ -203,8 +226,9 @@ class _NebulaScreenState extends State<NebulaScreen>
 
   /// Sorted ascending by id (== creation order, ids are timestamp-based) —
   /// never by `ProjectRepository.getAll()`'s own newest-first order, so a
-  /// new project always lands at the end of the list and never shifts an
-  /// existing constellation's [constellationWorldPosition] index.
+  /// new project always lands at the end of its own [Project.area]'s
+  /// sequence and never shifts an existing constellation's
+  /// [constellationWorldPosition] index within that area.
   void _loadData() {
     final projects = widget.projectRepository.getAll().toList()
       ..sort((a, b) => a.id.compareTo(b.id));
@@ -216,15 +240,28 @@ class _NebulaScreenState extends State<NebulaScreen>
           .add(completion);
     }
 
+    // Counts each project's position within its own area's sequence
+    // (rather than a single global index) — see [constellationWorldPosition],
+    // which clusters a project's constellation around its own area's
+    // supernova instead of scattering it across the whole sky.
+    final indexByArea = <LifeArea, int>{};
     _placed = [
-      for (var i = 0; i < projects.length; i++)
-        _buildPlaced(projects[i], i, completionsByHabit),
+      for (final project in projects)
+        _buildPlaced(
+          project,
+          indexByArea.update(
+            project.area,
+            (value) => value + 1,
+            ifAbsent: () => 0,
+          ),
+          completionsByHabit,
+        ),
     ];
   }
 
   PlacedConstellation _buildPlaced(
     Project project,
-    int index,
+    int indexInArea,
     Map<int, List<HabitCompletion>> completionsByHabit,
   ) {
     final shape = project.customConstellationId != null
@@ -244,7 +281,7 @@ class _NebulaScreenState extends State<NebulaScreen>
     return PlacedConstellation(
       project: project,
       shape: shape,
-      worldPosition: constellationWorldPosition(index),
+      worldPosition: constellationWorldPosition(project.area, indexInArea),
       stars: stars,
       habits: habits,
       renderStars: built.stars,
@@ -433,6 +470,79 @@ class _NebulaScreenState extends State<NebulaScreen>
     if (hit != null) _openStar(hit.$1, hit.$2);
   }
 
+  /// Opens the small sheet that flips [_showGridControl]/[_showZoomControl]/
+  /// [_showRotationControl] — a `StatefulBuilder` wraps its own content so
+  /// each switch's own animation plays immediately inside the sheet
+  /// itself, rather than waiting on `NebulaScreen`'s own next rebuild;
+  /// [setState] is still called alongside it on every change so the sky
+  /// behind the (translucent) sheet actually shows/hides each control as
+  /// you go, not just once the sheet is dismissed.
+  Future<void> _showUiControlsMenu(BuildContext context) async {
+    final colors = context.colors;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: colors.nightPanel,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            Widget row(String label, bool value, ValueChanged<bool> onChanged) {
+              return SwitchListTile(
+                title: Text(label, style: TextStyle(color: colors.text)),
+                value: value,
+                activeThumbColor: colors.nightPanel,
+                activeTrackColor: colors.gold,
+                inactiveThumbColor: colors.goldDim,
+                inactiveTrackColor: colors.goldDim.withValues(alpha: 0.3),
+                onChanged: (newValue) {
+                  onChanged(newValue);
+                  setSheetState(() {});
+                },
+              );
+            }
+
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 12),
+                    Text(
+                      'Display',
+                      style: TextStyle(
+                        color: colors.muted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    row(
+                      'Grid',
+                      _showGridControl,
+                      (value) => setState(() => _showGridControl = value),
+                    ),
+                    row(
+                      'Zoom',
+                      _showZoomControl,
+                      (value) => setState(() => _showZoomControl = value),
+                    ),
+                    row(
+                      'Rotation',
+                      _showRotationControl,
+                      (value) => setState(() => _showRotationControl = value),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -467,59 +577,189 @@ class _NebulaScreenState extends State<NebulaScreen>
                   camera: _camera,
                   zoom: _zoom,
                   glowSprite: _glowSprite,
-                  // White rather than the theme's usual gold/text/crisis
-                  // tints, for now — paired with the bolder line/icon/glow
-                  // sizing in ConstellationFieldPainter, this is what
-                  // actually makes a small, far-away constellation stand
-                  // out against the sky.
-                  starColor: Colors.white,
+                  // A white core with a gold glow around it, matching
+                  // `SkySupernova`'s own icons (a plain white glyph over a
+                  // gold gradient border/glow) — starColor/habitColor tint
+                  // the soft glow blob and the connecting lines, coreColor
+                  // is the small bright sparkle mark drawn on top of it, so
+                  // there's still a crisp bright point to read as the star
+                  // itself instead of one flat gold blob.
+                  starColor: kConstellationGold,
                   coreColor: Colors.white,
-                  habitColor: Colors.white,
+                  habitColor: kConstellationGold,
                   revision: _revision,
                 ),
               ),
+              // Same disc/navy/gold styling as [_RollKnob] — one button
+              // that both enters and exits fullscreen (see
+              // [NebulaScreen.isFullscreen]/[NebulaScreen.onToggleFullscreen]),
+              // just showing whichever icon matches what tapping it would
+              // do next, rather than two separate buttons for the two
+              // directions.
               Positioned(
                 top: 0,
-                right: 0,
+                left: 0,
                 child: SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(6),
                     child: Material(
                       color: colors.nightPanel.withValues(alpha: 0.75),
-                      borderRadius: BorderRadius.circular(20),
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 12),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Grid',
-                              style: TextStyle(color: colors.muted, fontSize: 13),
-                            ),
-                            Switch(
-                              value: _showGrid,
-                              onChanged: (value) =>
-                                  setState(() => _showGrid = value),
-                            ),
-                          ],
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: widget.onToggleFullscreen,
+                        child: SizedBox(
+                          width: 42,
+                          height: 42,
+                          child: Icon(
+                            widget.isFullscreen
+                                ? Icons.fullscreen_exit
+                                : Icons.fullscreen,
+                            color: colors.gold,
+                            size: 22,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
+              if (_showGridControl)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Material(
+                        color: colors.nightPanel.withValues(alpha: 0.75),
+                        borderRadius: BorderRadius.circular(18),
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 10),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Grid',
+                                style: TextStyle(color: colors.muted, fontSize: 12),
+                              ),
+                              // Scaled down 20% along with the other two
+                              // sky-overlay controls (see [_RollKnob]/
+                              // [_ZoomSlider]'s own sizing) — Switch has no
+                              // size parameter of its own, so this is the
+                              // plain way to shrink it without losing its
+                              // built-in tap/thumb-animation behavior.
+                              Transform.scale(
+                                scale: 0.8,
+                                child: Switch(
+                                  value: _showGrid,
+                                  onChanged: (value) =>
+                                      setState(() => _showGrid = value),
+                                  // Left at its Material 3 default, the off
+                                  // state's thumb/track/outline come out a
+                                  // pale near-white and the on state's thumb
+                                  // (colorScheme.onPrimary, meant for text on
+                                  // a solid gold surface, not a switch thumb)
+                                  // comes out a near-black — neither is
+                                  // otherwise anywhere on this tab, which is
+                                  // only ever gold or navy. On uses the same
+                                  // navy every other control's own disc/panel
+                                  // does rather than a contrast color of its
+                                  // own; off is still obviously distinct from
+                                  // on (which fills the track solid gold via
+                                  // colorScheme.primary) even with a plain
+                                  // dimmed-gold thumb instead of a separate
+                                  // contrast color just to tell the two
+                                  // apart.
+                                  thumbColor: WidgetStateProperty.resolveWith(
+                                    (states) => states.contains(WidgetState.selected)
+                                        ? colors.nightPanel
+                                        : colors.goldDim,
+                                  ),
+                                  trackColor: WidgetStateProperty.resolveWith(
+                                    (states) => states.contains(WidgetState.selected)
+                                        ? colors.gold
+                                        : colors.goldDim.withValues(alpha: 0.3),
+                                  ),
+                                  trackOutlineColor: WidgetStateProperty.all(
+                                    colors.goldDim,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              // Touch already has its own two-finger rotate gesture (see
+              // `_handleScaleUpdate`'s `details.rotation`), so this knob is
+              // arguably redundant on a phone the way it isn't on
+              // web/desktop (no rotate gesture there without it) — but
+              // shown on both now rather than hardcoded off on phone,
+              // since [_showUiControlsMenu] already gives anyone who finds
+              // it redundant an easy way to hide it themselves.
+              if (_showRotationControl)
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: _RollKnob(
+                        angle: cameraRollAngle(_camera),
+                        onRoll: (delta) {
+                          _stopInertia();
+                          setState(() => _camera = _camera.rolled(delta));
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              if (_showZoomControl)
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: SafeArea(
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: _ZoomSlider(
+                          zoom: _zoom,
+                          minZoom: minZoomWithoutRepeats,
+                          maxZoom: _maxZoom,
+                          onChanged: (value) {
+                            _stopInertia();
+                            setState(() => _zoom = value);
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              // Always visible regardless of the three toggles above —
+              // it's the only way back to turning them on again, so it
+              // can't be one of the things it itself hides.
               Positioned(
                 bottom: 0,
-                right: 0,
+                left: 0,
                 child: SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: _RollKnob(
-                      angle: cameraRollAngle(_camera),
-                      onRoll: (delta) {
-                        _stopInertia();
-                        setState(() => _camera = _camera.rolled(delta));
-                      },
+                    padding: const EdgeInsets.all(12),
+                    child: Material(
+                      color: colors.nightPanel.withValues(alpha: 0.75),
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: () => _showUiControlsMenu(context),
+                        child: SizedBox(
+                          width: 42,
+                          height: 42,
+                          child: Icon(Icons.tune, color: colors.gold, size: 22),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -534,16 +774,24 @@ class _NebulaScreenState extends State<NebulaScreen>
 
 /// A two-finger rotate gesture (see `_handleScaleUpdate`) is touch-only —
 /// a mouse/trackpad has no equivalent, so desktop/web needs its own
-/// control for the same [SkyCamera.rolled]. Drag anywhere around this
-/// dial (not just directly on the icon) and the camera rolls by however
-/// far the angle around the dial's own center changed since the last
-/// frame — same feel as spinning a real dial or a ship's wheel, and
-/// exactly the same underlying rotation a phone's pinch-rotate drives.
-/// Gold rather than the app's usual muted night-panel chrome so it reads
-/// as a live control at a glance instead of blending into the sky behind
-/// it, and the small dot orbiting just outside its rim — see [angle] —
-/// is what actually shows how far you've rolled, the way a map app's own
-/// small compass badge shows its needle rather than just a plain icon.
+/// control for the same [SkyCamera.rolled]; shown on phone too (see
+/// `NebulaScreen.build`'s own comment on why) rather than hardcoded off
+/// there just because touch already has the gesture. Drag anywhere
+/// around this dial (not just directly on the icon) and the
+/// camera rolls by however far the angle around the dial's own center
+/// changed since the last frame — same feel as spinning a real dial or a
+/// ship's wheel, and exactly the same underlying rotation a phone's
+/// pinch-rotate drives.
+///
+/// Styled to match the "Grid" switch as closely as a circular dial can:
+/// the same translucent `colors.nightPanel` disc (not a solid fill), the
+/// same gold `colors.gold` a `Switch` turns to when it's the thing you're
+/// actively engaging with, rather than the app's usual gold everywhere or
+/// a separate white-and-navy scheme of its own. The small dot orbiting
+/// just outside its rim — see [angle] — is what actually shows how far
+/// you've rolled, the way a map app's own small compass badge shows its
+/// needle rather than just a plain icon; solid gold, no glow, so it stays
+/// a crisp, precise readout rather than a soft blob.
 class _RollKnob extends StatefulWidget {
   const _RollKnob({required this.angle, required this.onRoll});
 
@@ -563,12 +811,15 @@ class _RollKnob extends StatefulWidget {
 }
 
 class _RollKnobState extends State<_RollKnob> {
-  static const _knobSize = 52.0;
+  // 20% smaller than before, matching the same shrink applied to the
+  // "Grid" switch and [_ZoomSlider] — frees up more of the sky for
+  // constellations/navigation without losing any of these controls.
+  static const _knobSize = 42.0;
   // Bigger than _knobSize so the indicator dot has room to orbit just
   // outside the knob's own rim without getting clipped.
-  static const _boxSize = 76.0;
-  static const _orbitRadius = _knobSize / 2 + 8;
-  static const _dotSize = 10.0;
+  static const _boxSize = 62.0;
+  static const _orbitRadius = _knobSize / 2 + 6;
+  static const _dotSize = 8.0;
 
   double? _lastAngle;
 
@@ -617,37 +868,128 @@ class _RollKnobState extends State<_RollKnob> {
               onPanStart: (details) => _updateAngle(details.localPosition),
               onPanUpdate: (details) => _updateAngle(details.localPosition),
               onPanEnd: (_) => _lastAngle = null,
-              child: Container(
-                width: _knobSize,
-                height: _knobSize,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: colors.gold,
-                  border: Border.all(color: colors.nightBorder),
+              child: Material(
+                color: colors.nightPanel.withValues(alpha: 0.75),
+                shape: const CircleBorder(),
+                child: SizedBox(
+                  width: _knobSize,
+                  height: _knobSize,
+                  child: Icon(Icons.threesixty, color: colors.gold, size: 22),
                 ),
-                child: Icon(Icons.threesixty, color: colors.onGold, size: 26),
               ),
             ),
           ),
           Positioned(
             left: dotCenter.dx - _dotSize / 2,
             top: dotCenter.dy - _dotSize / 2,
-            child: Container(
-              width: _dotSize,
-              height: _dotSize,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: colors.gold,
-                boxShadow: [
-                  BoxShadow(
-                    color: colors.gold.withValues(alpha: 0.7),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
+            child: DecoratedBox(
+              decoration: BoxDecoration(shape: BoxShape.circle, color: colors.gold),
+              child: SizedBox(width: _dotSize, height: _dotSize),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A dedicated zoom control alongside the pinch/scroll-wheel gestures
+/// `NebulaScreen` already handles — styled like the "Grid" switch, same
+/// as [_RollKnob]: the translucent `colors.nightPanel` pill, a muted
+/// "Zoom" caption the same way "Grid" labels its own switch, and gold
+/// (`colors.gold`) wherever the switch itself would turn gold — the
+/// active track/thumb and the percentage readout, since that's the part
+/// actually being engaged with. Always shown on both phone and web
+/// (unlike the roll knob, which only covers a gap touch itself already
+/// fills). A plain [Slider] rotated onto its side (Flutter has no
+/// dedicated vertical slider of its own) so the thumb's position along
+/// the track — plus the percentage readout above it — shows exactly
+/// where the camera currently sits in the zoom range, from fully out to
+/// fully in.
+///
+/// Mapped through `math.log` rather than [zoom] itself: zoom is
+/// inherently multiplicative (min to max is a 100x span — see
+/// `NebulaScreen._maxZoom`'s own doc comment), so a slider driven by the
+/// raw value would spend almost its entire length on just the bottom
+/// sliver of that range and leave the rest of the track meaningless — the
+/// log scale is what makes the thumb's position actually track how
+/// "zoomed in" the view feels.
+class _ZoomSlider extends StatelessWidget {
+  const _ZoomSlider({
+    required this.zoom,
+    required this.minZoom,
+    required this.maxZoom,
+    required this.onChanged,
+  });
+
+  final double zoom;
+  final double minZoom;
+  final double maxZoom;
+  final ValueChanged<double> onChanged;
+
+  // 20% smaller than before, matching the same shrink applied to the
+  // "Grid" switch and [_RollKnob] — frees up more of the sky for
+  // constellations/navigation without losing any of these controls.
+  static const _trackLength = 128.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final logMin = math.log(minZoom);
+    final logMax = math.log(maxZoom);
+    final logValue = math.log(zoom).clamp(logMin, logMax).toDouble();
+    final percent = (((logValue - logMin) / (logMax - logMin)) * 100).round();
+
+    return Material(
+      color: colors.nightPanel.withValues(alpha: 0.75),
+      borderRadius: BorderRadius.circular(18),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // The value sits above the track, at its "zoomed in" end, and
+            // the "Zoom" caption below, at its "zoomed out" end — one on
+            // each side of the slider itself, rather than both stacked
+            // together above it.
+            Text(
+              '$percent%',
+              style: TextStyle(
+                color: colors.gold,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            SizedBox(
+              width: 32,
+              height: _trackLength,
+              child: RotatedBox(
+                // Turns the slider on its side so its "min" end (zoomed
+                // out) lands at the bottom and "max" (zoomed in) at the
+                // top, like a volume slider.
+                quarterTurns: 3,
+                child: SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    activeTrackColor: colors.gold,
+                    inactiveTrackColor: colors.muted.withValues(alpha: 0.35),
+                    thumbColor: colors.gold,
+                    overlayColor: colors.gold.withValues(alpha: 0.15),
+                    trackHeight: 3,
+                  ),
+                  child: Slider(
+                    min: logMin,
+                    max: logMax,
+                    value: logValue,
+                    onChanged: (value) => onChanged(math.exp(value)),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text('Zoom', style: TextStyle(color: colors.muted, fontSize: 12)),
+          ],
+        ),
       ),
     );
   }

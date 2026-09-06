@@ -61,6 +61,19 @@ class _RootScreenState extends State<RootScreen> {
   /// like [_tabIndex], it's fine for this to reset on a fresh launch.
   bool _railExpanded = true;
 
+  /// Whether the Galaxy tab's own fullscreen toggle (see
+  /// [NebulaScreen.onToggleFullscreen]) is on — owned here, not by
+  /// [NebulaScreen] itself, since hiding the surrounding chrome (the
+  /// bottom nav bar / desktop side rail below) is only possible from this
+  /// screen, the one that actually renders it. Only ever takes visible
+  /// effect while the Galaxy tab is the one showing (see [_hideChrome]) —
+  /// switching to another tab while this is still on doesn't strand the
+  /// user without navigation, it just brings the chrome right back, the
+  /// same as if this had been turned off.
+  bool _galaxyFullscreen = false;
+
+  bool get _hideChrome => _galaxyFullscreen && _tabIndex == 1;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -110,6 +123,9 @@ class _RootScreenState extends State<RootScreen> {
           habitRepository: widget.habitRepository,
           habitCompletionRepository: widget.habitCompletionRepository,
           customConstellationRepository: widget.customConstellationRepository,
+          isFullscreen: _galaxyFullscreen,
+          onToggleFullscreen: () =>
+              setState(() => _galaxyFullscreen = !_galaxyFullscreen),
         ),
         SkyScreen(
           projectRepository: widget.projectRepository,
@@ -137,6 +153,8 @@ class _RootScreenState extends State<RootScreen> {
     );
 
     if (isWideLayout(context)) {
+      if (_hideChrome) return Scaffold(body: tabs);
+
       return Scaffold(
         body: Row(
           children: [
@@ -176,21 +194,24 @@ class _RootScreenState extends State<RootScreen> {
 
     return Scaffold(
       body: tabs,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tabIndex,
-        onDestinationSelected: (index) => setState(() => _tabIndex = index),
-        backgroundColor: colors.nightPanel,
-        indicatorColor: colors.gold.withValues(alpha: 0.16),
-        surfaceTintColor: Colors.transparent,
-        destinations: [
-          for (final d in destinations)
-            NavigationDestination(
-              icon: Icon(d.icon, color: colors.muted),
-              selectedIcon: Icon(d.selected, color: colors.gold),
-              label: d.label,
+      bottomNavigationBar: _hideChrome
+          ? null
+          : NavigationBar(
+              selectedIndex: _tabIndex,
+              onDestinationSelected: (index) =>
+                  setState(() => _tabIndex = index),
+              backgroundColor: colors.nightPanel,
+              indicatorColor: colors.gold.withValues(alpha: 0.16),
+              surfaceTintColor: Colors.transparent,
+              destinations: [
+                for (final d in destinations)
+                  NavigationDestination(
+                    icon: Icon(d.icon, color: colors.muted),
+                    selectedIcon: Icon(d.selected, color: colors.gold),
+                    label: d.label,
+                  ),
+              ],
             ),
-        ],
-      ),
     );
   }
 }

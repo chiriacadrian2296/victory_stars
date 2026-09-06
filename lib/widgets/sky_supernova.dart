@@ -92,18 +92,6 @@ typedef _Vec3 = (double x, double y, double z);
 
 double _dot3(_Vec3 a, _Vec3 b) => a.$1 * b.$1 + a.$2 * b.$2 + a.$3 * b.$3;
 
-/// The Dart-side twin of sky_supernova.frag's own `supernovaDirection` —
-/// same Fibonacci sphere formula, same [kSupernovaCount] of 8, so each
-/// icon this paints lands exactly on the star the shader already drew
-/// there.
-_Vec3 _supernovaDirection(int index, int count) {
-  final goldenAngle = math.pi * (3.0 - math.sqrt(5.0));
-  final y = 1.0 - (index / (count - 1)) * 2.0;
-  final radius = math.sqrt(math.max(0.0, 1.0 - y * y));
-  final theta = goldenAngle * index;
-  return (math.cos(theta) * radius, y, math.sin(theta) * radius);
-}
-
 /// The forward (3D-direction -> screen) half of the same stereographic
 /// projection `constellation_field.dart`'s own `worldToScreen`/the sky
 /// shaders' inverse-stereographic `main()` use — see either of those for
@@ -179,10 +167,22 @@ class _SkySupernovaPainter extends CustomPainter {
         ..blendMode = BlendMode.plus,
     );
 
+    // An area near the edge of the sky view projects to a center point
+    // outside this canvas's own bounds — expected, since only part of its
+    // icon (or the blurred glow around it — see _paintOutlineIcon's own
+    // maskFilter, which reaches further out than the glyph itself) should
+    // be visible there. Without an explicit clip, that overflow paints
+    // straight through into whatever sits beside this pane in the wider
+    // layout (the desktop/web sidebar) instead of just disappearing
+    // off-screen — see `ConstellationFieldPainter.paint`'s own identical
+    // clip, added for the exact same reason on that layer.
+    canvas.save();
+    canvas.clipRect(Offset.zero & size);
+
     final areas = LifeArea.values;
     for (var i = 0; i < areas.length; i++) {
       final projected = _projectDirection(
-        _supernovaDirection(i, areas.length),
+        supernovaDirection(i, areas.length),
         camera,
         zoom,
         size,
@@ -192,17 +192,15 @@ class _SkySupernovaPainter extends CustomPainter {
       final diameter = _iconWorldRadius * 2 * zoom * size.height * scale;
       _paintOutlineIcon(canvas, center, diameter, areas[i].icon);
     }
+    canvas.restore();
   }
 
-  /// A shared color stop pair for the border and its glow — sampled
-  /// straight from the star's own *rendered* pixels (its ring and the
-  /// pale edge of its rays), not sky_supernova.frag's raw `midColor`/
-  /// `outerColor` constants: those get multiplied by `brightness` and
-  /// composited additively, which washes them out into something much
-  /// paler on screen than the constants alone suggest — using the
-  /// constants directly (tried first) read as too dark/saturated next to
-  /// the star's own actual pale-gold look.
-  static const _borderGradientColors = [Color(0xFFFEFEB5), Color(0xFFF4CF8F)];
+  /// A shared color stop pair for the border and its glow — started from
+  /// colors sampled straight off the star's own rendered pixels (its ring
+  /// and the pale edge of its rays), nudged a little warmer/redder and a
+  /// little more saturated from there (asked for explicitly, "un po' di
+  /// tutto" — small nudges on both ends, not a big color shift).
+  static const _borderGradientColors = [Color(0xFFFFEFA0), Color(0xFFF0C078)];
 
   /// The icon's own silhouette: a plain white fill, a vivid blue gradient
   /// border, and that same gradient again — blurred, for a short glow —
@@ -212,15 +210,10 @@ class _SkySupernovaPainter extends CustomPainter {
   /// `Paint` with those set, dropped into `foreground`, reproduces each).
   void _paintOutlineIcon(Canvas canvas, Offset center, double diameter, IconData icon) {
     final text = String.fromCharCode(icon.codePoint);
-    // Border thinned down (was diameter * 0.05) and the glow widened (was
-    // diameter * 0.05 * 1.8) for more intensity — an additively-blended
-    // version of this glow was tried too, but right at a star's own
-    // near-white core, adding more light just washes out to white/
-    // illegible rather than reading as "more intense"; plain (but wider)
-    // coverage is what actually keeps the icon visible while still
-    // looking bolder.
-    final borderWidth = diameter * 0.03;
-    final glowWidth = diameter * 0.14;
+    // Border thinned further (was diameter * 0.03) and the glow pulled
+    // shortened again (was diameter * 0.14, then 0.11).
+    final borderWidth = diameter * 0.022;
+    final glowWidth = diameter * 0.08;
 
     // The glow's gradient is the same two colors as the border's own, just
     // spun around [center] by an angle that grows with [time] — a rotating

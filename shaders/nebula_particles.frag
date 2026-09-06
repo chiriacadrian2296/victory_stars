@@ -195,9 +195,72 @@ void main() {
     // as they approach it, so fading them too doesn't lose the "lines
     // converge here" cue).
     float poleFade = smoothstep(0.22, 0.25, abs(trueElevationTurns));
-    float gridLine = (smoothstep(0.03, 0.0, meridianDist) +
-        smoothstep(0.03, 0.0, parallelDist)) * (1.0 - poleFade);
-    color = mix(color, vec3(1.0), clamp(gridLine, 0.0, 1.0) * 0.3);
+    // Two separately-colored layers, echoing a star's own bright
+    // core/gold-glow pairing (see sky_supernova.frag's `supernova()`, and
+    // the same white-core/gold-glow pairing `ConstellationPainter`'s own
+    // stars use) rather than one flat white-tinted band: a thin, largely
+    // opaque near-white core — the line itself — plus a softer, wider
+    // gold glow around it, tinted with the same [kGold] this shader
+    // already reserves for its brightest star peaks.
+    //
+    // meridianDist/parallelDist aren't on the same scale: meridianDist is
+    // measured in units of a 1/24-turn cell, parallelDist in units of a
+    // coarser 1/12-turn-equivalent cell (see this block's own
+    // azimuth/elevation setup above — parallels use half the divisor
+    // meridians do). The same numeric threshold applied to both therefore
+    // used to draw parallels at *twice* the real angular width of
+    // meridians — halving the parallel core threshold (and doubling its
+    // glow falloff rate below) corrects for that scale difference, so
+    // both read as the same width.
+    const float kMeridianCoreWidth = 0.0009;
+    const float kParallelCoreWidth = kMeridianCoreWidth * 0.5;
+
+    // A pixel-width antialiasing edge instead of a fixed one in
+    // dist-units — a fixed-in-angle soft edge covers more and more screen
+    // pixels the further in you zoom (the same tiny sliver of real angle
+    // just spans more of the view), which is exactly what read as a
+    // clean line from far away but a blurry, imprecise one zoomed in
+    // close. `fwidth()` (the usual GLSL tool for this) isn't supported by
+    // Flutter's shader compiler target, so this approximates it
+    // analytically instead: near the view's own optical center, one
+    // screen pixel spans very close to 1/(uResolution.y * uZoom) radians
+    // of real angle — the same relationship the projection's own
+    // `tangent` above already relies on — so dividing that by each grid's
+    // own real angular spacing (2π/24 for meridians, 2π/12 for the
+    // coarser parallels) converts it into the same dist-unit `fwidth()`
+    // would have measured directly.
+    //
+    // This AA width — not kMeridianCoreWidth/kParallelCoreWidth above —
+    // is what actually controls how thick the line reads zoomed all the
+    // way out: at the minimum zoom, the core's own true angular width
+    // rasterizes to a small fraction of one screen pixel (it's a genuinely
+    // thin line at that scale), so the AA edge sized below is the only
+    // part of the line with enough coverage to render at all, and
+    // shrinking the core width further has no visible effect until zoom
+    // is high enough for the core to catch up to it. The multiplier here
+    // (was 1.5, still enough headroom to avoid the line shimmering in and
+    // out as the camera pans, without staying as thick as a full 1.5px at
+    // every zoom level) is the one to touch for "thinner at low zoom."
+    float pixelAngle = 1.0 / (uResolution.y * uZoom);
+    float meridianAA = max(pixelAngle * 24.0 / 6.28318530718 * 0.75, 1e-5);
+    float parallelAA = max(pixelAngle * 12.0 / 6.28318530718 * 0.75, 1e-5);
+
+    float meridianCore =
+        1.0 - smoothstep(kMeridianCoreWidth, kMeridianCoreWidth + meridianAA, meridianDist);
+    float parallelCore =
+        1.0 - smoothstep(kParallelCoreWidth, kParallelCoreWidth + parallelAA, parallelDist);
+    float core = clamp(meridianCore + parallelCore, 0.0, 1.0) * (1.0 - poleFade);
+
+    float meridianGlow = exp(-meridianDist * 130.0) * 0.75;
+    float parallelGlow = exp(-parallelDist * 260.0) * 0.75;
+    float glow = clamp(meridianGlow + parallelGlow, 0.0, 1.0) * (1.0 - poleFade);
+
+    color = mix(color, kGold, glow * 0.65);
+    // Pushed close to fully opaque (was 0.75) — even at the line's own
+    // dead center, that left a quarter of the background still showing
+    // through, which is what read as an unwanted see-through wash rather
+    // than a clean, solid line.
+    color = mix(color, vec3(1.0, 0.98, 0.92), core * 0.95);
   }
 
   fragColor = vec4(color, 1.0);

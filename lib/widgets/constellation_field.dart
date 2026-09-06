@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../data/constellation_shapes_v2.dart';
 import '../models/habit.dart';
+import '../models/life_area.dart';
 import '../models/project.dart';
 import '../models/star.dart';
 import 'constellation_painter.dart';
@@ -55,14 +56,15 @@ class PlacedConstellation {
 /// is exactly what it needs; only the *camera* uses a full free
 /// orientation with no such reference (see [SkyCamera] for why).
 ///
-/// [PlacedConstellation.worldPosition]'s elevation is always kept within
-/// ±[kSkyMaxContentElevationTurns] so no constellation ever sits close to
-/// where azimuth stops mattering (the poles of *this* fixed coordinate
-/// system — content still has them, only the camera doesn't).
-const double kSkyMaxContentElevationTurns = 0.22;
+/// [PlacedConstellation.worldPosition] can land anywhere on that sphere,
+/// including near one of *this* fixed coordinate system's own poles (the
+/// camera has none, but content still does) — see [constellationWorldPosition]
+/// for why that's safe here: it never offsets a pole-adjacent position by
+/// azimuth/elevation directly, only ever by a 3D geodesic step, which has
+/// no singularity there.
 
 /// How much of the sky sphere one constellation's own local 0..1 space
-/// covers, in turns — independent of [zoom], so shrinking this is what
+/// covers, in radians — independent of [zoom], so shrinking this is what
 /// makes every constellation read as one small patch of a much bigger sky
 /// instead of ballooning to fill the screen at any zoom level. Tried much
 /// larger (0.8) first to make constellations easier to spot in the
@@ -71,25 +73,140 @@ const double kSkyMaxContentElevationTurns = 0.22;
 /// approximation this class draws each constellation as breaks down at
 /// that size) — kept small instead, and made findable through
 /// `ConstellationFieldPainter`'s own bolder line/icon/glow sizing instead
-/// of through sheer size.
-const double kSkyConstellationAngularSpan = 0.15;
+/// of through sheer size. Shrunk again since (was 0.15) so constellations
+/// read as sitting farther out in the sky rather than parked right up
+/// close — everything about how big one renders (line width, sparkle
+/// size, glow sprite scale) is already proportional to this, via
+/// `_projectConstellationTransform`'s own `localSizePx`, so lowering it
+/// alone is enough to push the whole shape farther away without also
+/// having to retune those multipliers by hand.
+const double kSkyConstellationAngularSpan = 0.10;
 
-/// Where the [index]-th constellation (by stable creation order — see
-/// `NebulaScreen._loadData`) sits on the sky sphere: a 2D Kronecker
-/// (additive-recurrence) sequence — azimuth and elevation each advance by
-/// their own irrational step per index — which spreads points evenly with
-/// no collisions and, unlike a classic Fibonacci sphere, needs no fixed
-/// total point count up front (elevation's formula would otherwise shift
-/// as more projects are added, moving every existing constellation).
-/// Deterministic and index-only (not id-based), so an existing project's
-/// spot in the sky never moves as more are added.
-Offset constellationWorldPosition(int index) {
-  const azimuthStep = 0.6180339887498949; // golden ratio conjugate
-  const elevationStep = 0.4142135623730951; // sqrt(2) - 1
-  final azimuth = (index * azimuthStep) % 1.0;
-  final elevationUnit = (index * elevationStep) % 1.0;
-  final elevation = kSkyMaxContentElevationTurns * (2 * elevationUnit - 1);
-  return Offset(azimuth, elevation);
+/// The direction (as a raw unit vector) of the [index]-th of [count] evenly
+/// spread points on the sky sphere — a Fibonacci/golden-angle spiral, the
+/// same formula `sky_supernova.frag` independently reimplements in GLSL for
+/// the glow itself (a shader has no way to share Dart code, so that copy is
+/// kept in sync with this one by hand) and [SkySupernova]'s own icon
+/// painter uses this exact function for, so every icon lands squarely on
+/// the star the shader already drew. [areaWorldPosition] below is what lets
+/// [constellationWorldPosition] place a project's constellation around its
+/// own [LifeArea]'s star using this same layout.
+(double x, double y, double z) supernovaDirection(int index, int count) {
+  final goldenAngle = math.pi * (3.0 - math.sqrt(5.0));
+  final y = 1.0 - (index / (count - 1)) * 2.0;
+  final radius = math.sqrt(math.max(0.0, 1.0 - y * y));
+  final theta = goldenAngle * index;
+  return (math.cos(theta) * radius, y, math.sin(theta) * radius);
+}
+
+/// Where [area]'s own supernova sits on the sky sphere, in the same
+/// (azimuthTurns, elevationTurns) space every other piece of sky content
+/// uses — the inverse of [_directionOn] applied to [supernovaDirection],
+/// since [LifeArea] fixes both the index (its own [LifeArea.index]) and the
+/// total count ([LifeArea.values.length], matching `kSupernovaCount` in
+/// `sky_supernova.dart`) that formula needs.
+Offset areaWorldPosition(LifeArea area) {
+  final (x, y, z) = supernovaDirection(area.index, LifeArea.values.length);
+  final elevationTurns = math.asin(y.clamp(-1.0, 1.0)) / _twoPi;
+  final azimuthTurns = math.atan2(z, x) / _twoPi;
+  return Offset(azimuthTurns, elevationTurns);
+}
+
+/// How far (in radians of true angular separation on the sky sphere) a
+/// project's constellation must clear its own life area's supernova by —
+/// bigger than the supernova's own visible glow (its bright core/ring/spike
+/// reach dies off well before this — see `sky_supernova.frag`'s `supernova`
+/// function), so no constellation ever reads as parked on top of the light
+/// itself. Also reused as the minimum gap kept between any two same-area
+/// constellations' own centers (see [constellationWorldPosition]) — one
+/// spacing value doing both jobs, since "far enough from the supernova" and
+/// "far enough from a sibling constellation" are the same kind of
+/// requirement here. The closest any two of the 8 supernovas ever get to
+/// each other (computed offline from [supernovaDirection]) is about 0.775
+/// radians (44.4°); this spacing is small enough that several rings' worth
+/// of same-area constellations still fit well inside half that before
+/// risking a neighboring area's own safe zone.
+const double _kAreaConstellationSpacing = 0.18;
+
+/// The golden angle, in radians — see [constellationWorldPosition]'s own
+/// per-ring stagger for why.
+const double _kGoldenAngle = 2.399963229728653;
+
+/// Where the [indexInArea]-th constellation belonging to [area] (by stable
+/// creation order *within that area* — see `NebulaScreen._loadData`) sits
+/// on the sky sphere: packed into concentric rings around [area]'s own
+/// supernova, starting [_kAreaConstellationSpacing] out (the safe zone) and
+/// stepping outward by that same spacing ring by ring, rather than a free
+/// scatter — a Kronecker/golden-angle scatter (tried first) spreads points
+/// evenly *on average* but has no guaranteed minimum distance between any
+/// two of them, so two same-area projects could still land close enough to
+/// visibly overlap. Packing rings instead gives that guarantee outright:
+/// each ring only ever holds as many evenly-spaced slots as fit at its own
+/// radius without any two neighbors on it closer than
+/// [_kAreaConstellationSpacing] (`slotsInRing` below), so every placement
+/// this returns is at least that far from every other one, in the same
+/// area or the ring in or out from it. Successive rings are staggered by
+/// the golden angle rather than all starting at angle 0, so filled rings
+/// don't line up into visible spokes radiating from the supernova.
+///
+/// Deterministic and index-within-area-only (not id-based), so an existing
+/// project's spot never moves as more are added, whether to its own area or
+/// another one — indices fill ring 0 first, then ring 1, and so on, so a
+/// later addition only ever extends the pattern outward.
+///
+/// Built directly in 3D (around [area]'s own direction vector, using the
+/// same canonical tangent-frame trick [_projectConstellationTransform]
+/// uses) rather than by offsetting azimuth/elevation directly, since a flat
+/// offset in that 2D space distorts however close [area]'s own star sits to
+/// a pole — a 3D geodesic offset reads as a uniform ring around the star
+/// regardless of where on the sphere it is.
+Offset constellationWorldPosition(LifeArea area, int indexInArea) {
+  final center = areaWorldPosition(area);
+  final centerDir = _directionOn(center.dx, center.dy);
+  final azimuth = center.dx * _twoPi;
+  final canonicalRight = (-math.sin(azimuth), 0.0, math.cos(azimuth));
+  final canonicalUp = _cross(canonicalRight, centerDir);
+
+  // Finds which ring [indexInArea] falls into by filling each ring's own
+  // slots (as many as fit its circumference at [_kAreaConstellationSpacing]
+  // apart) before spilling into the next one outward.
+  var remaining = indexInArea;
+  var ring = 0;
+  var radius = _kAreaConstellationSpacing;
+  var slotsInRing = math.max(
+    1,
+    (_twoPi * radius / _kAreaConstellationSpacing).floor(),
+  );
+  while (remaining >= slotsInRing) {
+    remaining -= slotsInRing;
+    ring++;
+    radius = _kAreaConstellationSpacing * (ring + 1);
+    slotsInRing = math.max(
+      1,
+      (_twoPi * radius / _kAreaConstellationSpacing).floor(),
+    );
+  }
+  final angle = (remaining / slotsInRing) * _twoPi + ring * _kGoldenAngle;
+
+  final offsetAxis = _normalized(
+    _add(
+      _scaled(canonicalRight, math.cos(angle)),
+      _scaled(canonicalUp, math.sin(angle)),
+    ),
+  );
+  // centerDir and offsetAxis are already perpendicular unit vectors, so
+  // this is exactly the point [radius] radians from centerDir along the
+  // great circle toward offsetAxis — no explicit rotation axis/matrix
+  // needed (see [SkyCamera.rolled] for the general Rodrigues version of
+  // the same idea).
+  final scattered = _add(
+    _scaled(centerDir, math.cos(radius)),
+    _scaled(offsetAxis, math.sin(radius)),
+  );
+
+  final elevationTurns = math.asin(scattered.$2.clamp(-1.0, 1.0)) / _twoPi;
+  final azimuthTurns = math.atan2(scattered.$3, scattered.$1) / _twoPi;
+  return Offset(azimuthTurns, elevationTurns);
 }
 
 const double _twoPi = 2 * math.pi;
@@ -391,6 +508,24 @@ ScreenProjection? worldToScreen(
 /// `NebulaScreen._maxZoom`'s own comment.
 const double minZoomWithoutRepeats = 0.3;
 
+/// The highest `NebulaScreen` ever lets its camera zoom in to — picked
+/// freely, not tied to any hard geometric limit the way
+/// [minZoomWithoutRepeats] is. Shared here (rather than kept private to
+/// `NebulaScreen`) since [ConstellationFieldPainter] also needs it, to
+/// turn the raw [zoom] it's given into the same 0..100 "how far into the
+/// zoom range" reading `_ZoomSlider`'s own percent label shows — see its
+/// use in [ConstellationFieldPainter.paint] for the label fade-in that
+/// reading drives.
+///
+/// `0.3 * (30.0 / 0.3) ^ 0.7` — the zoom value that used to sit at 70% of
+/// the old range (whose top end was a plain 30.0), now pulled down to be
+/// the new 100%: zooming in past that point read as "too close to be
+/// useful" rather than actually helpful, so instead of leaving dead,
+/// unused range past it, the whole top end of the range is squeezed down
+/// to end exactly there. [minZoomWithoutRepeats] (the range's other end)
+/// is untouched — only the max-zoom-in side shrinks.
+const double kSkyMaxZoom = 7.5357;
+
 /// How far [camera] has rolled away from "level" (its own zero-roll,
 /// [SkyCamera.lookingAt]-style orientation) at wherever it's currently
 /// looking — a compass-style reading independent of which way it's
@@ -597,6 +732,16 @@ const bool _kShowStarLabels = false;
 const double _kLabelSwitchLogZoom = 0.9; // ln(zoom) ≈ zoom 2.5
 const double _kLabelFadeLogRange = 0.25; // ≈ crossfades over a ~1.6x zoom span
 
+/// Where, on the 0..100 "how far into the zoom range" reading described at
+/// [kSkyMaxZoom], a constellation's own name label starts (and finishes)
+/// fading in from fully invisible — see `ConstellationFieldPainter.paint`'s
+/// own `zoomFadeAlpha`. Below [_kLabelZoomFadeStartPercent] there's little
+/// room on screen to read a name anyway, at that zoomed-out a distance —
+/// hiding it there is what keeps the fully-zoomed-out view from being
+/// cluttered with a wall of labels the moment the tab opens.
+const double _kLabelZoomFadeStartPercent = 20;
+const double _kLabelZoomFadeEndPercent = 35;
+
 /// Shared by both constellation- and star-name labels — a single size
 /// (not a bigger one for one kind and a smaller one for the other, as
 /// tried first) reads as more consistent switching between the two.
@@ -605,13 +750,37 @@ const double _kLabelFadeLogRange = 0.25; // ≈ crossfades over a ~1.6x zoom spa
 /// only briefly at the widest zoom-out.
 const double _kLabelFontSize = 11;
 
-/// A single small screen-space label: a white pill with dark-navy text,
-/// centered on [anchor] — always horizontal, never affected by
-/// [_projectConstellationTransform]'s own rotation/skew, so it stays
-/// readable no matter how the camera's turned. Colors are fixed rather
-/// than pulled from the active theme — the Galaxy tab's sky is dark
-/// regardless of light/dark mode, and these need to read clearly against
-/// it either way.
+/// The shared gold every part of the constellation layer that isn't a
+/// star's own bright core is tinted with — the soft glow behind a lit
+/// star/habit (see `ConstellationFieldPainter`'s own `starColor`/
+/// `habitColor`, which `NebulaScreen` sets to this) and the connecting
+/// lines between them, so the layer reads as one warm family with
+/// `SkySupernova`'s own gold rather than clashing white against it. A
+/// star's own core mark stays white (`coreColor`, set to plain
+/// [Colors.white]) the same way a supernova's own icon is a white glyph
+/// over a gold glow/border — not this same gold, which would wash the two
+/// together into one flat blob with no bright point left to read as the
+/// star itself. Fixed rather than pulled from the active theme, like
+/// [_drawPillLabel]'s own colors below — the Galaxy tab's sky is dark
+/// regardless of light/dark mode.
+const Color kConstellationGold = Color(0xFFF2C879);
+
+/// A lighter, paler gold than [kConstellationGold] for a label's own pill
+/// background (see [_drawPillLabel]) — the deeper gold used on
+/// icons/glows/lines reads as too heavy at a label's small, solid-fill
+/// size, where there's no glow beneath it to soften it the way there is
+/// on a star.
+const Color _kLabelGold = Color(0xFFFFE7B0);
+
+/// A single small screen-space label: a pale-gold pill with dark-navy
+/// text and its own soft glow behind it (the same blurred-shadow recipe
+/// the app's gold buttons use elsewhere, just hand-drawn here since this
+/// is a raw [Canvas] pill, not a widget) — centered on [anchor], always
+/// horizontal, never affected by [_projectConstellationTransform]'s own
+/// rotation/skew, so it stays readable no matter how the camera's turned.
+/// Colors are fixed rather than pulled from the active theme — the Galaxy
+/// tab's sky is dark regardless of light/dark mode, and these need to read
+/// clearly against it either way.
 /// Longer than this, a name gets cut short with a trailing ellipsis — a
 /// long title otherwise made its own pill wide enough to overlap
 /// neighboring labels, exactly what a short, fixed-width badge is meant
@@ -652,10 +821,16 @@ void _drawPillLabel(
     width: textPainter.width + paddingH * 2,
     height: textPainter.height + paddingV * 2,
   );
+  final rrect = RRect.fromRectAndRadius(rect, Radius.circular(rect.height / 2));
+  // The glow, wider and blurred, drawn first so the crisp pill sits on top
+  // of it rather than the other way round.
   canvas.drawRRect(
-    RRect.fromRectAndRadius(rect, Radius.circular(rect.height / 2)),
-    Paint()..color = Colors.white.withValues(alpha: alpha * 0.7),
+    rrect,
+    Paint()
+      ..color = kConstellationGold.withValues(alpha: alpha * 0.45)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
   );
+  canvas.drawRRect(rrect, Paint()..color = _kLabelGold.withValues(alpha: alpha * 0.85));
   textPainter.paint(
     canvas,
     Offset(anchor.dx - textPainter.width / 2, anchor.dy - textPainter.height / 2),
@@ -715,9 +890,23 @@ class ConstellationFieldPainter extends CustomPainter {
             logZoom,
           )
         : 0.0;
-    final constellationLabelAlpha = _kShowStarLabels
-        ? 1 - starLabelAlpha
-        : 1.0;
+    // Where [zoom] currently sits in the whole zoom range, as the same
+    // 0..100 reading `_ZoomSlider`'s own percent label shows (see
+    // [kSkyMaxZoom]'s doc comment) — labels start fully invisible at the
+    // bottom of the range and fade in on the way up to
+    // [_kLabelZoomFadeEndPercent], rather than being there (and cluttering
+    // the view) from the very first, fully-zoomed-out frame.
+    final zoomPercent =
+        (logZoom - math.log(minZoomWithoutRepeats)) /
+        (math.log(kSkyMaxZoom) - math.log(minZoomWithoutRepeats)) *
+        100;
+    final zoomFadeAlpha = _smoothstep(
+      _kLabelZoomFadeStartPercent,
+      _kLabelZoomFadeEndPercent,
+      zoomPercent,
+    );
+    final constellationLabelAlpha =
+        (_kShowStarLabels ? 1 - starLabelAlpha : 1.0) * zoomFadeAlpha;
 
     for (final constellation in placed) {
       final transform = _projectConstellationTransform(

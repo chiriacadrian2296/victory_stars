@@ -269,6 +269,24 @@ class ConstellationPainter extends CustomPainter {
       Paint(),
     );
 
+    // A miniature echo of `sky_supernova.frag`'s own four-point cross
+    // spike — same cardinal-rays shape, just a plain filled Path instead
+    // of a shader, and sized off this group's own [sparkleRadius] so a
+    // habit's smaller stars get proportionally smaller rays too. Drawn in
+    // [tint] (the same gold the glow blob above is tinted) rather than
+    // [sparkleColor], so it reads as an extension of the glow's own light
+    // reaching outward, with the bright sparkle core still the one crisp
+    // white point on top of it.
+    final spikes = _spikesPath(sparkleRadius * 3);
+    final spikePaint = Paint()..color = tint.withValues(alpha: 0.55);
+    for (final star in group) {
+      final center = _toCanvas(star.position, size);
+      canvas.save();
+      canvas.translate(center.dx, center.dy);
+      canvas.drawPath(spikes, spikePaint);
+      canvas.restore();
+    }
+
     final sparkle = _sparklePath(sparkleRadius);
     final corePaint = Paint()..color = sparkleColor;
     for (final star in group) {
@@ -328,6 +346,28 @@ Path _sparklePath(double radius) {
     ..quadraticBezierTo(-waist, waist, -radius, 0)
     ..quadraticBezierTo(-waist, -waist, 0, -radius)
     ..close();
+}
+
+/// Four thin rays radiating along the cardinal directions out to [radius]
+/// — a plain filled [Path] echo of `sky_supernova.frag`'s own cross spike
+/// (wide at the base, tapering to a point), scaled down to sit on a single
+/// star instead of filling the screen. A shader can't be reused here (this
+/// is a per-star Canvas draw, not a full-screen fragment pass), so this is
+/// a hand-built approximation of the same shape rather than a shared
+/// formula.
+Path _spikesPath(double radius) {
+  final halfBase = radius * 0.05;
+  final path = Path();
+  for (final direction in const [Offset(1, 0), Offset(-1, 0), Offset(0, 1), Offset(0, -1)]) {
+    final perp = Offset(-direction.dy, direction.dx) * halfBase;
+    final tip = direction * radius;
+    path
+      ..moveTo(-perp.dx, -perp.dy)
+      ..lineTo(perp.dx, perp.dy)
+      ..lineTo(tip.dx, tip.dy)
+      ..close();
+  }
+  return path;
 }
 
 Offset _toCanvas(Offset normalized, Size size) {

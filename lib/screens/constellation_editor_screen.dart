@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 
 import '../data/constellation_editor_prefs.dart';
@@ -412,6 +413,69 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
     return _points.length - connected.length;
   }
 
+  /// True once the canvas differs from whatever it started as — an empty
+  /// canvas when creating a new shape, or [widget.existing]'s own saved
+  /// points/edges when editing one. Compared against those originals
+  /// directly rather than a separate "dirty" flag, so undo/redo back to the
+  /// exact starting state also correctly clears this.
+  bool get _hasUnsavedChanges {
+    final initialPoints = widget.existing?.shape.points ?? const <Offset>[];
+    final initialEdges = widget.existing?.shape.edges ?? const <(int, int)>[];
+    return !listEquals(_points, initialPoints) || !listEquals(_edges, initialEdges);
+  }
+
+  /// Shared by the back button and the system back gesture (see the
+  /// [PopScope] in [build]): leaving with unsaved changes needs
+  /// confirmation first, everything else pops right away. [_save] itself
+  /// pops directly rather than through here — an explicit [Navigator.pop]
+  /// call always succeeds regardless of [PopScope.canPop], so a completed
+  /// save is never blocked or re-prompted just because the canvas still
+  /// differs from where it started.
+  Future<void> _handleBack() async {
+    if (!_hasUnsavedChanges) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final discard = await _confirmDiscard();
+    if (discard && mounted) Navigator.of(context).pop();
+  }
+
+  /// Styled like the rest of the app's confirmations (see
+  /// [SettingsScreen]'s reset-all-data prompt) — a muted cancel next to a
+  /// [danger]-colored confirm action.
+  Future<bool> _confirmDiscard() async {
+    final colors = context.colors;
+    final strings = context.strings;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: colors.nightPanel,
+        title: Text(
+          strings.discardChangesConfirmTitle,
+          style: TextStyle(color: colors.text),
+        ),
+        content: Text(
+          strings.discardChangesConfirmBody,
+          style: TextStyle(color: colors.muted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(strings.cancel, style: TextStyle(color: colors.muted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(
+              strings.discardChangesAction,
+              style: TextStyle(color: colors.danger),
+            ),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
   Future<void> _save() async {
     final name = await showDialog<String>(
       context: context,
@@ -446,7 +510,7 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
     final canSave = _points.length >= 2;
     final disconnected = _disconnectedCount;
 
-    return Scaffold(
+    final scaffold = Scaffold(
       backgroundColor: colors.night,
       body: SafeArea(
         child: ResponsiveContent(
@@ -455,7 +519,7 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
               Row(
                 children: [
                   IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: _handleBack,
                     icon: Icon(Icons.arrow_back, color: colors.muted),
                   ),
                   Expanded(
@@ -705,6 +769,15 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
           ),
         ),
       ),
+    );
+
+    return PopScope(
+      canPop: !_hasUnsavedChanges,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        await _handleBack();
+      },
+      child: scaffold,
     );
   }
 }

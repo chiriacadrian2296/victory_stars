@@ -50,8 +50,6 @@ class StringsEn implements AppStrings {
   @override
   String get navHome => 'Home';
   @override
-  String get navSky => 'Sky';
-  @override
   String get navGalaxy => 'Galaxy';
   @override
   String get navStats => 'Stats';
@@ -156,6 +154,10 @@ class StringsEn implements AppStrings {
   String get filterKindSectionTitle => 'Star kind';
   @override
   String get allKindsLabel => 'All kinds';
+  @override
+  String get searchButtonLabel => 'Search';
+  @override
+  String get takeMeThereAction => 'Take me there';
 
   @override
   String get areaVisionLabel => 'Your vision for this area';
@@ -195,12 +197,6 @@ class StringsEn implements AppStrings {
   String get archiveEmpty =>
       'Your archive is still empty. Light your first star, even a small one.';
 
-  @override
-  String get skyEyebrow => 'YOUR SKY';
-  @override
-  String get skyTitle => 'Explore your sky';
-  @override
-  String get skySubtitle => 'Every supernova holds its own constellations.';
   @override
   String starsCount(int count) => '$count star${count == 1 ? '' : 's'}';
   @override
@@ -508,12 +504,6 @@ class StringsEn implements AppStrings {
   String get settingsEyebrow => 'SETTINGS';
   @override
   String get settingsTitle => 'Settings';
-  @override
-  String get appearanceSection => 'Appearance';
-  @override
-  String get themeLight => 'Light';
-  @override
-  String get themeDark => 'Dark';
   @override
   String get languageSection => 'Language';
   @override

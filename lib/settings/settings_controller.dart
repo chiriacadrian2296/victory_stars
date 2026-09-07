@@ -8,8 +8,7 @@ import '../data/settings_repository.dart';
 /// persists immediately, then notifies so the app re-renders.
 class SettingsController extends ChangeNotifier {
   SettingsController(this._repository)
-      : themeMode = _repository.themeMode == 'light' ? ThemeMode.light : ThemeMode.dark,
-        locale = _repository.locale,
+      : locale = _repository.locale,
         reminderEnabled = _repository.reminderEnabled,
         reminderHour = _repository.reminderHour,
         reminderMinute = _repository.reminderMinute;
@@ -21,18 +20,10 @@ class SettingsController extends ChangeNotifier {
     return SettingsController(repository);
   }
 
-  ThemeMode themeMode;
   String locale;
   bool reminderEnabled;
   int reminderHour;
   int reminderMinute;
-
-  Future<void> setThemeMode(ThemeMode mode) async {
-    if (mode == themeMode) return;
-    themeMode = mode;
-    await _repository.setThemeMode(mode == ThemeMode.light ? 'light' : 'dark');
-    notifyListeners();
-  }
 
   Future<void> setLocale(String code) async {
     if (code == locale) return;

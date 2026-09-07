@@ -2,26 +2,24 @@ import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
 
-ThemeData buildAppTheme(Brightness brightness) {
-  final palette = brightness == Brightness.dark ? AppColors.dark : AppColors.light;
+/// The app's one and only theme — night sky, gold stars. There's no light
+/// mode: a "daytime sky" doesn't fit an app about lighting stars against a
+/// dark backdrop, so [AppColors] has never had more than the one palette
+/// this builds from.
+ThemeData buildAppTheme() {
+  final palette = AppColors.dark;
+  const brightness = Brightness.dark;
 
   return ThemeData(
     useMaterial3: true,
     brightness: brightness,
     scaffoldBackgroundColor: palette.night,
-    colorScheme: brightness == Brightness.dark
-        ? ColorScheme.dark(
-            primary: palette.gold,
-            onPrimary: palette.onGold,
-            surface: palette.nightPanel,
-            onSurface: palette.text,
-          )
-        : ColorScheme.light(
-            primary: palette.gold,
-            onPrimary: palette.onGold,
-            surface: palette.nightPanel,
-            onSurface: palette.text,
-          ),
+    colorScheme: ColorScheme.dark(
+      primary: palette.gold,
+      onPrimary: palette.onGold,
+      surface: palette.nightPanel,
+      onSurface: palette.text,
+    ),
     textTheme: ThemeData(brightness: brightness).textTheme.apply(
           bodyColor: palette.text,
           displayColor: palette.text,

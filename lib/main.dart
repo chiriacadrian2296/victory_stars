@@ -245,9 +245,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
       navigatorKey: _navigatorKey,
       title: 'Victory Stars',
       debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(Brightness.light),
-      darkTheme: buildAppTheme(Brightness.dark),
-      themeMode: settings.themeMode,
+      theme: buildAppTheme(),
       locale: Locale(settings.locale),
       supportedLocales: const [Locale('en'), Locale('it'), Locale('ro')],
       localizationsDelegates: const [
@@ -259,50 +257,37 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
         strings: stringsForLocale(settings.locale),
         child: child!,
       ),
-      home: Builder(
-        // A Builder (not this method's own context) so Theme.of below
-        // actually resolves — MaterialApp.home is built inside the Theme
-        // it sets up, but the `context` MaterialApp.build itself runs in
-        // is not.
-        builder: (context) {
-          final isDark = Theme.of(context).brightness == Brightness.dark;
-          return AnnotatedRegion<SystemUiOverlayStyle>(
-            // Android draws its own status/navigation bars over the app by
-            // default with a plain white background regardless of the
-            // app's theme — without this, the back/home/recents bar (and
-            // the status bar) stay white in both light and dark mode.
-            // Fully transparent (not colors.night) rather than an explicit
-            // opaque color: Android 15+ ignores an app-requested
-            // systemNavigationBarColor outright under mandatory
-            // edge-to-edge, so the only reliable way to get a dark bar
-            // there is to make it transparent and let the app's own
-            // (already-dark) Scaffold background — which edge-to-edge
-            // extends behind the bar automatically — show through.
-            value: SystemUiOverlayStyle(
-              statusBarColor: Colors.transparent,
-              statusBarIconBrightness: isDark
-                  ? Brightness.light
-                  : Brightness.dark,
-              statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
-              systemNavigationBarColor: Colors.transparent,
-              systemNavigationBarIconBrightness: isDark
-                  ? Brightness.light
-                  : Brightness.dark,
-              systemNavigationBarDividerColor: Colors.transparent,
-              systemNavigationBarContrastEnforced: false,
-            ),
-            child: RootScreen(
-              settings: settings,
-              starRepository: starRepository,
-              projectRepository: projectRepository,
-              habitRepository: habitRepository,
-              habitCompletionRepository: habitCompletionRepository,
-              customConstellationRepository: customConstellationRepository,
-              areaVisionRepository: areaVisionRepository,
-              reminderService: reminderService,
-            ),
-          );
-        },
+      home: AnnotatedRegion<SystemUiOverlayStyle>(
+        // Android draws its own status/navigation bars over the app by
+        // default with a plain white background regardless of the app's
+        // theme — without this, the back/home/recents bar (and the status
+        // bar) stay white instead of matching the app's always-dark look.
+        // Fully transparent (not colors.night) rather than an explicit
+        // opaque color: Android 15+ ignores an app-requested
+        // systemNavigationBarColor outright under mandatory edge-to-edge,
+        // so the only reliable way to get a dark bar there is to make it
+        // transparent and let the app's own (already-dark) Scaffold
+        // background — which edge-to-edge extends behind the bar
+        // automatically — show through.
+        value: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: Brightness.light,
+          systemNavigationBarDividerColor: Colors.transparent,
+          systemNavigationBarContrastEnforced: false,
+        ),
+        child: RootScreen(
+          settings: settings,
+          starRepository: starRepository,
+          projectRepository: projectRepository,
+          habitRepository: habitRepository,
+          habitCompletionRepository: habitCompletionRepository,
+          customConstellationRepository: customConstellationRepository,
+          areaVisionRepository: areaVisionRepository,
+          reminderService: reminderService,
+        ),
       ),
     );
   }

@@ -6,6 +6,7 @@ import '../models/star.dart';
 import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
 import 'area_tag.dart';
+import 'navigate_here_button.dart';
 import 'project_tag.dart';
 import 'star_created_at.dart';
 import 'star_extra_badge.dart';
@@ -17,11 +18,22 @@ import 'star_kind_label.dart';
 /// app's light-blue accent instead of gold; everything else matches every
 /// other card's look. Tapping it opens the reader's "resurrect" flow.
 class DeadStarCard extends StatelessWidget {
-  const DeadStarCard({super.key, required this.star, this.onTap, this.project});
+  const DeadStarCard({
+    super.key,
+    required this.star,
+    this.onTap,
+    this.project,
+    this.onNavigateTo,
+  });
 
   final Star star;
   final VoidCallback? onTap;
   final Project? project;
+
+  /// Shows a "take me there" corner button when non-null — only passed by
+  /// the Galaxy tab's search popup, which can actually jump its sky camera
+  /// to this star's constellation.
+  final VoidCallback? onNavigateTo;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +41,7 @@ class DeadStarCard extends StatelessWidget {
     final strings = context.strings;
     final borderRadius = BorderRadius.circular(12);
 
-    return Material(
+    final card = Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
@@ -99,6 +111,21 @@ class DeadStarCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+
+    if (onNavigateTo == null) return card;
+    return Stack(
+      children: [
+        card,
+        Positioned(
+          top: 6,
+          right: 6,
+          child: NavigateHereButton(
+            onTap: onNavigateTo!,
+            tooltip: strings.takeMeThereAction,
+          ),
+        ),
+      ],
     );
   }
 }

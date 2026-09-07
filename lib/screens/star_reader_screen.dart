@@ -46,6 +46,7 @@ class StarReaderScreen extends StatefulWidget {
     this.projectRepository,
     this.customConstellationRepository,
     this.refreshStars,
+    this.onNavigateTo,
   }) : assert(
          !allowEdit ||
              (projectRepository != null &&
@@ -71,6 +72,11 @@ class StarReaderScreen extends StatefulWidget {
   /// originally scoped — called after an edit/achieve/delete/resurrect so
   /// prev/next keeps browsing the right set.
   final List<Star> Function()? refreshStars;
+
+  /// Set only when opened from the Galaxy tab's search popup — shows a
+  /// "take me there" button that closes both this reader and the popup,
+  /// handing the current star's project back to the sky camera to jump to.
+  final ValueChanged<Project>? onNavigateTo;
 
   @override
   State<StarReaderScreen> createState() => _StarReaderScreenState();
@@ -292,19 +298,34 @@ class _StarReaderScreenState extends State<StarReaderScreen> {
                 children: [
                   ResponsiveContent(
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         IconButton(
                           onPressed: () => Navigator.of(context).pop(),
                           icon: Icon(Icons.close, color: colors.crisisMuted),
                         ),
-                        Text(
-                          strings.indexOfCount(_index + 1, _stars.length),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: colors.crisisMuted,
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              strings.indexOfCount(_index + 1, _stars.length),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: colors.crisisMuted,
+                              ),
+                            ),
                           ),
                         ),
+                        if (widget.onNavigateTo != null && project != null)
+                          IconButton(
+                            tooltip: strings.takeMeThereAction,
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              widget.onNavigateTo!(project);
+                            },
+                            icon: Icon(
+                              Icons.near_me,
+                              color: colors.crisisMuted,
+                            ),
+                          ),
                         if (widget.allowEdit)
                           IconButton(
                             onPressed: _editOrResurrectCurrent,

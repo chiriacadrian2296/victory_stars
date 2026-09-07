@@ -6,27 +6,30 @@ import '../data/habit_completion_repository.dart';
 import '../data/habit_repository.dart';
 import '../data/project_repository.dart';
 import '../data/star_repository.dart';
+import '../l10n/app_strings.dart';
 import '../l10n/strings_scope.dart';
 import '../models/habit.dart';
 import '../models/life_area.dart';
 import '../models/project.dart';
 import '../models/star.dart';
+import '../screens/area_detail_screen.dart';
+import '../screens/constellation_screen.dart';
+import '../screens/habit_reader_screen.dart';
+import '../screens/star_reader_screen.dart';
 import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
 import '../utils/habit_stats.dart';
 import '../utils/icon_for_slug.dart';
-import '../widgets/area_filter_sheet.dart';
-import '../widgets/area_tag.dart';
-import '../widgets/constellation_painter.dart' show StarKind;
-import '../widgets/dead_star_card.dart';
-import '../widgets/goal_card.dart';
-import '../widgets/habit_card.dart';
-import '../widgets/responsive_content.dart';
-import '../widgets/star_card.dart';
-import 'area_detail_screen.dart';
-import 'constellation_screen.dart';
-import 'habit_reader_screen.dart';
-import 'star_reader_screen.dart';
+import 'area_filter_sheet.dart';
+import 'area_tag.dart';
+import 'constellation_painter.dart' show StarKind;
+import 'dead_star_card.dart';
+import 'goal_card.dart';
+import 'habit_card.dart';
+import 'navigate_here_button.dart';
+import 'responsive_content.dart';
+import 'sky_navigation_target.dart';
+import 'star_card.dart';
 
 enum _SkyMode { supernovas, constellations, stars }
 
@@ -58,15 +61,22 @@ class _SkyEntry {
   String? get description => star?.description ?? habit?.description;
 }
 
-/// The Sky hub: a switch between three views of the same underlying data —
-/// Supernovas (the 8 fixed life areas, tap one for its own detail page),
-/// Constellations (every project across whichever areas are in the area
-/// filter, tap one to open its [ConstellationScreen]), and Stars (every star
-/// and pulsar across those same areas, flat, newest first, further narrowed
-/// by a kind-filter row). Constellations and Stars share one area filter
-/// (default: every area), opened from [showAreaFilterSheet].
-class SkyScreen extends StatefulWidget {
-  const SkyScreen({
+/// A switch between three views of the same underlying data — Supernovas
+/// (the 8 fixed life areas, tap one for its own detail page), Constellations
+/// (every project across whichever areas are in the area filter, tap one to
+/// open its [ConstellationScreen]), and Stars (every star and pulsar across
+/// those same areas, flat, newest first, further narrowed by a kind-filter
+/// row). Constellations and Stars share one area filter (default: every
+/// area), opened from [showAreaFilterSheet].
+///
+/// The Galaxy tab's search popup (`GalaxySearchScreen`) is this widget's
+/// only caller — every card's "take me there" button calls [onNavigateTo]
+/// unconditionally, and [onModeLabelChanged] is how the popup's own AppBar
+/// title tracks whichever of the three views is currently selected, since
+/// that label used to be drawn inline here (freeing that vertical space was
+/// the point of moving it up into the popup's title bar).
+class SkyExplorerView extends StatefulWidget {
+  const SkyExplorerView({
     super.key,
     required this.projectRepository,
     required this.starRepository,
@@ -74,6 +84,8 @@ class SkyScreen extends StatefulWidget {
     required this.habitCompletionRepository,
     required this.customConstellationRepository,
     required this.areaVisionRepository,
+    required this.onNavigateTo,
+    required this.onModeLabelChanged,
   });
 
   final ProjectRepository projectRepository;
@@ -83,11 +95,20 @@ class SkyScreen extends StatefulWidget {
   final CustomConstellationRepository customConstellationRepository;
   final AreaVisionRepository areaVisionRepository;
 
+  /// See [SkyNavigationTarget] — called when a card's "take me there" button
+  /// is tapped.
+  final ValueChanged<SkyNavigationTarget> onNavigateTo;
+
+  /// Called once on mount and again every time the selected level
+  /// (Supernovas/Constellations/Stars) changes, with that level's own
+  /// already-localized name.
+  final ValueChanged<String> onModeLabelChanged;
+
   @override
-  State<SkyScreen> createState() => _SkyScreenState();
+  State<SkyExplorerView> createState() => _SkyExplorerViewState();
 }
 
-class _SkyScreenState extends State<SkyScreen> {
+class _SkyExplorerViewState extends State<SkyExplorerView> {
   _SkyMode _mode = _SkyMode.supernovas;
   String _query = '';
   Set<StarKind> _kindFilter = {
@@ -168,6 +189,23 @@ class _SkyScreenState extends State<SkyScreen> {
         .toList();
   }
 
+  String _labelFor(_SkyMode mode, AppStrings strings) => switch (mode) {
+    _SkyMode.supernovas => strings.skyModeSupernovas,
+    _SkyMode.constellations => strings.constellationsModeLabel,
+    _SkyMode.stars => strings.listModeLabel,
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    // Deferred a frame — this fires a callback that ends up calling setState
+    // on the parent (`GalaxySearchScreen`'s AppBar title), which isn't safe
+    // to do synchronously while this widget is still mounting/building.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onModeLabelChanged(_labelFor(_mode, context.strings));
+    });
+  }
+
   Future<void> _openArea(LifeArea area) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -211,6 +249,7 @@ class _SkyScreenState extends State<SkyScreen> {
           projectRepository: widget.projectRepository,
           customConstellationRepository: widget.customConstellationRepository,
           refreshStars: _filteredStarsOnly,
+          onNavigateTo: (project) => widget.onNavigateTo(SkyStarTarget(project)),
         ),
       ),
     );
@@ -257,218 +296,164 @@ class _SkyScreenState extends State<SkyScreen> {
         : const <_SkyEntry>[];
     final areaFilterActive = _areaFilter.length != LifeArea.values.length;
 
-    return Scaffold(
-      backgroundColor: colors.night,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Only the fixed header chrome is width-capped here — the
-            // Expanded list below stays full width so its own scrollbar
-            // sits at the true page edge on wide viewports rather than
-            // hugging a centered column (see ResponsiveContent's doc).
-            ResponsiveContent(
-              child: Column(
-                children: [
-                  const _Header(),
+    return Container(
+      color: colors.night,
+      child: Column(
+        children: [
+          // Only the fixed header chrome is width-capped here — the
+          // Expanded list below stays full width so its own scrollbar
+          // sits at the true page edge on wide viewports rather than
+          // hugging a centered column (see ResponsiveContent's doc).
+          ResponsiveContent(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
+                  child: SegmentedButton<_SkyMode>(
+                    style: _segmentedButtonStyle(colors),
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(
+                        value: _SkyMode.supernovas,
+                        icon: Icon(Icons.flare, size: 20),
+                      ),
+                      ButtonSegment(
+                        value: _SkyMode.constellations,
+                        icon: Icon(Icons.auto_awesome, size: 20),
+                      ),
+                      ButtonSegment(
+                        value: _SkyMode.stars,
+                        icon: Icon(Icons.star, size: 20),
+                      ),
+                    ],
+                    selected: {_mode},
+                    onSelectionChanged: (selection) {
+                      final mode = selection.first;
+                      setState(() => _mode = mode);
+                      widget.onModeLabelChanged(_labelFor(mode, strings));
+                    },
+                  ),
+                ),
+                if (_mode != _SkyMode.supernovas) ...[
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
-                    child: SegmentedButton<_SkyMode>(
-                      style: _segmentedButtonStyle(colors),
-                      showSelectedIcon: false,
-                      segments: const [
-                        ButtonSegment(
-                          value: _SkyMode.supernovas,
-                          icon: Icon(Icons.flare, size: 20),
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            onChanged: (value) =>
+                                setState(() => _query = value),
+                            style: TextStyle(
+                              color: colors.text,
+                              fontSize: 15,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: strings.searchHint,
+                              prefixIcon: Icon(
+                                Icons.search,
+                                color: colors.muted,
+                                size: 20,
+                              ),
+                            ),
+                          ),
                         ),
-                        ButtonSegment(
-                          value: _SkyMode.constellations,
-                          icon: Icon(Icons.auto_awesome, size: 20),
-                        ),
-                        ButtonSegment(
-                          value: _SkyMode.stars,
-                          icon: Icon(Icons.star, size: 20),
+                        const SizedBox(width: 10),
+                        _AreaFilterButton(
+                          active: areaFilterActive,
+                          tooltip: strings.filterAreasAction,
+                          onTap: _openAreaFilter,
                         ),
                       ],
-                      selected: {_mode},
-                      onSelectionChanged: (selection) =>
-                          setState(() => _mode = selection.first),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                    child: Text(
-                      switch (_mode) {
-                        _SkyMode.supernovas => strings.skyModeSupernovas,
-                        _SkyMode.constellations =>
-                          strings.constellationsModeLabel,
-                        _SkyMode.stars => strings.listModeLabel,
-                      },
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: colors.gold,
-                      ),
-                    ),
-                  ),
-                  if (_mode != _SkyMode.supernovas) ...[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              onChanged: (value) =>
-                                  setState(() => _query = value),
-                              style: TextStyle(
-                                color: colors.text,
-                                fontSize: 15,
-                              ),
-                              decoration: InputDecoration(
-                                hintText: strings.searchHint,
-                                prefixIcon: Icon(
-                                  Icons.search,
-                                  color: colors.muted,
-                                  size: 20,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          _AreaFilterButton(
-                            active: areaFilterActive,
-                            tooltip: strings.filterAreasAction,
-                            onTap: _openAreaFilter,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
                 ],
-              ),
+              ],
             ),
-            Expanded(
-              child: switch (_mode) {
-                // All 8 cards are meant to read as one screen, no scrolling
-                // needed — LayoutBuilder + a min-height ConstrainedBox lets
-                // them center within the available space on any normal
-                // phone, while SingleChildScrollView is just a safety net
-                // for unusually short screens or large text scales, rather
-                // than the primary way this is meant to be viewed (same
-                // pattern as AdmireStarsScreen's area picker).
-                _SkyMode.supernovas => LayoutBuilder(
-                  builder: (context, constraints) {
-                    return SingleChildScrollView(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: constraints.maxHeight,
-                        ),
-                        child: ResponsiveContent(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                for (
-                                  var i = 0;
-                                  i < LifeArea.values.length;
-                                  i++
-                                ) ...[
-                                  if (i > 0) const SizedBox(height: 10),
-                                  _AreaCard(
-                                    area: LifeArea.values[i],
-                                    onTap: () => _openArea(LifeArea.values[i]),
+          ),
+          Expanded(
+            child: switch (_mode) {
+              // All 8 cards are meant to read as one screen, no scrolling
+              // needed — LayoutBuilder + a min-height ConstrainedBox lets
+              // them center within the available space on any normal
+              // phone, while SingleChildScrollView is just a safety net
+              // for unusually short screens or large text scales, rather
+              // than the primary way this is meant to be viewed (same
+              // pattern as AdmireStarsScreen's area picker).
+              _SkyMode.supernovas => LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
+                      ),
+                      child: ResponsiveContent(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              for (var i = 0; i < LifeArea.values.length; i++) ...[
+                                if (i > 0) const SizedBox(height: 10),
+                                _AreaCard(
+                                  area: LifeArea.values[i],
+                                  onTap: () => _openArea(LifeArea.values[i]),
+                                  onNavigateTo: () => widget.onNavigateTo(
+                                    SkyAreaTarget(LifeArea.values[i]),
                                   ),
-                                ],
+                                ),
                               ],
-                            ),
+                            ],
                           ),
                         ),
                       ),
-                    );
-                  },
-                ),
-                _SkyMode.constellations => _ConstellationsList(
-                  hasAnyProjects: _filteredAreaProjects.isNotEmpty,
-                  filteredProjects: _filteredProjects,
-                  starsForProject: _starsForProject,
-                  activeHabitCountForProject: _activeHabitCountForProject,
-                  onTap: _openProject,
-                ),
-                _SkyMode.stars => _FlatList(
-                  hasAnyEntries: allEntries.isNotEmpty,
-                  entries: filteredEntries,
-                  projectsById: _projectsById,
-                  completedDaysFor: _completedDaysFor,
-                  onOpenStar: (entry) => _openStarReader(
-                    _filteredStarsOnly().indexWhere(
-                      (s) => s.id == entry.star!.id,
                     ),
+                  );
+                },
+              ),
+              _SkyMode.constellations => _ConstellationsList(
+                hasAnyProjects: _filteredAreaProjects.isNotEmpty,
+                filteredProjects: _filteredProjects,
+                starsForProject: _starsForProject,
+                activeHabitCountForProject: _activeHabitCountForProject,
+                onTap: _openProject,
+                onNavigateTo: widget.onNavigateTo,
+              ),
+              _SkyMode.stars => _FlatList(
+                hasAnyEntries: allEntries.isNotEmpty,
+                entries: filteredEntries,
+                projectsById: _projectsById,
+                completedDaysFor: _completedDaysFor,
+                onOpenStar: (entry) => _openStarReader(
+                  _filteredStarsOnly().indexWhere(
+                    (s) => s.id == entry.star!.id,
                   ),
-                  onOpenHabit: (habit) => _openHabitReader(habit),
                 ),
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header();
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final strings = context.strings;
-    return SizedBox(
-      width: double.infinity,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              strings.skyEyebrow,
-              style: TextStyle(
-                fontSize: 12,
-                letterSpacing: 2,
-                fontWeight: FontWeight.w600,
-                color: colors.goldDim,
+                onOpenHabit: (habit) => _openHabitReader(habit),
+                onNavigateTo: widget.onNavigateTo,
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              strings.skyTitle,
-              style: TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.w700,
-                color: colors.text,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              strings.skySubtitle,
-              style: TextStyle(fontSize: 14, color: colors.muted),
-            ),
-          ],
-        ),
+            },
+          ),
+        ],
       ),
     );
   }
 }
 
 class _AreaCard extends StatelessWidget {
-  const _AreaCard({required this.area, required this.onTap});
+  const _AreaCard({
+    required this.area,
+    required this.onTap,
+    required this.onNavigateTo,
+  });
 
   final LifeArea area;
   final VoidCallback onTap;
+  final VoidCallback onNavigateTo;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final strings = context.strings;
 
     return Material(
       color: colors.nightPanel,
@@ -483,8 +468,21 @@ class _AreaCard extends StatelessWidget {
             border: Border.all(color: colors.nightBorder),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Center(
-            child: AreaTag(area: area, iconSize: 20, fontSize: 16),
+          child: Row(
+            children: [
+              // Mirrors the trailing button's own width so the tag stays
+              // visually centered rather than skewed toward the left edge.
+              const SizedBox(width: 34),
+              Expanded(
+                child: Center(
+                  child: AreaTag(area: area, iconSize: 20, fontSize: 16),
+                ),
+              ),
+              NavigateHereButton(
+                onTap: onNavigateTo,
+                tooltip: strings.takeMeThereAction,
+              ),
+            ],
           ),
         ),
       ),
@@ -566,6 +564,7 @@ class _ConstellationsList extends StatelessWidget {
     required this.starsForProject,
     required this.activeHabitCountForProject,
     required this.onTap,
+    required this.onNavigateTo,
   });
 
   final bool hasAnyProjects;
@@ -573,6 +572,7 @@ class _ConstellationsList extends StatelessWidget {
   final List<Star> Function(int projectId) starsForProject;
   final int Function(int projectId) activeHabitCountForProject;
   final void Function(Project) onTap;
+  final ValueChanged<SkyNavigationTarget> onNavigateTo;
 
   @override
   Widget build(BuildContext context) {
@@ -630,6 +630,7 @@ class _ConstellationsList extends StatelessWidget {
             openGoals: openGoals,
             activeHabits: activeHabits,
             onTap: () => onTap(project),
+            onNavigateTo: () => onNavigateTo(SkyProjectTarget(project)),
           ),
         );
       },
@@ -647,6 +648,7 @@ class _FlatList extends StatelessWidget {
     required this.completedDaysFor,
     required this.onOpenStar,
     required this.onOpenHabit,
+    required this.onNavigateTo,
   });
 
   final bool hasAnyEntries;
@@ -655,6 +657,7 @@ class _FlatList extends StatelessWidget {
   final Set<DateTime> Function(int habitId) completedDaysFor;
   final void Function(_SkyEntry entry) onOpenStar;
   final void Function(Habit habit) onOpenHabit;
+  final ValueChanged<SkyNavigationTarget> onNavigateTo;
 
   @override
   Widget build(BuildContext context) {
@@ -694,6 +697,11 @@ class _FlatList extends StatelessWidget {
         final entry = entries[index];
         final project =
             projectsById[entry.star?.projectId ?? entry.habit?.projectId];
+        // No project resolved (stale data) means no world position to jump
+        // to either — the button is simply omitted for that card.
+        final navigateTo = project == null
+            ? null
+            : () => onNavigateTo(SkyStarTarget(project));
 
         final Widget card;
         switch (entry.kind) {
@@ -702,18 +710,21 @@ class _FlatList extends StatelessWidget {
               star: entry.star!,
               project: project,
               onTap: () => onOpenStar(entry),
+              onNavigateTo: navigateTo,
             );
           case StarKind.goal:
             card = GoalCard(
               star: entry.star!,
               project: project,
               onTap: () => onOpenStar(entry),
+              onNavigateTo: navigateTo,
             );
           case StarKind.dead:
             card = DeadStarCard(
               star: entry.star!,
               project: project,
               onTap: () => onOpenStar(entry),
+              onNavigateTo: navigateTo,
             );
           case StarKind.habit:
             final habit = entry.habit!;
@@ -724,6 +735,7 @@ class _FlatList extends StatelessWidget {
               currentStreak: habitCurrentStreak(completedDays),
               isLit: isHabitLit(completedDays),
               onTap: () => onOpenHabit(habit),
+              onNavigateTo: navigateTo,
             );
         }
         return ResponsiveContent(child: card);
@@ -745,6 +757,7 @@ class _ProjectCard extends StatelessWidget {
     required this.openGoals,
     required this.activeHabits,
     required this.onTap,
+    required this.onNavigateTo,
   });
 
   final Project project;
@@ -754,6 +767,7 @@ class _ProjectCard extends StatelessWidget {
   final int openGoals;
   final int activeHabits;
   final VoidCallback onTap;
+  final VoidCallback onNavigateTo;
 
   @override
   Widget build(BuildContext context) {
@@ -853,6 +867,11 @@ class _ProjectCard extends StatelessWidget {
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(width: 8),
+                NavigateHereButton(
+                  onTap: onNavigateTo,
+                  tooltip: strings.takeMeThereAction,
                 ),
               ],
             ),

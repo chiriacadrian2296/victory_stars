@@ -50,8 +50,6 @@ class StringsRo implements AppStrings {
   @override
   String get navHome => 'Acasă';
   @override
-  String get navSky => 'Cer';
-  @override
   String get navGalaxy => 'Galaxie';
   @override
   String get navStats => 'Statistici';
@@ -156,6 +154,10 @@ class StringsRo implements AppStrings {
   String get filterKindSectionTitle => 'Tipul stelei';
   @override
   String get allKindsLabel => 'Toate tipurile';
+  @override
+  String get searchButtonLabel => 'Caută';
+  @override
+  String get takeMeThereAction => 'Du-mă acolo';
 
   @override
   String get areaVisionLabel => 'Viziunea ta pentru această zonă';
@@ -195,12 +197,6 @@ class StringsRo implements AppStrings {
   String get archiveEmpty =>
       'Arhiva ta e încă goală. Aprinde prima ta stea, chiar și una mică.';
 
-  @override
-  String get skyEyebrow => 'CERUL TĂU';
-  @override
-  String get skyTitle => 'Explorează-ți cerul';
-  @override
-  String get skySubtitle => 'Fiecare supernovă are propriile constelații.';
   @override
   String starsCount(int count) => count == 1 ? '1 stea' : '$count stele';
   @override
@@ -513,12 +509,6 @@ class StringsRo implements AppStrings {
   String get settingsEyebrow => 'SETĂRI';
   @override
   String get settingsTitle => 'Setări';
-  @override
-  String get appearanceSection => 'Aspect';
-  @override
-  String get themeLight => 'Deschis';
-  @override
-  String get themeDark => 'Întunecat';
   @override
   String get languageSection => 'Limbă';
   @override

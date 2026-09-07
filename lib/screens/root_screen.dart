@@ -14,13 +14,11 @@ import '../utils/responsive.dart';
 import 'home_screen.dart';
 import 'nebula_screen.dart';
 import 'settings_screen.dart';
-import 'sky_screen.dart';
 import 'stats_screen.dart';
 
 /// The app's root scaffold: switches between the dashboard (Home), the
-/// animated all-constellations preview (Galaxy — still exploratory, see
-/// [NebulaScreen]), the life-areas hub (Sky — constellations and the flat
-/// searchable star list live together there now, switched per-area), Stats,
+/// navigable sky (Galaxy, see [NebulaScreen] — its own search popup,
+/// `GalaxySearchScreen`, covers what used to be a separate Sky tab), Stats,
 /// and Settings. Below
 /// [kWideLayoutBreakpoint] that's a bottom nav bar (phone chrome); at or
 /// above it, a custom side rail (desktop/web chrome, see [_RailHeader] and
@@ -91,11 +89,6 @@ class _RootScreenState extends State<RootScreen> {
         label: strings.navGalaxy,
       ),
       (
-        icon: Icons.explore_outlined,
-        selected: Icons.explore,
-        label: strings.navSky,
-      ),
-      (
         icon: Icons.bar_chart_outlined,
         selected: Icons.bar_chart,
         label: strings.navStats,
@@ -123,17 +116,10 @@ class _RootScreenState extends State<RootScreen> {
           habitRepository: widget.habitRepository,
           habitCompletionRepository: widget.habitCompletionRepository,
           customConstellationRepository: widget.customConstellationRepository,
+          areaVisionRepository: widget.areaVisionRepository,
           isFullscreen: _galaxyFullscreen,
           onToggleFullscreen: () =>
               setState(() => _galaxyFullscreen = !_galaxyFullscreen),
-        ),
-        SkyScreen(
-          projectRepository: widget.projectRepository,
-          starRepository: widget.starRepository,
-          habitRepository: widget.habitRepository,
-          habitCompletionRepository: widget.habitCompletionRepository,
-          customConstellationRepository: widget.customConstellationRepository,
-          areaVisionRepository: widget.areaVisionRepository,
         ),
         StatsScreen(
           starRepository: widget.starRepository,

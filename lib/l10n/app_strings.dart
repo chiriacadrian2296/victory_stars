@@ -28,7 +28,6 @@ abstract class AppStrings {
 
   // Bottom navigation
   String get navHome;
-  String get navSky;
   String get navGalaxy;
   String get navStats;
   String get navSettings;
@@ -96,9 +95,6 @@ abstract class AppStrings {
   String get archiveEmpty;
 
   // Sky + area projects
-  String get skyEyebrow;
-  String get skyTitle;
-  String get skySubtitle;
   String starsCount(int count);
   String areaEmptyProjects(String areaName);
   String get constellationsModeLabel;
@@ -108,6 +104,8 @@ abstract class AppStrings {
   String get applyAreaFilterAction;
   String get filterKindSectionTitle;
   String get allKindsLabel;
+  String get searchButtonLabel;
+  String get takeMeThereAction;
 
   // Area detail (the vision text, description, and big stat numbers for a
   // single Supernova)
@@ -283,9 +281,6 @@ abstract class AppStrings {
   // Settings
   String get settingsEyebrow;
   String get settingsTitle;
-  String get appearanceSection;
-  String get themeLight;
-  String get themeDark;
   String get languageSection;
   String get languageEnglish;
   String get languageItalian;

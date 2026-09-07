@@ -10,12 +10,13 @@ import '../utils/star_stats.dart';
 import '../widgets/area_tag.dart';
 import '../widgets/responsive_content.dart';
 
-/// One Supernova's own page — reached by tapping it in [SkyScreen]'s
-/// Supernovas view. Shows the area's icon, name, and description, three big
-/// numbers (constellations/stars/intensity), and that area's "vision" —
-/// their own words for what they want out of it — editable via the Edit
-/// button. Nothing to navigate onward to from here, only back; constellations
-/// and stars now live in Sky's own Constellations/Stars views instead.
+/// One Supernova's own page — reached by tapping it in the Galaxy tab's
+/// search popup (`SkyExplorerView`'s Supernovas view). Shows the area's
+/// icon, name, and description, three big numbers (constellations/stars/
+/// intensity), and that area's "vision" — their own words for what they
+/// want out of it — editable via the Edit button. Nothing to navigate
+/// onward to from here, only back; constellations and stars live in that
+/// same popup's own Constellations/Stars views instead.
 class AreaDetailScreen extends StatefulWidget {
   const AreaDetailScreen({
     super.key,

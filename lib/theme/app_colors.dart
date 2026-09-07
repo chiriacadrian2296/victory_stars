@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-/// The app's color palette, as a [ThemeExtension] so it can switch between
-/// [dark] (the original "night sky" look) and [light] (a "daytime sky",
-/// keeping the same gold-star identity) based on the user's Settings choice.
-/// Access via `context.colors` rather than a static constant, since the
-/// active palette now depends on the current [Theme].
+/// The app's one color palette ([dark], the "night sky" look) — no light
+/// mode; a daytime sky doesn't fit an app about lighting stars against a
+/// dark backdrop. Still a [ThemeExtension] (access via `context.colors`
+/// rather than the static constant directly) so every screen reads it the
+/// same way regardless of whether that ever changes again.
 @immutable
 class AppColors extends ThemeExtension<AppColors> {
   const AppColors({
@@ -65,22 +65,6 @@ class AppColors extends ThemeExtension<AppColors> {
     crisisGradientMid: Color(0xFF10162B),
     crisisGradientOuter: Color(0xFF05070D),
     crisisMuted: Color(0xFFB7C2E0),
-  );
-
-  static const light = AppColors(
-    night: Color(0xFFFAF6EC),
-    nightPanel: Color(0xFFFFFFFF),
-    nightBorder: Color(0xFFE4DBC4),
-    gold: Color(0xFFB9822A),
-    goldDim: Color(0xFF8C6A24),
-    text: Color(0xFF2B2313),
-    muted: Color(0xFF7A7263),
-    onGold: Color(0xFFFFFBF2),
-    danger: Color(0xFFC5433B),
-    crisisGradientCenter: Color(0xFFFFF7E0),
-    crisisGradientMid: Color(0xFFFCEFD0),
-    crisisGradientOuter: Color(0xFFF6E2B8),
-    crisisMuted: Color(0xFF6B5A2E),
   );
 
   @override

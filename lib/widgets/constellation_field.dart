@@ -209,6 +209,19 @@ Offset constellationWorldPosition(LifeArea area, int indexInArea) {
   return Offset(azimuthTurns, elevationTurns);
 }
 
+/// The true angular separation (radians, along the sky sphere's own great
+/// circle) between two world positions — what `NebulaScreen`'s "take me
+/// there" zoom-to-fit needs to measure how far a supernova's farthest
+/// constellation sits from it, since plain [Offset] arithmetic on
+/// (azimuth, elevation) pairs doesn't mean actual sky distance (it breaks
+/// down near a pole the same way any 2-angle parameterization does — see
+/// [SkyCamera]'s own doc comment on why).
+double angularDistanceBetween(Offset a, Offset b) {
+  final directionA = _directionOn(a.dx, a.dy);
+  final directionB = _directionOn(b.dx, b.dy);
+  return math.acos(_dot(directionA, directionB).clamp(-1.0, 1.0));
+}
+
 const double _twoPi = 2 * math.pi;
 
 /// A plain (x, y, z) vector — deliberately not a class: every use below is
@@ -363,6 +376,20 @@ class SkyCamera {
   SkyCamera rotatedToAlign(
     (double, double, double) from,
     (double, double, double) to,
+  ) => rotatedToAlignFraction(from, to, 1.0);
+
+  /// [rotatedToAlign], stopped [t] of the way there (0 = no movement, 1 =
+  /// the same result [rotatedToAlign] itself gives) — what `NebulaScreen`'s
+  /// "take me there" fly-to animation steps through frame by frame, via the
+  /// same single-axis rotation an exact drag alignment uses, so an
+  /// animated jump to a search result sweeps smoothly across the sky
+  /// instead of cutting straight there, and — since [right]/[up] are
+  /// carried along by that same rotation rather than re-derived from
+  /// scratch — never introduces any extra roll of its own along the way.
+  SkyCamera rotatedToAlignFraction(
+    (double, double, double) from,
+    (double, double, double) to,
+    double t,
   ) {
     final axisRaw = _cross(from, to);
     final axisLength = math.sqrt(_dot(axisRaw, axisRaw));
@@ -374,7 +401,8 @@ class SkyCamera {
     if (axisLength < 1e-9) return this;
 
     final axis = _scaled(axisRaw, 1 / axisLength);
-    final angle = math.acos(_dot(from, to).clamp(-1.0, 1.0));
+    final fullAngle = math.acos(_dot(from, to).clamp(-1.0, 1.0));
+    final angle = fullAngle * t.clamp(0.0, 1.0);
 
     var newForward = _normalized(_rotateAroundAxis(forward, axis, angle));
     var newRight = _rotateAroundAxis(right, axis, angle);
@@ -496,6 +524,29 @@ ScreenProjection? worldToScreen(
   ));
 }
 
+/// The zoom that puts something [angularRadius] radians off dead-center
+/// (once the camera is already looking straight at its own center — see
+/// `NebulaScreen._flyTo`) at [fraction] of the screen's shorter half, e.g.
+/// 0.42 sits comfortably inside the frame rather than right at the edge —
+/// the zoom-to-fit half of "take me there"'s Maps-style fly-to, the
+/// inverse of [worldToScreen]'s own stereographic projection.
+///
+/// [worldToScreen] projects a point at angle θ off-center to tangent-plane
+/// distance sin(θ) · 2/(1+cos θ) = 2·tan(θ/2) (the half-angle identity),
+/// before [zoom] and the screen-height scale factor are applied — so
+/// solving that same equation for [zoom] given a desired screen distance
+/// is this function's entire job.
+double zoomToFit({
+  required double angularRadius,
+  required Size screenSize,
+  double fraction = 0.42,
+}) {
+  final targetPixels = math.min(screenSize.width, screenSize.height) * fraction;
+  final tangentUnits = 2 * math.tan(angularRadius / 2);
+  if (tangentUnits <= 0) return kSkyMaxZoom;
+  return targetPixels / (screenSize.height * tangentUnits);
+}
+
 /// The lowest [NebulaScreen] should ever let its camera zoom out to — a
 /// real perspective camera (see [worldToScreen]) has no structural reason
 /// to cap this the way the old flat-plane math needed a
@@ -525,6 +576,20 @@ const double minZoomWithoutRepeats = 0.3;
 /// to end exactly there. [minZoomWithoutRepeats] (the range's other end)
 /// is untouched — only the max-zoom-in side shrinks.
 const double kSkyMaxZoom = 7.5357;
+
+/// Where [zoom] currently sits in the whole [minZoomWithoutRepeats]..
+/// [kSkyMaxZoom] range, as a 0..100 reading (unclamped — out of range if
+/// [zoom] itself is, which callers needing it clamped do themselves) —
+/// shared by `_ZoomSlider`'s own percent label, [ConstellationFieldPainter]'s
+/// star/constellation label crossfade, and `NebulaScreen`'s "only
+/// individually tappable once zoomed in this far" gate on stars, so all
+/// three always agree on what a given percentage means.
+double zoomPercent(double zoom) {
+  final logZoom = math.log(zoom);
+  return (logZoom - math.log(minZoomWithoutRepeats)) /
+      (math.log(kSkyMaxZoom) - math.log(minZoomWithoutRepeats)) *
+      100;
+}
 
 /// How far [camera] has rolled away from "level" (its own zero-roll,
 /// [SkyCamera.lookingAt]-style orientation) at wherever it's currently
@@ -653,6 +718,52 @@ _ConstellationTransform? _projectConstellationTransform(
   );
 }
 
+/// Where [screenPos] lands in [constellation]'s own local pixel space
+/// (see [_projectConstellationTransform]), or null if it falls outside
+/// that constellation's on-screen footprint (or the constellation isn't
+/// visible at all right now) — shared by [hitTestField] (which goes on to
+/// check for a specific star there) and [hitTestConstellations] (which
+/// only needs to know the footprint itself was hit).
+(Offset localTap, double localSizePx)? _localFieldTap(
+  PlacedConstellation constellation,
+  Offset screenPos,
+  SkyCamera camera,
+  double zoom,
+  Size screenSize,
+) {
+  final transform = _projectConstellationTransform(
+    constellation.worldPosition,
+    camera,
+    zoom,
+    screenSize,
+    kSkyConstellationAngularSpan,
+  );
+  if (transform == null) return null;
+
+  // Undo the same skew/rotation `ConstellationFieldPainter.paint` draws
+  // with (see [_projectConstellationTransform]) by inverting its 2x2
+  // basis, so the tap lands in the shape's own flat local space — a plain
+  // axis-aligned check against the still-transformed [screenPos] would
+  // miss taps once the camera's off dead-center or rolled.
+  final relative = screenPos - transform.center;
+  final det =
+      transform.right.dx * transform.up.dy -
+      transform.up.dx * transform.right.dy;
+  if (det.abs() < 1e-9) return null;
+  final w = (relative.dx * transform.up.dy - transform.up.dx * relative.dy) / det;
+  final h = (transform.right.dx * relative.dy - relative.dx * transform.right.dy) / det;
+
+  // Wider than the shape's own 0..1 footprint since overflow/habit stars
+  // can sit up to radius 1.0 from center — 0.8 (of a *half*-width) keeps
+  // them tappable without bloating the box enough to start overlapping
+  // tidy neighbors. The same margin doubles as "close enough to the
+  // constellation" for [hitTestConstellations].
+  if (w.abs() > 0.8 || h.abs() > 0.8) return null;
+
+  final localSizePx = (transform.right.distance + transform.up.distance) / 2;
+  return (Offset((w + 0.5) * localSizePx, (h + 0.5) * localSizePx), localSizePx);
+}
+
 /// Finds whichever constellation (if any) has a star under [screenPos] —
 /// checks each constellation whose own on-screen footprint could plausibly
 /// contain the tap before reusing [hitTestStar] unmodified, in that
@@ -665,42 +776,86 @@ _ConstellationTransform? _projectConstellationTransform(
   Size screenSize,
 ) {
   for (final constellation in placed) {
-    final transform = _projectConstellationTransform(
-      constellation.worldPosition,
-      camera,
-      zoom,
-      screenSize,
-      kSkyConstellationAngularSpan,
-    );
-    if (transform == null) continue;
-
-    // Undo the same skew/rotation `ConstellationFieldPainter.paint` draws
-    // with (see [_projectConstellationTransform]) by inverting its 2x2
-    // basis, so the tap lands in the shape's own flat local space — a
-    // plain axis-aligned check against the still-transformed [screenPos]
-    // would miss taps once the camera's off dead-center or rolled.
-    final relative = screenPos - transform.center;
-    final det =
-        transform.right.dx * transform.up.dy -
-        transform.up.dx * transform.right.dy;
-    if (det.abs() < 1e-9) continue;
-    final w = (relative.dx * transform.up.dy - transform.up.dx * relative.dy) / det;
-    final h = (transform.right.dx * relative.dy - relative.dx * transform.right.dy) / det;
-
-    // Wider than the shape's own 0..1 footprint since overflow/habit stars
-    // can sit up to radius 1.0 from center — 0.8 (of a *half*-width) keeps
-    // them tappable without bloating the box enough to start overlapping
-    // tidy neighbors.
-    if (w.abs() > 0.8 || h.abs() > 0.8) continue;
-
-    final localSizePx = (transform.right.distance + transform.up.distance) / 2;
-    final localTap = Offset((w + 0.5) * localSizePx, (h + 0.5) * localSizePx);
+    final local = _localFieldTap(constellation, screenPos, camera, zoom, screenSize);
+    if (local == null) continue;
+    final (localTap, localSizePx) = local;
     final star = hitTestStar(
       localTap,
       Size.square(localSizePx),
       constellation.renderStars,
     );
     if (star != null) return (constellation, star);
+  }
+  return null;
+}
+
+/// Finds whichever constellation (if any) has [screenPos] within its own
+/// general on-screen footprint — not necessarily on one of its stars (see
+/// [hitTestField], checked first and taking priority in `NebulaScreen`, so
+/// a tap that lands on both a star and its constellation's own footprint
+/// still opens the star) — an invisible zone the same way
+/// [hitTestSupernovas] is, so tapping a constellation's shape opens its
+/// own `ConstellationScreen`.
+PlacedConstellation? hitTestConstellations(
+  Offset screenPos,
+  List<PlacedConstellation> placed,
+  SkyCamera camera,
+  double zoom,
+  Size screenSize,
+) {
+  for (final constellation in placed) {
+    if (_localFieldTap(constellation, screenPos, camera, zoom, screenSize) != null) {
+      return constellation;
+    }
+  }
+  return null;
+}
+
+/// How far (already-zoomed screen pixels) a tap can land from a
+/// supernova's own projected center and still count as hitting it — see
+/// [hitTestSupernovas]. [_minSupernovaHitRadius] is a floor, not the
+/// radius itself: [_supernovaHitWorldRadius] scales the same way
+/// `SkySupernova`'s own icon does (bigger the more zoomed in, via
+/// [ScreenProjection.perspectiveScale]), so the invisible zone still
+/// feels attached to a visibly-larger icon once zoomed in, while the
+/// floor keeps it comfortably tappable even zoomed out far enough that
+/// the icon itself has shrunk to a speck.
+///
+/// [_supernovaHitWorldRadius] reaches out to the visible ring of light
+/// around each icon, not just the icon glyph itself — matching
+/// `sky_supernova.frag`'s own `ringRadius` (0.09, in that shader's local
+/// `uv` space, itself `(angular offset in radians) / 0.45`): solving
+/// 0.09 = θ / 0.45 gives θ ≈ 0.0405 radians, the same "world" unit
+/// [_iconWorldRadius] in `sky_supernova.dart` already uses for the icon.
+const double _minSupernovaHitRadius = 28.0;
+const double _supernovaHitWorldRadius = 0.0405;
+
+/// Finds whichever [LifeArea] (if any) has its own supernova under
+/// [screenPos] — an invisible hit zone over the same spot `SkySupernova`
+/// draws each area's icon, so tapping a supernova opens that area's own
+/// detail page ([AreaDetailScreen]) without adding any new visible
+/// element to the (otherwise untouched) supernova artwork itself.
+LifeArea? hitTestSupernovas(
+  Offset screenPos,
+  SkyCamera camera,
+  double zoom,
+  Size screenSize,
+) {
+  for (final area in LifeArea.values) {
+    final projection = worldToScreen(
+      areaWorldPosition(area),
+      camera,
+      zoom,
+      screenSize,
+    );
+    if (projection == null) continue;
+    final radius = math.max(
+      _minSupernovaHitRadius,
+      _supernovaHitWorldRadius * zoom * screenSize.height * projection.perspectiveScale,
+    );
+    if ((screenPos - projection.position).distanceSquared <= radius * radius) {
+      return area;
+    }
   }
   return null;
 }
@@ -892,18 +1047,15 @@ class ConstellationFieldPainter extends CustomPainter {
         : 0.0;
     // Where [zoom] currently sits in the whole zoom range, as the same
     // 0..100 reading `_ZoomSlider`'s own percent label shows (see
-    // [kSkyMaxZoom]'s doc comment) — labels start fully invisible at the
-    // bottom of the range and fade in on the way up to
-    // [_kLabelZoomFadeEndPercent], rather than being there (and cluttering
-    // the view) from the very first, fully-zoomed-out frame.
-    final zoomPercent =
-        (logZoom - math.log(minZoomWithoutRepeats)) /
-        (math.log(kSkyMaxZoom) - math.log(minZoomWithoutRepeats)) *
-        100;
+    // [zoomPercent]) — labels start fully invisible at the bottom of the
+    // range and fade in on the way up to [_kLabelZoomFadeEndPercent],
+    // rather than being there (and cluttering the view) from the very
+    // first, fully-zoomed-out frame.
+    final zoomRangePercent = zoomPercent(zoom);
     final zoomFadeAlpha = _smoothstep(
       _kLabelZoomFadeStartPercent,
       _kLabelZoomFadeEndPercent,
-      zoomPercent,
+      zoomRangePercent,
     );
     final constellationLabelAlpha =
         (_kShowStarLabels ? 1 - starLabelAlpha : 1.0) * zoomFadeAlpha;

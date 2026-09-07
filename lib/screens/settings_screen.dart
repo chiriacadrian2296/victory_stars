@@ -17,11 +17,11 @@ import '../theme/app_colors.dart';
 import '../widgets/responsive_content.dart';
 import 'onboarding_screen.dart';
 
-/// The Settings tab: appearance (light/dark), language, the daily reminder
-/// notification, a debug-only tools section (seed/reset data, replay
-/// onboarding — visible only in debug builds, via `kDebugMode`), and a short
-/// "about" block. Reads/writes through [SettingsController], which persists
-/// each change immediately.
+/// The Settings tab: language, the daily reminder notification, a
+/// debug-only tools section (seed/reset data, replay onboarding — visible
+/// only in debug builds, via `kDebugMode`), and a short "about" block.
+/// Reads/writes through [SettingsController], which persists each change
+/// immediately.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
     super.key,
@@ -246,29 +246,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       fontWeight: FontWeight.w700,
                       color: colors.text,
                     ),
-                  ),
-                  const SizedBox(height: 28),
-
-                  _SectionLabel(strings.appearanceSection),
-                  const SizedBox(height: 10),
-                  SegmentedButton<ThemeMode>(
-                    style: _segmentedButtonStyle(colors),
-                    segments: [
-                      ButtonSegment(
-                        value: ThemeMode.light,
-                        icon: const Icon(Icons.light_mode),
-                        label: Text(strings.themeLight),
-                      ),
-                      ButtonSegment(
-                        value: ThemeMode.dark,
-                        icon: const Icon(Icons.dark_mode),
-                        label: Text(strings.themeDark),
-                      ),
-                    ],
-                    selected: {widget.settings.themeMode},
-                    onSelectionChanged: (selection) => setState(() {
-                      widget.settings.setThemeMode(selection.first);
-                    }),
                   ),
                   const SizedBox(height: 28),
 

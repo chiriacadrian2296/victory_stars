@@ -1,13 +1,12 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Reads and writes user-facing app settings (theme, language, daily
-/// reminder). Each setting is its own [SharedPreferences] key rather than
-/// one JSON blob — unlike [StarRepository]/[ProjectRepository]'s lists,
-/// these are independent scalars with no shared ordering to preserve.
+/// Reads and writes user-facing app settings (language, daily reminder).
+/// Each setting is its own [SharedPreferences] key rather than one JSON
+/// blob — unlike [StarRepository]/[ProjectRepository]'s lists, these are
+/// independent scalars with no shared ordering to preserve.
 class SettingsRepository {
   SettingsRepository(this._prefs);
 
-  static const _themeModeKey = 'settings.themeMode';
   static const _localeKey = 'settings.locale';
   static const _reminderEnabledKey = 'settings.reminderEnabled';
   static const _reminderHourKey = 'settings.reminderHour';
@@ -19,11 +18,6 @@ class SettingsRepository {
     final prefs = await SharedPreferences.getInstance();
     return SettingsRepository(prefs);
   }
-
-  /// 'dark' or 'light'. Defaults to 'dark' — the app's original palette.
-  String get themeMode => _prefs.getString(_themeModeKey) ?? 'dark';
-
-  Future<void> setThemeMode(String mode) => _prefs.setString(_themeModeKey, mode);
 
   /// 'en', 'it', or 'ro'. Defaults to 'en'.
   String get locale => _prefs.getString(_localeKey) ?? 'en';

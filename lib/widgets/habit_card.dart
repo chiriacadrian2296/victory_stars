@@ -5,6 +5,7 @@ import '../models/habit.dart';
 import '../models/project.dart';
 import '../theme/app_colors.dart';
 import 'area_tag.dart';
+import 'navigate_here_button.dart';
 import 'project_tag.dart';
 import 'star_created_at.dart';
 import 'star_extra_badge.dart';
@@ -23,6 +24,7 @@ class HabitCard extends StatelessWidget {
     required this.isLit,
     this.onTap,
     this.project,
+    this.onNavigateTo,
   });
 
   final Habit habit;
@@ -31,13 +33,18 @@ class HabitCard extends StatelessWidget {
   final VoidCallback? onTap;
   final Project? project;
 
+  /// Shows a "take me there" corner button when non-null — only passed by
+  /// the Galaxy tab's search popup, which can actually jump its sky camera
+  /// to this habit's constellation.
+  final VoidCallback? onNavigateTo;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final strings = context.strings;
     final borderRadius = BorderRadius.circular(12);
 
-    return Material(
+    final card = Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
@@ -113,6 +120,21 @@ class HabitCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+
+    if (onNavigateTo == null) return card;
+    return Stack(
+      children: [
+        card,
+        Positioned(
+          top: 6,
+          right: 6,
+          child: NavigateHereButton(
+            onTap: onNavigateTo!,
+            tooltip: strings.takeMeThereAction,
+          ),
+        ),
+      ],
     );
   }
 }

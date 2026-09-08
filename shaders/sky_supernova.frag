@@ -56,12 +56,28 @@ vec3 supernova(vec3 dir, vec3 center, vec3 midColor, vec3 outerColor) {
   vec3 axisB = cross(center, axisA);
   vec2 uv = vec2(dot(dir - center, axisA), dot(dir - center, axisB));
 
+  // An occasional, irregular flicker — on top of [pulse]'s own steady
+  // breathing further down — brightening and slightly growing a star for
+  // a moment before fading back. Three sines at frequencies with no
+  // common period, multiplied together rather than added, stay near zero
+  // almost all the time and only spike when all three happen to crest
+  // together — an "every so often" flicker rather than another smooth,
+  // fully periodic pulse. [center]'s own components phase-shift each
+  // star's own flicker independently, the same trick [pulse] already
+  // uses, so the 8 never flicker in lockstep.
+  float flickerRaw = sin(uTime * 2.7 + center.x * 11.0) *
+      sin(uTime * 1.3 + center.y * 7.0) *
+      sin(uTime * 0.41 + center.z * 5.0);
+  float flicker = pow(clamp(flickerRaw, 0.0, 1.0), 4.0);
+
   // Shrinks the whole icon uniformly — dividing the coordinate itself
   // (rather than rescaling every radius/width constant below by hand) is
   // what makes each star read as farther away/smaller, the same way a
   // more distant real star still has the same *shape*, just less of it
-  // fills your view.
-  uv /= 0.45;
+  // fills your view. [flicker] nudges that divisor up slightly at its own
+  // peak, growing the star a little rather than just brightening it (see
+  // [brightness]'s own flicker term further down).
+  uv /= 0.45 * (1.0 + flicker * 0.15);
 
   // {center, axisA, axisB} is an orthonormal basis, so any unit [dir] is
   // exactly c*center + a*axisA + b*axisB with c² + a² + b² = 1 — and [uv]
@@ -137,7 +153,22 @@ vec3 supernova(vec3 dir, vec3 center, vec3 midColor, vec3 outerColor) {
   float starMetric = sqrt(abs(uv.x)) + sqrt(abs(uv.y));
   float core = smoothstep(0.22, 0.0, starMetric);
 
-  float brightness = (core * 2.2 + spikes * 1.4 + diagSpikes + ring + glow + nearGlow) * pulse;
+  // A second flicker, just for the spikes/rays — distinct from [flicker]
+  // above (which brightens/grows the *whole* star, rarely). Only two
+  // sines rather than three, and higher frequencies, so it crests far
+  // more often — frequent small flickers along the rays rather than the
+  // whole star's own occasional, bigger flare-up — and a lower power (3
+  // vs. 4) widens each crest a touch, since "more, smaller hits" was the
+  // point rather than sharp, rare spikes.
+  float spikeFlicker = pow(clamp(
+      sin(uTime * 5.3 + center.x * 13.0) * sin(uTime * 3.7 + center.y * 9.0),
+      0.0, 1.0), 3.0);
+
+  float brightness = (
+      core * 2.2 +
+      (spikes * 1.4 + diagSpikes) * (1.0 + spikeFlicker * 0.2) +
+      ring + glow + nearGlow
+    ) * pulse * (1.0 + flicker * 0.3);
 
   vec3 colorCore = vec3(1.0, 0.98, 0.9);
   vec3 color = mix(outerColor, midColor, smoothstep(0.0, 0.25, glow + spikes * 0.3));

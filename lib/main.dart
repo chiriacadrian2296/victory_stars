@@ -28,6 +28,17 @@ void main() {
   // Android just paints its own default (white) behind them instead.
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  // Portrait-only: landscape trips RootScreen's own wide-layout desktop
+  // side rail (isWideLayout only checks width, and a phone turned
+  // sideways is often wide enough) without any of an actual desktop
+  // window's screen real estate to fit it in. Simplest fix for that whole
+  // class of problem is to never let a phone get turned sideways in the
+  // first place. No-op on web/desktop, which don't rotate the app this
+  // way regardless.
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
   runApp(const VictoryStarsApp());
 }
 

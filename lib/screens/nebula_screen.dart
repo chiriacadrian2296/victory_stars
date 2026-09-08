@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
-import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -18,6 +17,7 @@ import '../models/habit_completion.dart';
 import '../models/life_area.dart';
 import '../models/project.dart';
 import '../theme/app_colors.dart';
+import '../utils/responsive.dart';
 import '../widgets/constellation_field.dart';
 import '../widgets/constellation_painter.dart';
 import '../widgets/nebula_background.dart';
@@ -27,6 +27,7 @@ import '../widgets/nebula_background.dart';
 // import '../widgets/sky_wisps.dart'; — the wispy-nebula take, disabled too.
 // import '../widgets/sky_black_hole.dart'; — the lensed-black-hole take,
 // disabled too.
+import '../widgets/sky_area_sigils.dart';
 import '../widgets/sky_navigation_target.dart';
 import '../widgets/sky_supernova.dart';
 import 'area_detail_screen.dart';
@@ -149,19 +150,6 @@ class _NebulaScreenState extends State<NebulaScreen>
   bool _showGridControl = true;
   bool _showZoomControl = true;
   bool _showRotationControl = true;
-
-  /// True on a native Android/iOS build — where the two-finger rotate
-  /// gesture [_handleScaleUpdate] already handles makes the roll knob
-  /// redundant, unlike desktop/web (mouse/trackpad has no equivalent
-  /// gesture, so that's the one platform family that still needs the
-  /// knob). Web is never treated as "mobile" here even when the browser
-  /// itself is running on a phone, since [_showRotationControl]'s whole
-  /// point is "does this platform already have another way to roll the
-  /// camera" — a touchscreen inside a desktop browser doesn't.
-  bool get _isTouchOnlyMobile =>
-      !kIsWeb &&
-      (defaultTargetPlatform == TargetPlatform.android ||
-          defaultTargetPlatform == TargetPlatform.iOS);
 
   /// Drives the "take me there" fly-to animation — a single controller
   /// reused across flights rather than rebuilt per tap, so a second tap
@@ -752,9 +740,9 @@ class _NebulaScreenState extends State<NebulaScreen>
                     _showZoomControl,
                     (value) => setState(() => _showZoomControl = value),
                   ),
-                  // Omitted on mobile — see [_isTouchOnlyMobile]: there's
+                  // Omitted on mobile — see [isTouchOnlyMobile]: there's
                   // nothing to toggle when the roll knob itself never shows.
-                  if (!_isTouchOnlyMobile)
+                  if (!isTouchOnlyMobile)
                     row(
                       'Rotation',
                       _showRotationControl,
@@ -782,10 +770,10 @@ class _NebulaScreenState extends State<NebulaScreen>
   Widget build(BuildContext context) {
     final colors = context.colors;
     final strings = context.strings;
-    // See [_isTouchOnlyMobile]'s own doc comment for why mobile drops this
+    // See [isTouchOnlyMobile]'s own doc comment for why mobile drops this
     // regardless of the (still user-toggleable, for every other platform)
     // [_showRotationControl] preference.
-    final showRotation = _showRotationControl && !_isTouchOnlyMobile;
+    final showRotation = _showRotationControl && !isTouchOnlyMobile;
 
     return Scaffold(
       body: Listener(
@@ -803,6 +791,11 @@ class _NebulaScreenState extends State<NebulaScreen>
                 zoom: _zoom,
                 showGrid: _showGrid,
               ),
+              // A decorative sigil behind each supernova — see
+              // sky_area_sigils.dart. Painted before SkySupernova so that
+              // widget's own glow/icon sit on top of it, not the other
+              // way round.
+              SkyAreaSigils(camera: _camera, zoom: _zoom),
               // Alternative takes on this slot, tried in order —
               // SkyDecorations (spiral nebula + supernova per area),
               // SkyWisps (wispy Hubble-style filaments), SkyBlackHole (a
@@ -1068,7 +1061,7 @@ class _NebulaScreenState extends State<NebulaScreen>
                             // gesture (see `_handleScaleUpdate`'s
                             // `details.rotation`), which is exactly why this
                             // knob is hidden outright on mobile (see
-                            // [_isTouchOnlyMobile]) — kept on desktop/web,
+                            // [isTouchOnlyMobile]) — kept on desktop/web,
                             // where there's no such gesture without it, and
                             // still user-toggleable there via
                             // [_showUiControlsMenu].

@@ -152,23 +152,33 @@ class _RootScreenState extends State<RootScreen> {
             Container(
               width: _railExpanded ? 240 : 84,
               color: colors.nightPanel,
-              child: Column(
-                children: [
-                  _RailHeader(
-                    expanded: _railExpanded,
-                    onToggle: () =>
-                        setState(() => _railExpanded = !_railExpanded),
-                  ),
-                  for (var i = 0; i < destinations.length; i++)
-                    _RailButton(
-                      icon: destinations[i].icon,
-                      selectedIcon: destinations[i].selected,
-                      label: destinations[i].label,
+              // A landscape phone (just wide enough to trip isWideLayout,
+              // but nowhere near as tall as an actual desktop window) can't
+              // always fit the header plus every destination — wrapped in
+              // a scroll view rather than a plain Column so that overflows
+              // into a scroll instead of a render error, the same
+              // "shouldn't normally be needed, but a safety net for a
+              // short viewport" pattern used elsewhere (see
+              // SkyExplorerView's own Supernovas view).
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _RailHeader(
                       expanded: _railExpanded,
-                      selected: _tabIndex == i,
-                      onTap: () => setState(() => _tabIndex = i),
+                      onToggle: () =>
+                          setState(() => _railExpanded = !_railExpanded),
                     ),
-                ],
+                    for (var i = 0; i < destinations.length; i++)
+                      _RailButton(
+                        icon: destinations[i].icon,
+                        selectedIcon: destinations[i].selected,
+                        label: destinations[i].label,
+                        expanded: _railExpanded,
+                        selected: _tabIndex == i,
+                        onTap: () => setState(() => _tabIndex = i),
+                      ),
+                  ],
+                ),
               ),
             ),
             VerticalDivider(width: 1, color: colors.nightBorder),

@@ -1,35 +1,43 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/strings_scope.dart';
+import '../models/habit.dart';
 import '../models/project.dart';
-import '../models/star.dart';
+import '../models/star_kind.dart';
 import '../theme/app_colors.dart';
-import '../utils/date_format.dart';
 import 'area_tag.dart';
+import 'intensity_bolts.dart';
 import 'navigate_here_button.dart';
 import 'project_tag.dart';
 import 'star_created_at.dart';
 import 'star_extra_badge.dart';
 import 'star_kind_label.dart';
 
-/// A still-unlit goal in a flat star list — [star] is always expected to
-/// satisfy [Star.isGoal].
-class GoalCard extends StatelessWidget {
-  const GoalCard({
+/// A pulsar (a habit) in a flat star list — a streak badge alongside the
+/// intensity block every burning star carries. [isLit] is the one thing on
+/// this card that changes with the day: it flips the kind label between the
+/// gold and the no-light family, and dims the title, exactly the way the
+/// pulsar itself flips in the sky.
+class PulsarCard extends StatelessWidget {
+  const PulsarCard({
     super.key,
-    required this.star,
+    required this.habit,
+    required this.currentStreak,
+    required this.isLit,
     this.onTap,
     this.project,
     this.onNavigateTo,
   });
 
-  final Star star;
+  final Habit habit;
+  final int currentStreak;
+  final bool isLit;
   final VoidCallback? onTap;
   final Project? project;
 
   /// Shows a "take me there" corner button when non-null — only passed by
-  /// the Galaxy tab's search popup, which can actually jump its sky camera
-  /// to this star's constellation.
+  /// the Sky's search popup, which can actually jump its sky camera
+  /// to this habit's constellation.
   final VoidCallback? onNavigateTo;
 
   @override
@@ -54,10 +62,7 @@ class GoalCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                StarKindLabel(
-                  icon: Icons.flag_outlined,
-                  label: strings.achievedToggleOff,
-                ),
+                StarKindLabel(kind: StarKind.pulsar, lit: isLit),
                 if (project != null) ...[
                   const SizedBox(height: 10),
                   Center(
@@ -81,18 +86,18 @@ class GoalCard extends StatelessWidget {
                 ],
                 const SizedBox(height: 12),
                 Text(
-                  star.title,
+                  habit.title,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 19,
-                    color: colors.text,
+                    color: isLit ? colors.text : colors.muted,
                   ),
                 ),
-                if (star.description != null) ...[
+                if (habit.description != null) ...[
                   const SizedBox(height: 6),
                   Text(
-                    star.description!,
+                    habit.description!,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
@@ -103,17 +108,21 @@ class GoalCard extends StatelessWidget {
                 ],
                 const SizedBox(height: 12),
                 StarExtraBadge(
-                  icon: Icons.event_outlined,
-                  label: star.targetDate == null
-                      ? strings.noTargetDateLabel
-                      : strings.targetDateBadgeLabel,
-                  value: star.targetDate == null
-                      ? null
-                      : formatDisplayDate(star.targetDate!, strings),
-                  dimmed: star.targetDate == null,
+                  icon: Icons.local_fire_department,
+                  label: strings.streakBadgeLabel,
+                  value: '$currentStreak',
+                ),
+                const SizedBox(height: 14),
+                Center(
+                  child: IntensityBolts(
+                    intensity: habit.intensity,
+                    size: 20,
+                    spacing: 4,
+                    emphasizeLast: true,
+                  ),
                 ),
                 const SizedBox(height: 18),
-                StarCreatedAt(createdAt: star.createdAt),
+                StarCreatedAt(createdAt: habit.createdAt),
               ],
             ),
           ),

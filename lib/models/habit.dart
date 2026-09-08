@@ -3,9 +3,19 @@
 /// value plus new handling, not a schema rewrite.
 enum HabitFrequency { daily }
 
-/// A recurring habit tracked separately from a project's constellation shape
-/// — its own small, scattered star, lit only while its daily streak (see
-/// `habit_stats.dart`) is unbroken.
+/// A pulsar: the *present* effort — something you keep doing day by day,
+/// tracked separately from a constellation's own shape as its own small,
+/// scattered star. Gold on the days the rhythm is kept (see
+/// `habit_stats.dart`), dark blue the moment it breaks.
+///
+/// Like every other star, a pulsar carries an [intensity] — how much the
+/// effort costs you each day, not how long the streak is.
+///
+/// Deleting a pulsar never removes its record: [dead] is set instead, the
+/// same tombstone a [Star] gets, so it stays in the sky as a dead star that
+/// still remembers it was a pulsar. Reigniting it (see
+/// [HabitRepository.resurrect]) therefore always brings back a pulsar,
+/// never some other kind of star.
 class Habit {
   const Habit({
     required this.id,
@@ -15,9 +25,15 @@ class Habit {
     required this.createdAt,
     this.frequency = HabitFrequency.daily,
     this.targetPerPeriod = 1,
+    this.intensity = 3,
     this.reminderHour,
     this.reminderMinute,
-  });
+    this.dead = false,
+    this.deadDate,
+  }) : assert(
+         intensity >= 1 && intensity <= 5,
+         'intensity must be 1-5, was $intensity',
+       );
 
   final int id;
   final int projectId;
@@ -32,11 +48,30 @@ class Habit {
   /// day" is a value change later, not a schema rewrite.
   final int targetPerPeriod;
 
+  /// How much effort keeping this up costs on a given day, 1 (light) to 5
+  /// (a lot) — the same scale a [Star]'s own intensity uses, so "intensity
+  /// of the effort" means one single thing across every kind of star.
+  /// Defaults to 3 rather than being nullable: unlike a goal (whose real
+  /// cost is only known once it's reached), a habit's cost is knowable the
+  /// day it's created, and pulsars stored before this field existed read
+  /// back as a plain middle value instead of a hole.
+  final int intensity;
+
   /// null = inherits the app's single global reminder time
   /// ([SettingsController]). Not yet acted on by [ReminderService] in v1 —
   /// see its own doc comment.
   final int? reminderHour;
   final int? reminderMinute;
+
+  /// Tombstone: true once this pulsar has been "deleted". It stops counting
+  /// as an active pulsar anywhere, and renders as a dead star instead.
+  final bool dead;
+
+  /// When [dead] became true. Null for a pulsar that's never been deleted;
+  /// cleared on resurrection along with [dead] itself.
+  final DateTime? deadDate;
+
+  bool get isActive => !dead;
 
   Habit copyWith({
     int? id,
@@ -46,8 +81,11 @@ class Habit {
     DateTime? createdAt,
     HabitFrequency? frequency,
     int? targetPerPeriod,
+    int? intensity,
     int? reminderHour,
     int? reminderMinute,
+    bool? dead,
+    DateTime? deadDate,
   }) {
     return Habit(
       id: id ?? this.id,
@@ -57,8 +95,11 @@ class Habit {
       createdAt: createdAt ?? this.createdAt,
       frequency: frequency ?? this.frequency,
       targetPerPeriod: targetPerPeriod ?? this.targetPerPeriod,
+      intensity: intensity ?? this.intensity,
       reminderHour: reminderHour ?? this.reminderHour,
       reminderMinute: reminderMinute ?? this.reminderMinute,
+      dead: dead ?? this.dead,
+      deadDate: deadDate ?? this.deadDate,
     );
   }
 
@@ -73,8 +114,16 @@ class Habit {
         json['frequency'] as String? ?? 'daily',
       ),
       targetPerPeriod: json['targetPerPeriod'] as int? ?? 1,
+      // Pre-intensity pulsars read back as the middle of the scale rather
+      // than failing the constructor's own assert.
+      intensity: json['intensity'] as int? ?? 3,
       reminderHour: json['reminderHour'] as int?,
       reminderMinute: json['reminderMinute'] as int?,
+      dead: json['dead'] as bool? ?? false,
+      deadDate: switch (json['deadDate'] as String?) {
+        final value? => DateTime.parse(value),
+        null => null,
+      },
     );
   }
 
@@ -87,8 +136,11 @@ class Habit {
       'createdAt': createdAt.toIso8601String(),
       'frequency': frequency.name,
       'targetPerPeriod': targetPerPeriod,
+      'intensity': intensity,
       'reminderHour': reminderHour,
       'reminderMinute': reminderMinute,
+      'dead': dead,
+      'deadDate': deadDate?.toIso8601String(),
     };
   }
 
@@ -102,8 +154,11 @@ class Habit {
         other.createdAt == createdAt &&
         other.frequency == frequency &&
         other.targetPerPeriod == targetPerPeriod &&
+        other.intensity == intensity &&
         other.reminderHour == reminderHour &&
-        other.reminderMinute == reminderMinute;
+        other.reminderMinute == reminderMinute &&
+        other.dead == dead &&
+        other.deadDate == deadDate;
   }
 
   @override
@@ -115,7 +170,10 @@ class Habit {
     createdAt,
     frequency,
     targetPerPeriod,
+    intensity,
     reminderHour,
     reminderMinute,
+    dead,
+    deadDate,
   );
 }

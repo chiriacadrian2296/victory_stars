@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/strings_scope.dart';
+import '../models/habit.dart';
 import '../models/project.dart';
 import '../models/star.dart';
+import '../models/star_kind.dart';
 import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
 import 'area_tag.dart';
@@ -12,27 +14,76 @@ import 'star_created_at.dart';
 import 'star_extra_badge.dart';
 import 'star_kind_label.dart';
 
-/// A tombstoned star in a flat star list — [star] is always expected to
-/// satisfy `star.dead`. The title stays muted so it visibly reads as
-/// "spent" next to lit victories and goals, and the kind icon uses the
-/// app's light-blue accent instead of gold; everything else matches every
-/// other card's look. Tapping it opens the reader's "resurrect" flow.
+/// A dead star in a flat star list. The title stays muted so it visibly
+/// reads as "spent" next to lit and unlit stars; everything else matches
+/// every other card's look. Tapping it opens the flow that reignites it.
+///
+/// Built from either a tombstoned [Star] or a tombstoned [Habit] — both
+/// really are dead stars, and both render identically here except for
+/// [wasPulsar], which is the whole reason they're kept apart: a dead star
+/// can only ever be reignited as the kind it was, so the card has to say
+/// which that is.
 class DeadStarCard extends StatelessWidget {
-  const DeadStarCard({
-    super.key,
-    required this.star,
+  const DeadStarCard._({
+    required this.title,
+    required this.createdAt,
+    required this.deadDate,
+    required this.wasPulsar,
     this.onTap,
     this.project,
     this.onNavigateTo,
   });
 
-  final Star star;
+  /// [star] is always expected to satisfy `star.dead`.
+  factory DeadStarCard.fromStar({
+    required Star star,
+    Project? project,
+    VoidCallback? onTap,
+    VoidCallback? onNavigateTo,
+  }) {
+    return DeadStarCard._(
+      title: star.title,
+      createdAt: star.createdAt,
+      deadDate: star.deadDate,
+      wasPulsar: false,
+      project: project,
+      onTap: onTap,
+      onNavigateTo: onNavigateTo,
+    );
+  }
+
+  /// [habit] is always expected to satisfy `habit.dead`.
+  factory DeadStarCard.fromHabit({
+    required Habit habit,
+    Project? project,
+    VoidCallback? onTap,
+    VoidCallback? onNavigateTo,
+  }) {
+    return DeadStarCard._(
+      title: habit.title,
+      createdAt: habit.createdAt,
+      deadDate: habit.deadDate,
+      wasPulsar: true,
+      project: project,
+      onTap: onTap,
+      onNavigateTo: onNavigateTo,
+    );
+  }
+
+  final String title;
+  final DateTime createdAt;
+  final DateTime? deadDate;
+
+  /// Whether this used to be a pulsar rather than a star on a
+  /// constellation's shape — which is exactly what it will come back as.
+  final bool wasPulsar;
+
   final VoidCallback? onTap;
   final Project? project;
 
   /// Shows a "take me there" corner button when non-null — only passed by
-  /// the Galaxy tab's search popup, which can actually jump its sky camera
-  /// to this star's constellation.
+  /// the Sky's search popup, which can actually jump its camera to this
+  /// star's constellation.
   final VoidCallback? onNavigateTo;
 
   @override
@@ -57,11 +108,16 @@ class DeadStarCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                StarKindLabel(
-                  icon: Icons.star_outline,
-                  label: strings.deadStarTitle,
-                  iconColor: colors.crisisMuted,
-                ),
+                const StarKindLabel(kind: StarKind.dead),
+                if (wasPulsar) ...[
+                  const SizedBox(height: 4),
+                  Center(
+                    child: Text(
+                      StarKind.pulsar.label(strings),
+                      style: TextStyle(fontSize: 12, color: colors.muted),
+                    ),
+                  ),
+                ],
                 if (project != null) ...[
                   const SizedBox(height: 10),
                   Center(
@@ -85,7 +141,7 @@ class DeadStarCard extends StatelessWidget {
                 ],
                 const SizedBox(height: 12),
                 Text(
-                  star.title,
+                  title,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
@@ -96,16 +152,16 @@ class DeadStarCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 StarExtraBadge(
                   icon: Icons.church,
-                  label: star.deadDate == null
+                  label: deadDate == null
                       ? strings.noDeadDateLabel
                       : strings.deadDateBadgeLabel,
-                  value: star.deadDate == null
+                  value: deadDate == null
                       ? null
-                      : formatDisplayDate(star.deadDate!, strings),
-                  dimmed: star.deadDate == null,
+                      : formatDisplayDate(deadDate!, strings),
+                  dimmed: deadDate == null,
                 ),
                 const SizedBox(height: 18),
-                StarCreatedAt(createdAt: star.createdAt),
+                StarCreatedAt(createdAt: createdAt),
               ],
             ),
           ),

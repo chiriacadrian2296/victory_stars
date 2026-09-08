@@ -4,6 +4,7 @@ import 'dart:ui';
 import '../models/habit.dart';
 import '../models/habit_completion.dart';
 import '../models/star.dart';
+import '../models/star_kind.dart';
 import '../utils/habit_stats.dart';
 import '../widgets/constellation_painter.dart';
 import 'constellation_shapes_v2.dart';
@@ -112,23 +113,29 @@ Offset _seededScatter(
 Offset seededOverflowPosition(int seed) =>
     _seededScatter(seed, minRadius: 0.55, maxRadius: 1.0);
 
-/// Deterministic placement for a habit's own small, scattered star — a
-/// closer band that overlaps the constellation's own footprint (habits sit
+/// Deterministic placement for a pulsar's own small, scattered star — a
+/// closer band that overlaps the constellation's own footprint (pulsars sit
 /// "around/inside/outside" the shape, not past its edge like overflow
 /// stars), seeded by the habit's own immutable id.
-Offset seededHabitPosition(int seed) =>
+Offset seededPulsarPosition(int seed) =>
     _seededScatter(seed, minRadius: 0.15, maxRadius: 0.65);
 
 /// Turns one project's raw [stars]/[habits] into everything
-/// [ConstellationPainter] needs to draw it: every star positioned along the
-/// shape's grown graph (or scattered, past [maxChainedStars]), every habit
+/// [ConstellationPainter] needs to draw it: every slot on the shape's grown
+/// graph filled either by a real star or by a *nascent* one, every pulsar
 /// scattered around/inside/outside that graph, and the edge list to connect
 /// them. Shared by `ConstellationScreen` (one project, framed to fill the
-/// screen) and the Nebula tab (every project at once, scattered across a
+/// screen) and the Sky tab (every project at once, scattered across a
 /// pannable world) — same star-to-shape mapping either way, so a star's
 /// place in its own constellation never depends on which screen is looking
 /// at it.
-({List<ConstellationStar> stars, List<(int, int)> edges, int shapeStarCount})
+///
+/// A brand-new constellation therefore already renders as its full shape:
+/// every line, and one nascent star per slot waiting to be configured. As
+/// stars get created they *replace* nascent ones — nothing moves, because a
+/// star is placed by its own permanent [Star.slotSequence], not by its
+/// position in [stars].
+({List<ConstellationStar> stars, List<(int, int)> edges})
 buildConstellationRenderStars({
   required List<Star> stars,
   required List<Habit> habits,
@@ -136,26 +143,52 @@ buildConstellationRenderStars({
   required Map<int, List<HabitCompletion>> completionsByHabit,
 }) {
   if (shape == null) {
-    return (stars: const [], edges: const [], shapeStarCount: 0);
+    return (stars: const [], edges: const []);
   }
 
-  final layout = buildConstellationLayout(shape, stars.length);
+  // The shape is always grown to at least its own point count (so every
+  // slot exists from day one, nascent until claimed), and beyond it only as
+  // far as the highest slot actually in use.
+  final highestSlot = stars.fold<int>(
+    0,
+    (max, s) => s.slotSequence > max ? s.slotSequence : max,
+  );
+  final layout = buildConstellationLayout(
+    shape,
+    math.max(shape.points.length, highestSlot),
+  );
+
   final renderStars = <ConstellationStar>[];
-  for (var i = 0; i < stars.length; i++) {
-    final star = stars[i];
-    final position = i < layout.points.length
-        ? layout.points[i]
-        : seededOverflowPosition(star.id);
-    final kind = star.dead
-        ? StarKind.dead
-        : (star.isAchieved ? StarKind.victory : StarKind.goal);
+  final claimedSlots = <int>{};
+  for (final star in stars) {
+    final index = star.slotSequence - 1;
+    claimedSlots.add(index);
     renderStars.add(
       ConstellationStar(
         entityId: star.id,
-        position: position,
-        kind: kind,
-        lit: star.isAchieved,
+        position: index >= 0 && index < layout.points.length
+            ? layout.points[index]
+            : seededOverflowPosition(star.id),
+        kind: star.kind,
+        lit: star.isLit,
         label: star.title,
+        slotSequence: star.slotSequence,
+      ),
+    );
+  }
+
+  // Only the shape's *own* slots go nascent. Anything past them exists
+  // solely because a star was put there, so there's nothing to leave empty.
+  for (var index = 0; index < shape.points.length; index++) {
+    if (claimedSlots.contains(index)) continue;
+    renderStars.add(
+      ConstellationStar(
+        entityId: 0,
+        position: layout.points[index],
+        kind: StarKind.nascent,
+        lit: false,
+        label: '',
+        slotSequence: index + 1,
       ),
     );
   }
@@ -168,17 +201,15 @@ buildConstellationRenderStars({
     renderStars.add(
       ConstellationStar(
         entityId: habit.id,
-        position: seededHabitPosition(habit.id),
-        kind: StarKind.habit,
-        lit: isHabitLit(completedDays),
+        position: seededPulsarPosition(habit.id),
+        // A deleted pulsar keeps its scattered spot and becomes a dead
+        // star, the same way a deleted star does — see [Habit.dead].
+        kind: habit.dead ? StarKind.dead : StarKind.pulsar,
+        lit: !habit.dead && isHabitLit(completedDays),
         label: habit.title,
       ),
     );
   }
 
-  return (
-    stars: renderStars,
-    edges: layout.edges,
-    shapeStarCount: stars.length,
-  );
+  return (stars: renderStars, edges: layout.edges);
 }

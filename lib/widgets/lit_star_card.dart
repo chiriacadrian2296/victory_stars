@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../l10n/strings_scope.dart';
 import '../models/project.dart';
 import '../models/star.dart';
+import '../models/star_kind.dart';
 import '../theme/app_colors.dart';
 import 'area_tag.dart';
 import 'intensity_bolts.dart';
@@ -12,12 +13,11 @@ import 'star_created_at.dart';
 import 'star_extra_badge.dart';
 import 'star_kind_label.dart';
 
-/// A single achieved star (victory) in a flat list — [star] is always
-/// expected to satisfy [Star.isAchieved]; every list this card appears in
-/// (Home's day detail, an area's flat Stars list) already filters to
-/// achieved-only before building these.
-class StarCard extends StatelessWidget {
-  const StarCard({
+/// A lit star (a victory) in a flat list — [star] is always expected to
+/// satisfy [Star.isLit]; every list this card appears in already filters to
+/// lit-only before building these.
+class LitStarCard extends StatelessWidget {
+  const LitStarCard({
     super.key,
     required this.star,
     this.onTap,
@@ -34,7 +34,7 @@ class StarCard extends StatelessWidget {
   final Project? project;
 
   /// Shows a "take me there" corner button when non-null — only passed by
-  /// the Galaxy tab's search popup, which can actually jump its sky camera
+  /// the Sky's search popup, which can actually jump its sky camera
   /// to this star's constellation.
   final VoidCallback? onNavigateTo;
 
@@ -60,13 +60,7 @@ class StarCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // A victory reads as fully "lit" (gold icon and text),
-                // unlike the other kinds' gold-icon/white-text look.
-                StarKindLabel(
-                  icon: Icons.star,
-                  label: strings.starKindVictoryTagLabel,
-                  textColor: colors.gold,
-                ),
+                const StarKindLabel(kind: StarKind.lit),
                 if (project != null) ...[
                   const SizedBox(height: 10),
                   Center(

@@ -13,6 +13,7 @@ import '../data/star_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../models/project.dart';
 import '../models/star.dart';
+import '../models/star_kind.dart';
 import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
 import '../widgets/area_tag.dart';
@@ -21,20 +22,19 @@ import '../widgets/photo_image.dart';
 import '../widgets/photo_picker.dart';
 import '../widgets/project_tag.dart';
 import '../widgets/responsive_content.dart';
-import 'add_star_screen.dart';
 import 'photo_crop_screen.dart';
+import 'star_form_screen.dart';
 
 /// Shows one star at a time, with looping prev/next navigation, its content
-/// switching by whether the star is a victory, a still-unlit goal, or a
-/// dead (tombstoned) star.
+/// switching by whether the star is lit, still unlit, or dead.
 ///
 /// Used two ways:
 /// - From the crisis intro, browsing everything starting at the most
 ///   recent star ([allowEdit] false — pure reflection, no editing).
 /// - From a tap on a specific card/star ([allowEdit] true — adds an edit
-///   button that reuses [AddStarScreen], which requires [projectRepository]
-///   and [refreshStars] too, since editing can reassign a star to a
-///   different project).
+///   button that reuses [StarFormScreen], which requires
+///   [projectRepository] and [refreshStars] too, since editing can move a
+///   star to a different constellation).
 class StarReaderScreen extends StatefulWidget {
   const StarReaderScreen({
     super.key,
@@ -73,7 +73,7 @@ class StarReaderScreen extends StatefulWidget {
   /// prev/next keeps browsing the right set.
   final List<Star> Function()? refreshStars;
 
-  /// Set only when opened from the Galaxy tab's search popup — shows a
+  /// Set only when opened from the Sky's search popup — shows a
   /// "take me there" button that closes both this reader and the popup,
   /// handing the current star's project back to the sky camera to jump to.
   final ValueChanged<Project>? onNavigateTo;
@@ -149,7 +149,7 @@ class _StarReaderScreenState extends State<StarReaderScreen> {
     if (current.dead) {
       final result = await Navigator.of(context).push<Object>(
         MaterialPageRoute(
-          builder: (_) => AddStarScreen(
+          builder: (_) => StarFormScreen(
             existingStar: current,
             contextProject: widget.projectsById[current.projectId],
             projectRepository: widget.projectRepository,
@@ -158,7 +158,7 @@ class _StarReaderScreenState extends State<StarReaderScreen> {
           ),
         ),
       );
-      if (result == null || result is! AddStarResult) return;
+      if (result is! StarFormResult) return;
       await widget.repository.resurrect(
         current.id,
         title: result.title,
@@ -175,7 +175,7 @@ class _StarReaderScreenState extends State<StarReaderScreen> {
 
     final result = await Navigator.of(context).push<Object>(
       MaterialPageRoute(
-        builder: (_) => AddStarScreen(
+        builder: (_) => StarFormScreen(
           existingStar: current,
           contextProject: widget.projectsById[current.projectId],
           projectRepository: widget.projectRepository,
@@ -185,13 +185,13 @@ class _StarReaderScreenState extends State<StarReaderScreen> {
     );
     if (result == null) return;
 
-    if (result is AddStarDeleteRequested) {
+    if (result is StarFormDeleteRequested) {
       await widget.repository.delete(current.id);
       _refreshFrom(current);
       return;
     }
 
-    final addResult = result as AddStarResult;
+    final addResult = result as StarFormResult;
     await widget.repository.update(
       id: current.id,
       title: addResult.title,
@@ -229,16 +229,16 @@ class _StarReaderScreenState extends State<StarReaderScreen> {
     final colors = context.colors;
     final strings = context.strings;
 
-    final photoPath = star.isAchieved ? star.photoPath : null;
+    final photoPath = star.isLit ? star.photoPath : null;
 
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
-          if (star.isAchieved)
+          if (star.isLit)
             RepaintBoundary(
               key: _shareKey,
-              child: _ShareableStarCard(star: star, project: project),
+              child: _ShareableLitStarCard(star: star, project: project),
             ),
           Positioned.fill(
             child: AnimatedSwitcher(
@@ -434,13 +434,13 @@ class _StarContent extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.star_outline,
+            StarKind.dead.icon,
             size: 44,
-            color: colors.crisisMuted.withValues(alpha: 0.5),
+            color: colors.starDead,
           ),
           const SizedBox(height: 24),
           Text(
-            strings.deadStarTitle,
+            StarKind.dead.label(strings),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 28,
@@ -462,21 +462,21 @@ class _StarContent extends StatelessWidget {
       );
     }
 
-    final achieved = star.isAchieved;
+    final lit = star.isLit;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
-          achieved ? Icons.star : Icons.star_border,
+          star.kind.icon,
           size: 44,
-          color: colors.gold,
+          color: lit ? colors.gold : colors.starUnlit,
         ),
         const SizedBox(height: 28),
         Text(
-          achieved
+          lit
               ? formatDisplayDateTime(star.achievedDate!, strings)
               : (star.targetDate == null
-                    ? strings.achievedToggleOff
+                    ? StarKind.unlit.label(strings)
                     : strings.goalTargetLabel(
                         formatDisplayDate(star.targetDate!, strings),
                       )),
@@ -516,7 +516,7 @@ class _StarContent extends StatelessWidget {
             ),
           ),
         ],
-        if (achieved) ...[
+        if (lit) ...[
           const SizedBox(height: 28),
           IntensityBolts(
             intensity: star.intensity!,
@@ -530,13 +530,13 @@ class _StarContent extends StatelessWidget {
   }
 }
 
-/// A static duplicate of [_StarContent]'s achieved-star layout, with none of
+/// A static duplicate of [_StarContent]'s lit-star layout, with none of
 /// the close/edit/prev-next chrome — exists only to be captured as an image
 /// by [_StarReaderScreenState._shareCurrent]. Only ever built for an
-/// achieved star (see [_StarReaderScreenState.build]'s `star.isAchieved`
+/// achieved star (see [_StarReaderScreenState.build]'s `star.isLit`
 /// guard), so [Star.achievedDate]/[Star.intensity] are always non-null here.
-class _ShareableStarCard extends StatelessWidget {
-  const _ShareableStarCard({required this.star, required this.project});
+class _ShareableLitStarCard extends StatelessWidget {
+  const _ShareableLitStarCard({required this.star, required this.project});
 
   final Star star;
   final Project? project;
@@ -686,11 +686,11 @@ class _MiddleAction extends StatelessWidget {
     if (star.dead) {
       return _ActionButton(
         icon: Icons.auto_fix_high,
-        label: strings.resurrectAction,
+        label: strings.reigniteAction,
         onTap: onResurrect,
       );
     }
-    if (!star.isAchieved) {
+    if (!star.isLit) {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [

@@ -17,7 +17,7 @@ int openGoalsInArea(
   for (final project in projectRepository.getProjectsForArea(area)) {
     total += starRepository
         .getAllForProject(project.id)
-        .where((s) => s.isGoal)
+        .where((s) => s.isUnlit)
         .length;
   }
   return total;

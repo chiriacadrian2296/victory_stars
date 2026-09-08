@@ -3,18 +3,60 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-/// Which visual family a [ConstellationStar] belongs to. [victory] and
-/// [goal] share the exact same sparkle/glow treatment when lit — a goal
-/// that's been achieved is drawn by the very same code path as a victory
-/// (see [ConstellationPainter.paint]) — differing only in [ConstellationStar.lit]
-/// while still unachieved. [dead] is a tombstoned star: still occupying its
-/// slot, drawn as a spent husk. [habit] is its own smaller, separately
-/// scattered family with a different sparkle and tint.
-enum StarKind { victory, goal, dead, habit }
+import '../models/star_kind.dart';
+
+/// The colors the five [StarKind]s are drawn in — passed in as one object
+/// rather than read from a static palette, since a [CustomPainter] has no
+/// [BuildContext] of its own. See [AppColors] for what each one means; the
+/// Sky tab overrides them with slightly warmer/brighter variants so a
+/// constellation still reads from far away.
+class StarPalette {
+  const StarPalette({
+    required this.lit,
+    required this.core,
+    required this.nascent,
+    required this.unlit,
+    required this.dead,
+  });
+
+  /// Gold — the shape's connecting lines and the tint of anything burning
+  /// (a lit star, a pulsar on a day it's been kept).
+  final Color lit;
+
+  /// The small bright mark drawn on top of a glow, so a burning star still
+  /// has a crisp point at its center instead of one soft blob.
+  final Color core;
+
+  /// Neutral white: a slot that exists but hasn't been given a meaning yet.
+  final Color nascent;
+
+  /// Blue, no light: an unlit star, and a pulsar whose rhythm is broken.
+  final Color unlit;
+
+  /// Dimmer blue: a dead star's spent husk.
+  final Color dead;
+
+  // Value equality, not identity: callers build a palette inline in their
+  // own build() (it's derived from `context.colors`), so without this
+  // [ConstellationPainter.shouldRepaint] would see a "new" palette on every
+  // single rebuild and never be able to skip a repaint.
+  @override
+  bool operator ==(Object other) {
+    return other is StarPalette &&
+        other.lit == lit &&
+        other.core == core &&
+        other.nascent == nascent &&
+        other.unlit == unlit &&
+        other.dead == dead;
+  }
+
+  @override
+  int get hashCode => Object.hash(lit, core, nascent, unlit, dead);
+}
 
 /// One star: which entity it represents, where it sits in the
 /// constellation's normalized (0..1) coordinate space, its [kind], and
-/// whether it's currently lit.
+/// whether it's currently burning.
 class ConstellationStar {
   const ConstellationStar({
     required this.entityId,
@@ -22,19 +64,40 @@ class ConstellationStar {
     required this.kind,
     required this.lit,
     required this.label,
+    this.slotSequence,
   });
 
+  /// The [Star]/[Habit] this stands for. Always 0 for a
+  /// [StarKind.nascent] star — there's no entity behind an empty slot yet,
+  /// which is exactly what makes it nascent; [slotSequence] identifies it
+  /// instead.
   final int entityId;
+
   final Offset position;
   final StarKind kind;
+
+  /// Whether this star is currently giving light. Always true for
+  /// [StarKind.lit], always false for [StarKind.unlit]/[StarKind.nascent]/
+  /// [StarKind.dead], and the live "kept the rhythm?" answer for
+  /// [StarKind.pulsar] — the one kind that flips between the gold and the
+  /// no-light family day by day.
   final bool lit;
 
   /// The underlying [Star]/[Habit]'s own title — only actually drawn by
-  /// the Galaxy tab (see `ConstellationFieldPainter`'s star-name labels);
+  /// the Sky tab (see `ConstellationFieldPainter`'s star-name labels);
   /// `ConstellationScreen`'s own single-project view doesn't use it, but
   /// every [ConstellationStar] carries it since both share the exact same
-  /// `buildConstellationRenderStars`.
+  /// `buildConstellationRenderStars`. Empty for a nascent star, which has
+  /// no title to show yet.
   final String label;
+
+  /// Which slot on the constellation's shape this occupies (1-based, see
+  /// [Star.slotSequence]) — set for every star that sits on the shape,
+  /// nascent ones included, and null only for a pulsar (scattered around
+  /// the shape rather than part of it). Tapping a nascent star hands this
+  /// straight to [StarRepository.add], so the new star lands on the exact
+  /// slot that was tapped.
+  final int? slotSequence;
 }
 
 /// Compiles `shaders/constellation_flare.frag` once — callers hold the
@@ -54,12 +117,8 @@ class ConstellationPainter extends CustomPainter {
     required this.stars,
     required this.flareProgram,
     required this.revision,
-    required this.starColor,
-    required this.coreColor,
-    required this.habitColor,
+    required this.palette,
     this.edges = const [],
-    this.linkThreshold = 0,
-    required this.shapeStarCount,
     this.lineWidthScale = 1,
     this.lineAlpha = 0.35,
     this.sparkleScale = 1,
@@ -85,38 +144,25 @@ class ConstellationPainter extends CustomPainter {
   /// still renders correctly, just without the pulse.
   final double time;
 
-  /// Passed in rather than read from a static palette — a [CustomPainter]
-  /// has no [BuildContext], and these must follow the active light/dark
-  /// theme.
-  final Color starColor;
-  final Color coreColor;
+  /// One color per [StarKind] family — see [StarPalette].
+  final StarPalette palette;
 
-  /// Tints a habit's own sparkle/glow — distinct from [starColor]/[coreColor]
-  /// so habits read as a separate star family before their smaller size or
-  /// different twinkle shape even register.
-  final Color habitColor;
-
-  /// Which pairs of [stars] (by index into the victory/goal/dead subset —
-  /// see `ConstellationScreen._buildStars`) get a connecting line — built by
-  /// `buildConstellationLayout`, so this can branch (a figure's arms and
-  /// legs, a teapot's handle) instead of being a single path or loop.
+  /// Which pairs of [stars] (by [ConstellationStar.slotSequence] order —
+  /// i.e. index into the shape's own slots, pulsars excluded) get a
+  /// connecting line, built by `buildConstellationLayout`. Can branch (a
+  /// figure's arms and legs, a teapot's handle) instead of being a single
+  /// path or loop.
+  ///
+  /// Always drawn in full, from the constellation's very first frame: the
+  /// shape exists as soon as it's created, its slots simply start out
+  /// nascent (see [StarKind.nascent]) rather than absent, so there's no
+  /// "enough stars yet?" threshold left to gate the lines on.
   final List<(int, int)> edges;
-
-  /// No lines are drawn at all until the shape's own graph (victories, goals
-  /// and dead stars — never habits) reaches this many stars.
-  final int linkThreshold;
-
-  /// How many of [stars] belong to the shape's own point/edge graph
-  /// (victory + goal + dead) — used instead of `stars.length` for the
-  /// [linkThreshold] comparison, so a project's habits (appended after,
-  /// scattered separately) never prematurely trigger the shape's connecting
-  /// lines on a barely-started constellation.
-  final int shapeStarCount;
 
   /// Multiply the connecting-line stroke width/alpha and the star/glow
   /// sizes below — all default to 1/0.35 (i.e. no change from before this
   /// existed), leaving `ConstellationScreen`'s own single-project view
-  /// untouched. Added for the Galaxy tab (see `ConstellationFieldPainter`),
+  /// untouched. Added for the Sky (see `ConstellationFieldPainter`),
   /// where constellations sit small and far away in a wide field of view —
   /// making the shape itself much bigger there turned out to look
   /// distorted near the screen edges, so instead these make the same
@@ -140,7 +186,7 @@ class ConstellationPainter extends CustomPainter {
   // fixed-pixel size below (sparkle radius, glow sprite scale, line width)
   // is expressed relative to it via [_sizeScale], so this class draws
   // identically there (size is always exactly 1000) while actually
-  // shrinking/growing with the Nebula tab's zoom (where `size` is
+  // shrinking/growing with the Sky's zoom (where `size` is
   // `localSizePx`, which does vary — see ConstellationFieldPainter). Without
   // this, a star's glow stayed a fixed screen-pixel blob regardless of zoom
   // there, quickly looking wildly oversized on a zoomed-out constellation or
@@ -148,21 +194,37 @@ class ConstellationPainter extends CustomPainter {
   // (star positions, via [_toCanvas]) scaled correctly.
   static const _referenceSize = 1000.0;
   static const _sparkleRadius = 5.5;
-  static const _habitSparkleRadius = 3.5;
-  static const _dimAlpha = 0.35;
-  static const _deadAlpha = 0.15;
+  static const _pulsarSparkleRadius = 3.5;
+
+  /// Per-family opacity. An unlit star is dim but plainly *there* (it's a
+  /// commitment you've made); a nascent one is fainter still (a slot, not
+  /// yet a commitment); a dead one is the faintest, a husk you have to look
+  /// for. All three sit well below a lit star's own full-brightness flare.
+  static const _unlitAlpha = 0.75;
+  static const _nascentAlpha = 0.4;
+  static const _deadAlpha = 0.45;
 
   @override
   void paint(Canvas canvas, Size size) {
     if (stars.isEmpty) return;
     final sizeScale = size.width / _referenceSize;
 
-    if (shapeStarCount >= linkThreshold && linkThreshold > 0) {
+    // Drawn unconditionally: a constellation's shape is its identity, and
+    // it's fully there from the moment it's created — the slots along it
+    // just start out nascent. [edges] index into the shape's own slots in
+    // order, so the same ordering is rebuilt here (pulsars scatter around
+    // the shape and are never part of it).
+    if (edges.isNotEmpty) {
       final linePaint = Paint()
-        ..color = starColor.withValues(alpha: lineAlpha)
+        ..color = palette.lit.withValues(alpha: lineAlpha)
         ..strokeWidth = 1.2 * sizeScale * lineWidthScale
         ..style = PaintingStyle.stroke;
-      final shapeStars = stars.where((s) => s.kind != StarKind.habit).toList();
+      // Sitting on a slot is what makes a star part of the shape — not its
+      // kind. A deleted pulsar is a dead star too, but it keeps its own
+      // scattered spot and no slot, so it must never shift this indexing.
+      final shapeStars =
+          stars.where((s) => s.slotSequence != null).toList()
+            ..sort((a, b) => a.slotSequence!.compareTo(b.slotSequence!));
       for (final (a, b) in edges) {
         if (a >= shapeStars.length || b >= shapeStars.length) continue;
         canvas.drawLine(
@@ -173,46 +235,58 @@ class ConstellationPainter extends CustomPainter {
       }
     }
 
-    final lit = stars.where((s) => s.kind != StarKind.habit && s.lit).toList();
-    final unlitGoals = stars
-        .where((s) => s.kind == StarKind.goal && !s.lit)
+    final burning = stars.where((s) => s.kind == StarKind.lit).toList();
+    final burningPulsars = stars
+        .where((s) => s.kind == StarKind.pulsar && s.lit)
         .toList();
+    final nascent = stars.where((s) => s.kind == StarKind.nascent).toList();
+    final unlit = stars.where((s) => s.kind == StarKind.unlit).toList();
     final dead = stars.where((s) => s.kind == StarKind.dead).toList();
-    final litHabits = stars
-        .where((s) => s.kind == StarKind.habit && s.lit)
-        .toList();
-    final unlitHabits = stars
-        .where((s) => s.kind == StarKind.habit && !s.lit)
+    final coldPulsars = stars
+        .where((s) => s.kind == StarKind.pulsar && !s.lit)
         .toList();
 
-    _drawGlowAndSparkle(canvas, size, lit, flareRadius: size.width * 0.42);
+    // A lit star and a kept pulsar burn with the same gold — they differ
+    // only in size (a pulsar is the smaller, scattered kind) and in how
+    // easily they go out again.
+    _drawGlowAndSparkle(canvas, size, burning, flareRadius: size.width * 0.42);
+    _drawGlowAndSparkle(
+      canvas,
+      size,
+      burningPulsars,
+      flareRadius: size.width * 0.42 * 0.55,
+    );
+    // A hollow ring, not a filled twinkle: nothing has been placed here
+    // yet, so it reads as an outline waiting to be filled in.
     _drawSparkleOnly(
       canvas,
       size,
-      unlitGoals,
-      color: coreColor.withValues(alpha: _dimAlpha),
+      nascent,
+      color: palette.nascent.withValues(alpha: _nascentAlpha),
       radius: _sparkleRadius * sizeScale * sparkleScale,
+      outlineOnly: true,
+    );
+    _drawSparkleOnly(
+      canvas,
+      size,
+      unlit,
+      color: palette.unlit.withValues(alpha: _unlitAlpha),
+      radius: _sparkleRadius * sizeScale * sparkleScale,
+    );
+    _drawSparkleOnly(
+      canvas,
+      size,
+      coldPulsars,
+      color: palette.unlit.withValues(alpha: _unlitAlpha),
+      radius: _pulsarSparkleRadius * sizeScale * sparkleScale,
     );
     _drawSparkleOnly(
       canvas,
       size,
       dead,
-      color: coreColor.withValues(alpha: _deadAlpha),
+      color: palette.dead.withValues(alpha: _deadAlpha),
       radius: _sparkleRadius * sizeScale * sparkleScale,
       outlineOnly: true,
-    );
-    _drawGlowAndSparkle(
-      canvas,
-      size,
-      litHabits,
-      flareRadius: size.width * 0.42 * 0.55,
-    );
-    _drawSparkleOnly(
-      canvas,
-      size,
-      unlitHabits,
-      color: habitColor.withValues(alpha: _deadAlpha),
-      radius: _habitSparkleRadius * sizeScale * sparkleScale,
     );
   }
 
@@ -230,10 +304,10 @@ class ConstellationPainter extends CustomPainter {
     // size.width * someFraction), not of [_sparkleRadius] — that constant
     // is scaled for a small icon and, tied to
     // `kSkyConstellationAngularSpan`'s own tiny sky patch, comes out to a
-    // fraction of a pixel at the Galaxy tab's typical zoom, nowhere near
+    // fraction of a pixel at the Sky's typical zoom, nowhere near
     // big enough for a flare meant to read as one of the bright stars in
     // the sky. [size] itself (a constellation's own on-screen footprint —
-    // `localSizePx` in the Galaxy tab, a fixed 1000 in `ConstellationScreen`)
+    // `localSizePx` in the Sky, a fixed 1000 in `ConstellationScreen`)
     // scales with zoom the same way the bg's own flare stars do, so tying
     // this to it keeps the ratio between the two roughly constant across
     // zoom levels instead of needing a hand-tuned multiplier per case.
@@ -349,9 +423,7 @@ class ConstellationPainter extends CustomPainter {
   bool shouldRepaint(covariant ConstellationPainter oldDelegate) {
     return revision != oldDelegate.revision ||
         flareProgram != oldDelegate.flareProgram ||
-        starColor != oldDelegate.starColor ||
-        coreColor != oldDelegate.coreColor ||
-        habitColor != oldDelegate.habitColor ||
+        palette != oldDelegate.palette ||
         stars.length != oldDelegate.stars.length ||
         time != oldDelegate.time;
   }
@@ -378,9 +450,9 @@ Offset _toCanvas(Offset normalized, Size size) {
 /// Finds the star nearest a tap, within [hitRadius] logical pixels, in the
 /// same normalized-to-canvas coordinate space [ConstellationPainter] paints
 /// in. Works regardless of [ConstellationStar.kind]/[ConstellationStar.lit] —
-/// a dead star or an unlit goal is just as tappable as a lit victory, since
-/// tapping any of them opens something useful (resurrect, "mark achieved",
-/// or just viewing).
+/// every kind opens something useful when tapped: a nascent star opens the
+/// form that configures it, a dead one the flow that reignites it, an unlit
+/// one "light this star", and a lit one simply itself.
 ConstellationStar? hitTestStar(
   Offset localPosition,
   Size canvasSize,

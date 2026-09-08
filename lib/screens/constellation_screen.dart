@@ -16,21 +16,23 @@ import '../models/habit.dart';
 import '../models/habit_completion.dart';
 import '../models/project.dart';
 import '../models/star.dart';
+import '../models/star_kind.dart';
 import '../theme/app_colors.dart';
 import '../widgets/constellation_painter.dart';
-import 'habit_reader_screen.dart';
+import 'pulsar_reader_screen.dart';
+import 'star_form_screen.dart';
 import 'star_reader_screen.dart';
 
-/// A single project's constellation: a pannable/zoomable star field shaped
-/// like the project's own hand-drawn [Project.customConstellationId]
-/// shape. Victories, goals, and
-/// dead (tombstoned) stars share the shape's own point/edge graph, ordered
-/// by [Star.slotSequence]; habits are separate, smaller stars scattered
-/// around/inside/outside the shape (see [seededHabitPosition]), never part
-/// of that graph. Tapping a star opens [StarReaderScreen]/[HabitReaderScreen]
-/// (with editing enabled). Adding a new star/habit to this project happens
-/// through Home's own FAB chooser (via the project picker) — this screen is
-/// read/browse only.
+/// A single constellation up close: a pannable/zoomable star field shaped
+/// like the project's own hand-drawn [Project.customConstellationId] shape.
+/// Every slot on that shape holds a star — lit, unlit, dead, or still
+/// nascent — ordered by [Star.slotSequence]; pulsars are separate, smaller
+/// stars scattered around/inside/outside the shape (see
+/// [seededPulsarPosition]), never part of that graph.
+///
+/// Tapping a star opens [StarReaderScreen]/[PulsarReaderScreen], or — for a
+/// nascent one — the [StarFormScreen] that configures that exact slot,
+/// which is the one way this screen creates anything.
 class ConstellationScreen extends StatefulWidget {
   const ConstellationScreen({
     super.key,
@@ -76,7 +78,6 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
   late List<Habit> _habits;
   late List<ConstellationStar> _renderStars;
   late List<(int, int)> _edges;
-  late int _shapeStarCount;
   int _revision = 0;
   ui.FragmentProgram? _flareProgram;
   final _transformationController = TransformationController();
@@ -125,7 +126,6 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
       completionsByHabit: completionsByHabit,
     );
     _edges = built.edges;
-    _shapeStarCount = built.shapeStarCount;
     return built.stars;
   }
 
@@ -172,11 +172,19 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
   }
 
   Future<void> _openStar(ConstellationStar star) async {
-    if (star.kind == StarKind.habit) {
+    // An empty slot on the shape: tapping it is how it gets a meaning.
+    if (star.kind == StarKind.nascent) {
+      await _configureNascentStar(star);
+      return;
+    }
+    // Sitting on a slot is what makes a star part of the shape — a pulsar
+    // (alive or dead) scatters around it instead and has none, which is the
+    // reliable test for which repository this star came from.
+    if (star.slotSequence == null) {
       final habit = _habits.firstWhere((h) => h.id == star.entityId);
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => HabitReaderScreen(
+          builder: (_) => PulsarReaderScreen(
             habit: habit,
             project: widget.project,
             habitRepository: widget.habitRepository,
@@ -206,6 +214,33 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
               widget.starRepository.getAllForProject(widget.project.id),
         ),
       ),
+    );
+    _refresh();
+  }
+
+  /// Fills the exact slot the tapped nascent star occupies. The pulsar
+  /// option is off — this slot belongs to the shape, and a pulsar never
+  /// sits on the shape.
+  Future<void> _configureNascentStar(ConstellationStar star) async {
+    final result = await Navigator.of(context).push<Object>(
+      MaterialPageRoute(
+        builder: (_) => StarFormScreen(
+          lockedProject: widget.project,
+          slotSequence: star.slotSequence,
+          allowPulsar: false,
+        ),
+      ),
+    );
+    if (result is! StarFormResult) return;
+    await widget.starRepository.add(
+      title: result.title,
+      description: result.description,
+      projectId: result.projectId,
+      slotSequence: result.slotSequence,
+      targetDate: result.targetDate,
+      achievedDate: result.achievedDate,
+      intensity: result.intensity,
+      photoPath: result.photoPath,
     );
     _refresh();
   }
@@ -297,12 +332,14 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
                                 stars: _renderStars,
                                 flareProgram: _flareProgram,
                                 revision: _revision,
-                                starColor: colors.gold,
-                                coreColor: colors.text,
-                                habitColor: colors.crisisMuted,
+                                palette: StarPalette(
+                                  lit: colors.gold,
+                                  core: colors.text,
+                                  nascent: colors.starNascent,
+                                  unlit: colors.starUnlit,
+                                  dead: colors.starDead,
+                                ),
                                 edges: _edges,
-                                linkThreshold: shape.points.length,
-                                shapeStarCount: _shapeStarCount,
                               ),
                             ),
                           ),
@@ -328,24 +365,16 @@ class _TickingConstellationCanvas extends StatefulWidget {
     required this.stars,
     required this.flareProgram,
     required this.revision,
-    required this.starColor,
-    required this.coreColor,
-    required this.habitColor,
+    required this.palette,
     required this.edges,
-    required this.linkThreshold,
-    required this.shapeStarCount,
   });
 
   final Size canvasSize;
   final List<ConstellationStar> stars;
   final ui.FragmentProgram? flareProgram;
   final int revision;
-  final Color starColor;
-  final Color coreColor;
-  final Color habitColor;
+  final StarPalette palette;
   final List<(int, int)> edges;
-  final int linkThreshold;
-  final int shapeStarCount;
 
   @override
   State<_TickingConstellationCanvas> createState() =>
@@ -379,12 +408,8 @@ class _TickingConstellationCanvasState
         stars: widget.stars,
         flareProgram: widget.flareProgram,
         revision: widget.revision,
-        starColor: widget.starColor,
-        coreColor: widget.coreColor,
-        habitColor: widget.habitColor,
+        palette: widget.palette,
         edges: widget.edges,
-        linkThreshold: widget.linkThreshold,
-        shapeStarCount: widget.shapeStarCount,
         time: _elapsed.inMicroseconds / Duration.microsecondsPerSecond,
       ),
     );

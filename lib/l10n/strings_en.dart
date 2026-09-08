@@ -48,17 +48,19 @@ class StringsEn implements AppStrings {
       "Your impact — giving, service, and other people's lives.";
 
   @override
-  String get navHome => 'Home';
+  String get openMenuAction => 'Menu';
   @override
-  String get navGalaxy => 'Galaxy';
+  String get menuLightAStar => 'Light a star';
   @override
-  String get navStats => 'Stats';
+  String get menuNewConstellation => 'New constellation';
   @override
-  String get navSettings => 'Settings';
+  String get menuVisions => 'Your visions';
   @override
-  String get collapseSidebarAction => 'Collapse sidebar';
+  String get menuAdmire => 'Admire your stars';
   @override
-  String get expandSidebarAction => 'Expand sidebar';
+  String get menuSearch => 'Search the sky';
+  @override
+  String get menuSettings => 'Settings';
 
   @override
   String get statsEyebrow => 'YOUR NUMBERS';
@@ -295,9 +297,13 @@ class StringsEn implements AppStrings {
   @override
   String get editStarEyebrow => 'EDIT STAR';
   @override
-  String get addWinQuestion => 'What did you get through?';
+  String get configureStarEyebrow => 'CONFIGURE THIS STAR';
   @override
-  String get addGoalQuestion => 'What do you want to achieve?';
+  String get litStarQuestion => 'What did you get through?';
+  @override
+  String get unlitStarQuestion => 'What do you want to reach?';
+  @override
+  String get pulsarQuestion => 'What do you want to keep doing, day by day?';
   @override
   String get projectLabel => 'Constellation';
   @override
@@ -322,6 +328,9 @@ class StringsEn implements AppStrings {
   @override
   String get intensityLabel => 'Intensity';
   @override
+  String get intensityCaption =>
+      'How much this effort costs you — 1 is light, 5 is a lot.';
+  @override
   String get photoLabel => 'Photo (optional)';
   @override
   String get addPhotoHint => 'Add a photo';
@@ -342,6 +351,8 @@ class StringsEn implements AppStrings {
   @override
   String get lightThisStar => 'Light this star';
   @override
+  String get placeThisStarAction => 'Put it in the sky';
+  @override
   String get cannotSaveMissingInfo => "Can't save yet — some info is missing";
   @override
   String get gotIt => 'Got it';
@@ -349,7 +360,12 @@ class StringsEn implements AppStrings {
   String get deleteStarConfirmTitle => 'Delete this star?';
   @override
   String get deleteStarConfirmBody =>
-      "This turns the star into a dead one — it leaves here, but stays in its spot in the sky, and you can bring it back to life later.";
+      "This turns the star into a dead one — it leaves here, but stays in its spot in the sky, and you can reignite it later.";
+  @override
+  String get deletePulsarConfirmTitle => 'Delete this pulsar?';
+  @override
+  String get deletePulsarConfirmBody =>
+      'The pulsar becomes a dead star — it stops beating, but stays in its spot in the sky, and you can reignite it later as a pulsar again.';
   @override
   String get deleteStarAction => 'Delete';
   @override
@@ -360,10 +376,6 @@ class StringsEn implements AppStrings {
   @override
   String get discardChangesAction => 'Discard';
 
-  @override
-  String get achievedToggleOn => 'Already achieved';
-  @override
-  String get achievedToggleOff => 'Future goal';
   @override
   String get targetDateLabel => 'Target date (optional)';
   @override
@@ -380,32 +392,22 @@ class StringsEn implements AppStrings {
   @override
   String get undoAchievedAction => 'Mark as not achieved';
   @override
-  String get deadStarTitle => 'Dead star';
-  @override
   String get deadStarBody =>
-      'This star was deleted. You can bring it back to life as a brand new star, in the same spot in the sky.';
+      'This star was deleted. You can reignite it as a brand new star, in the same spot in the sky.';
   @override
-  String get resurrectAction => 'Resurrect this star';
+  String get deadPulsarBody =>
+      'This pulsar was deleted. You can reignite it as a brand new pulsar, in the same spot in the sky — its old streak stays behind.';
+  @override
+  String get reigniteAction => 'Reignite this star';
 
   @override
-  String get newHabitEyebrow => 'NEW PULSAR';
-  @override
-  String get editHabitEyebrow => 'EDIT PULSAR';
-  @override
-  String get addHabitQuestion => 'Which pulsar do you want to light?';
+  String get pulsarTitleHint => 'E.g. Ten minutes of stretching';
   @override
   String get habitFrequencyLabel => 'Frequency';
   @override
   String get habitFrequencyDaily => 'Every day';
   @override
   String get customReminderToggleLabel => 'Custom reminder time';
-  @override
-  String get deleteHabitConfirmTitle => 'Delete this pulsar?';
-  @override
-  String get deleteHabitConfirmBody =>
-      'This permanently removes the pulsar and all of its history. This cannot be undone.';
-  @override
-  String get deleteHabitAction => 'Delete';
 
   @override
   String get habitCurrentStreakLabel => 'Current streak';
@@ -417,24 +419,55 @@ class StringsEn implements AppStrings {
   String get undoHabitTodayAction => 'Undo';
 
   @override
-  String openGoalsBadge(int count) =>
-      count == 1 ? '1 open goal' : '$count open goals';
+  String unlitStarsBadge(int count) =>
+      count == 1 ? '1 unlit star' : '$count unlit stars';
   @override
-  String activeHabitsBadge(int count) =>
+  String activePulsarsBadge(int count) =>
       count == 1 ? '1 active pulsar' : '$count active pulsars';
 
   @override
-  String get starKindVictoryLabel => 'Victories';
+  String get starKindNascentName => 'Nascent star';
   @override
-  String get starKindVictoryTagLabel => 'Victory';
+  String get starKindNascentPlural => 'Nascent stars';
   @override
-  String get starKindGoalLabel => 'Goals';
+  String get starKindNascentMeaning => 'Not configured yet';
   @override
-  String get starKindDeadLabel => 'Dead stars';
+  String get starKindNascentExample =>
+      'A point on a brand new constellation — drawn, but not decided yet.';
   @override
-  String get starKindPulsarChipLabel => 'Pulsars';
+  String get starKindLitName => 'Lit star';
   @override
-  String get starKindPulsarTagLabel => 'Pulsar';
+  String get starKindLitPlural => 'Lit stars';
+  @override
+  String get starKindLitMeaning => 'A victory — already made';
+  @override
+  String get starKindLitExample =>
+      'I got through the interview even though I was terrified.';
+  @override
+  String get starKindUnlitName => 'Unlit star';
+  @override
+  String get starKindUnlitPlural => 'Unlit stars';
+  @override
+  String get starKindUnlitMeaning => 'A goal — still ahead';
+  @override
+  String get starKindUnlitExample => 'Run my first 10 km.';
+  @override
+  String get starKindPulsarName => 'Pulsar';
+  @override
+  String get starKindPulsarPlural => 'Pulsars';
+  @override
+  String get starKindPulsarMeaning => 'A habit — day by day';
+  @override
+  String get starKindPulsarExample => 'Ten minutes of stretching, every day.';
+  @override
+  String get starKindDeadName => 'Dead star';
+  @override
+  String get starKindDeadPlural => 'Dead stars';
+  @override
+  String get starKindDeadMeaning => 'Deleted — can be reignited';
+  @override
+  String get starKindDeadExample =>
+      'A goal you let go of — still there, still yours to reignite.';
 
   @override
   String get photoBadgeLabel => 'Photo';
@@ -465,13 +498,86 @@ class StringsEn implements AppStrings {
   String get viewYourStars => 'View your stars';
 
   @override
-  String get addWinFabLabel => 'New victory';
-  @override
-  String get addGoalFabLabel => 'New goal';
-  @override
-  String get addHabitFabLabel => 'New pulsar';
-  @override
   String get newConstellationOption => 'New constellation';
+
+  @override
+  String get visionsEyebrow => 'THE BIGGEST PICTURE';
+  @override
+  String get visionsTitle => 'Your visions';
+  @override
+  String get visionsSubtitle =>
+      'One vision per supernova — the reality you want in that area of your '
+      'life. Come back to read them, and rewrite them as you change.';
+  @override
+  String get visionEmptyLabel => 'No vision written yet';
+
+  @override
+  String get guideOpenAction => 'The metaphor';
+  @override
+  String get guideEyebrow => 'HOW YOUR SKY WORKS';
+  @override
+  String get guideTitle => 'The metaphor';
+  @override
+  String get guideIntroBody =>
+      'Everything here is one sky, read at three sizes: the areas of your '
+      'life burn as supernovas, the projects inside them are '
+      'constellations, and every effort you make is a star.';
+  @override
+  String get examplesLabel => 'Examples';
+  @override
+  String get guideAreaTitle => 'Supernova';
+  @override
+  String get guideAreaMeaning => 'An area of your life';
+  @override
+  String get guideAreaBody =>
+      'The biggest thing in your sky, and the only fixed one: 8 areas, '
+      'always the same. A supernova holds your vision — the reality you '
+      'want in that part of your life. Everything else is placed around '
+      'the one it belongs to.';
+  @override
+  String get guideAreaExamples =>
+      'Physical · Professional · Social — each with the vision you write '
+      'for it: "a body I trust, all year round".';
+  @override
+  String get guideConstellationTitle => 'Constellation';
+  @override
+  String get guideConstellationMeaning => 'A project in your life';
+  @override
+  String get guideConstellationBody =>
+      'A shape you draw yourself, inside one supernova. It gathers every '
+      'effort about the same thing. Its shape is there from the first day '
+      '— the stars along it simply start out nascent, waiting for you.';
+  @override
+  String get guideConstellationExamples =>
+      'Get back in shape · Build this app · Be a better friend';
+  @override
+  String get guideStarTitle => 'Star';
+  @override
+  String get guideStarMeaning => 'One effort — past, present or future';
+  @override
+  String get guideStarBody =>
+      'The smallest thing in your sky, and the only one you make yourself. '
+      'A star is always an effort; its kind says where that effort sits in '
+      'time, and whether it is burning right now.';
+  @override
+  String get guideStarExamples =>
+      'I trained even though I did not want to · Run 10 km · Ten minutes '
+      'of stretching, every day';
+  @override
+  String get guideKindsTitle => 'The five kinds of star';
+  @override
+  String get guideKindsBody =>
+      'Gold means light: the effort is burning. Blue means no light: '
+      'nothing is being given right now. White means the slot is still '
+      'yours to fill.';
+  @override
+  String get guideIntensityTitle => 'Intensity';
+  @override
+  String get guideIntensityBody =>
+      'Every burning star carries an intensity, 1 to 5 — how much the '
+      'effort actually cost you, not how big the result looks from '
+      'outside. A lit star keeps the intensity it took; a pulsar carries '
+      'what it costs you each day.';
 
   @override
   List<String> get upliftingQuotes => const [
@@ -580,25 +686,31 @@ class StringsEn implements AppStrings {
       'Victory Stars turns the things you accomplish into your own night '
       "sky — a place to look back on everything you've been through.";
   @override
-  String get onboardingVictoriesTitle => 'Every win becomes a star';
+  String get onboardingNascentTitle => 'A constellation is born whole';
   @override
-  String get onboardingVictoriesBody =>
+  String get onboardingNascentBody =>
+      'Draw a constellation and its shape is already there: the lines, and '
+      'a nascent star on every point. Tap one to decide what it becomes.';
+  @override
+  String get onboardingLitTitle => 'An effort you made is a lit star';
+  @override
+  String get onboardingLitBody =>
       'The moment you get through something that mattered, you light a '
       'star. It stays there — proof of what you did, whenever you need to '
       'see it again.';
   @override
-  String get onboardingGoalsTitle => 'Not every star is lit yet';
+  String get onboardingPulsarTitle => 'Habits beat like pulsars';
   @override
-  String get onboardingGoalsBody =>
-      "Set a goal for something you're working toward. Reach it and it "
-      "lights up like any other star — let it go instead, and it becomes "
-      "a dead star. Either way, it's still part of your sky.";
+  String get onboardingPulsarBody =>
+      'Something you keep doing day by day is a pulsar — gold for as long '
+      'as you keep the rhythm, dark the moment you lose it.';
   @override
-  String get onboardingHabitsTitle => 'Habits pulse like pulsars';
+  String get onboardingUnlitTitle => 'Goals are stars not lit yet';
   @override
-  String get onboardingHabitsBody =>
-      'A habit you keep showing up for is a pulsar — it stays lit as long '
-      'as you keep the rhythm going.';
+  String get onboardingUnlitBody =>
+      "Set a goal and it waits in the sky, unlit. Reach it and it lights "
+      "up like any other star — let it go instead, and it becomes a dead "
+      "star. Either way, it's still part of your sky.";
   @override
   String get onboardingConstellationsTitle => 'Group them into constellations';
   @override
@@ -616,8 +728,8 @@ class StringsEn implements AppStrings {
   String get onboardingOutroTitle => 'Ready to light your first star?';
   @override
   String get onboardingOutroBody =>
-      'Head to the Sky tab any time to look back, or start adding wins '
-      'right away.';
+      'Open the Sky menu any time: light a star, draw a constellation, or '
+      'go back and re-read your visions.';
   @override
   String get onboardingNextAction => 'Next';
   @override

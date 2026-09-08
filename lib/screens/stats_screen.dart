@@ -63,7 +63,7 @@ class _StatsScreenState extends State<StatsScreen> {
     final strings = context.strings;
     final achievedStars = widget.starRepository
         .getAll()
-        .where((s) => s.isAchieved)
+        .where((s) => s.isLit)
         .toList();
     final dayCounts = starCountsByDay(achievedStars);
 

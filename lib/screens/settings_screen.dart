@@ -15,13 +15,17 @@ import '../notifications/reminder_service.dart';
 import '../settings/settings_controller.dart';
 import '../theme/app_colors.dart';
 import '../widgets/responsive_content.dart';
+import 'home_screen.dart';
+import 'metaphor_screen.dart';
 import 'onboarding_screen.dart';
+import 'stats_screen.dart';
 
-/// The Settings tab: language, the daily reminder notification, a
-/// debug-only tools section (seed/reset data, replay onboarding — visible
-/// only in debug builds, via `kDebugMode`), and a short "about" block.
-/// Reads/writes through [SettingsController], which persists each change
-/// immediately.
+/// Settings, opened from the Sky's own side menu: language, the daily
+/// reminder notification, a debug-only tools section (seed/reset data,
+/// replay onboarding, the metaphor guide, and the two screens the Sky
+/// replaced — visible only in debug builds, via `kDebugMode`), and a short
+/// "about" block. Reads/writes through [SettingsController], which persists
+/// each change immediately.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
     super.key,
@@ -212,6 +216,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  void _push(Widget screen) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -229,14 +237,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    strings.settingsEyebrow,
-                    style: TextStyle(
-                      fontSize: 12,
-                      letterSpacing: 2,
-                      fontWeight: FontWeight.w600,
-                      color: colors.goldDim,
-                    ),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        icon: Icon(Icons.arrow_back, color: colors.muted),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        strings.settingsEyebrow,
+                        style: TextStyle(
+                          fontSize: 12,
+                          letterSpacing: 2,
+                          fontWeight: FontWeight.w600,
+                          color: colors.goldDim,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 6),
                   Text(
@@ -340,11 +359,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ),
-                  // Dev-only tooling (seed/reset data, replay onboarding) —
-                  // gated on kDebugMode (not a runtime setting), header
-                  // included, so the whole section disappears from release
-                  // builds automatically instead of needing to be stripped
-                  // out by hand before shipping.
+                  // The metaphor guide, on its own above the debug block:
+                  // it's for the user, not for development, and it's the
+                  // one page that explains what every word in the app
+                  // means.
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _push(const MetaphorScreen()),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: colors.gold,
+                        side: BorderSide(color: colors.gold),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      icon: const Icon(Icons.auto_stories_outlined),
+                      label: Text(
+                        strings.guideOpenAction,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Dev-only tooling (seed/reset data, replay onboarding,
+                  // and the two screens the Sky replaced) — gated on
+                  // kDebugMode (not a runtime setting), header included, so
+                  // the whole section disappears from release builds
+                  // automatically instead of needing to be stripped out by
+                  // hand before shipping.
                   if (kDebugMode) ...[
                     const SizedBox(height: 28),
                     _SectionLabel(strings.dataSection),
@@ -383,11 +430,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                         TextButton.icon(
-                          onPressed: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const OnboardingScreen(),
-                            ),
-                          ),
+                          onPressed: () => _push(const OnboardingScreen()),
                           icon: Icon(
                             Icons.auto_stories_outlined,
                             size: 16,
@@ -395,6 +438,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           label: Text(
                             strings.replayOnboardingAction,
+                            style: TextStyle(
+                              color: colors.muted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        // The dashboard and the statistics page are no
+                        // longer part of navigation (the Sky is the only
+                        // screen), but they're kept whole — these two are
+                        // the only way left to look at them.
+                        TextButton.icon(
+                          onPressed: () => _push(
+                            HomeScreen(
+                              starRepository: widget.starRepository,
+                              projectRepository: widget.projectRepository,
+                              habitRepository: widget.habitRepository,
+                              habitCompletionRepository:
+                                  widget.habitCompletionRepository,
+                              customConstellationRepository:
+                                  widget.customConstellationRepository,
+                            ),
+                          ),
+                          icon: Icon(
+                            Icons.insights_outlined,
+                            size: 16,
+                            color: colors.muted,
+                          ),
+                          label: Text(
+                            strings.homeTitle,
+                            style: TextStyle(
+                              color: colors.muted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => _push(
+                            StatsScreen(
+                              starRepository: widget.starRepository,
+                              projectRepository: widget.projectRepository,
+                            ),
+                          ),
+                          icon: Icon(
+                            Icons.bar_chart_outlined,
+                            size: 16,
+                            color: colors.muted,
+                          ),
+                          label: Text(
+                            strings.statsTitle,
                             style: TextStyle(
                               color: colors.muted,
                               fontSize: 12,

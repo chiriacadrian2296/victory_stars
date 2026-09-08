@@ -26,13 +26,15 @@ abstract class AppStrings {
   String get areaSpiritualDescription;
   String get areaPhilanthropicDescription;
 
-  // Bottom navigation
-  String get navHome;
-  String get navGalaxy;
-  String get navStats;
-  String get navSettings;
-  String get collapseSidebarAction;
-  String get expandSidebarAction;
+  // The Sky's own side menu — the app has exactly one screen now (the
+  // Sky), and everything else opens from there.
+  String get openMenuAction;
+  String get menuLightAStar;
+  String get menuNewConstellation;
+  String get menuVisions;
+  String get menuAdmire;
+  String get menuSearch;
+  String get menuSettings;
 
   // Statistics tab
   String get statsEyebrow;
@@ -160,11 +162,18 @@ abstract class AppStrings {
   String get createProject;
   String get newProject;
 
-  // Add/edit win
+  // The star form — one page for every kind of star (see [StarKind]).
   String get newStarEyebrow;
   String get editStarEyebrow;
-  String get addWinQuestion;
-  String get addGoalQuestion;
+
+  /// Shown instead of [newStarEyebrow] when the form was opened by tapping
+  /// a nascent star: nothing is being added, an existing star is being
+  /// given a meaning.
+  String get configureStarEyebrow;
+
+  String get litStarQuestion;
+  String get unlitStarQuestion;
+  String get pulsarQuestion;
   String get projectLabel;
   String get selectAProject;
   String get dateLabel;
@@ -176,6 +185,11 @@ abstract class AppStrings {
   String get detailsLabel;
   String get detailsHint;
   String get intensityLabel;
+
+  /// One line under [intensityLabel] explaining what the 1-5 scale means —
+  /// the intensity of the effort itself, the same on every kind of star.
+  String get intensityCaption;
+
   String get photoLabel;
   String get addPhotoHint;
   String get takePhotoOption;
@@ -186,41 +200,44 @@ abstract class AppStrings {
   String get cropPhotoHint;
   String get saveChanges;
   String get lightThisStar;
+
+  /// The save action's label for a star that isn't being lit right now — an
+  /// unlit star or a pulsar, both of which are placed in the sky rather
+  /// than lit up.
+  String get placeThisStarAction;
+
   String get cannotSaveMissingInfo;
   String get gotIt;
   String get deleteStarConfirmTitle;
   String get deleteStarConfirmBody;
+  String get deletePulsarConfirmTitle;
+  String get deletePulsarConfirmBody;
   String get deleteStarAction;
   String get discardChangesConfirmTitle;
   String get discardChangesConfirmBody;
   String get discardChangesAction;
 
-  // Add/edit star — achieved vs. goal toggle
-  String get achievedToggleOn;
-  String get achievedToggleOff;
   String get targetDateLabel;
   String get selectATargetDateHint;
 
-  // Star reader — goal/dead states
+  // Star reader — unlit/dead states
   String goalTargetLabel(String date);
   String get markAchievedAction;
   String get markAchievedSheetTitle;
   String get markAchievedConfirm;
   String get undoAchievedAction;
-  String get deadStarTitle;
   String get deadStarBody;
-  String get resurrectAction;
 
-  // Add/edit habit
-  String get newHabitEyebrow;
-  String get editHabitEyebrow;
-  String get addHabitQuestion;
+  /// A dead star that used to be a pulsar says so, and says what reigniting
+  /// it will give back — a pulsar again, never a free choice.
+  String get deadPulsarBody;
+  String get reigniteAction;
+
+  // Pulsar-only fields on the star form
+  String get pulsarTitleHint;
   String get habitFrequencyLabel;
   String get habitFrequencyDaily;
   String get customReminderToggleLabel;
-  String get deleteHabitConfirmTitle;
-  String get deleteHabitConfirmBody;
-  String get deleteHabitAction;
 
   // Habit reader
   String get habitCurrentStreakLabel;
@@ -228,20 +245,35 @@ abstract class AppStrings {
   String get habitDoneTodayLabel;
   String get undoHabitTodayAction;
 
-  // Project card badges (goals/habits, alongside the existing star count)
-  String openGoalsBadge(int count);
-  String activeHabitsBadge(int count);
+  // Constellation card badges, alongside the existing star count
+  String unlitStarsBadge(int count);
+  String activePulsarsBadge(int count);
 
-  // Area "Stars" flat list — kind filter chips (plural, shown next to a
-  // count) and per-card kind tags (singular, shown on every card's own
-  // badge — goal/dead reuse achievedToggleOff/deadStarTitle instead of a
-  // second string, since those already are the singular form).
-  String get starKindVictoryLabel;
-  String get starKindVictoryTagLabel;
-  String get starKindGoalLabel;
-  String get starKindDeadLabel;
-  String get starKindPulsarChipLabel;
-  String get starKindPulsarTagLabel;
+  // The five kinds of star (see [StarKind]) — each has a singular name for
+  // one card's own label, a plural for filter chips and counts, a one-line
+  // meaning that translates the astronomy back into plain words, and an
+  // example for the metaphor guide. Always reached through `StarKindX`
+  // rather than read directly, so no screen hardcodes which is which.
+  String get starKindNascentName;
+  String get starKindNascentPlural;
+  String get starKindNascentMeaning;
+  String get starKindNascentExample;
+  String get starKindLitName;
+  String get starKindLitPlural;
+  String get starKindLitMeaning;
+  String get starKindLitExample;
+  String get starKindUnlitName;
+  String get starKindUnlitPlural;
+  String get starKindUnlitMeaning;
+  String get starKindUnlitExample;
+  String get starKindPulsarName;
+  String get starKindPulsarPlural;
+  String get starKindPulsarMeaning;
+  String get starKindPulsarExample;
+  String get starKindDeadName;
+  String get starKindDeadPlural;
+  String get starKindDeadMeaning;
+  String get starKindDeadExample;
 
   // Star card's "extra" badge — the one kind-specific fact shown between
   // the description and the intensity/date block (photo/target/death
@@ -261,11 +293,38 @@ abstract class AppStrings {
   String get noStarsInSelection;
   String get viewYourStars;
 
-  // Home FAB + its "create" menu
-  String get addWinFabLabel;
-  String get addGoalFabLabel;
-  String get addHabitFabLabel;
   String get newConstellationOption;
+
+  // Your visions — the page that gathers all 8 supernovas so their visions
+  // can be re-read and revised in one place.
+  String get visionsEyebrow;
+  String get visionsTitle;
+  String get visionsSubtitle;
+  String get visionEmptyLabel;
+
+  // The metaphor guide — one page explaining every level of the sky and how
+  // they nest, openable any time from Settings' debug tools.
+  String get guideOpenAction;
+  String get guideEyebrow;
+  String get guideTitle;
+  String get guideIntroBody;
+  String get examplesLabel;
+  String get guideAreaTitle;
+  String get guideAreaMeaning;
+  String get guideAreaBody;
+  String get guideAreaExamples;
+  String get guideConstellationTitle;
+  String get guideConstellationMeaning;
+  String get guideConstellationBody;
+  String get guideConstellationExamples;
+  String get guideStarTitle;
+  String get guideStarMeaning;
+  String get guideStarBody;
+  String get guideStarExamples;
+  String get guideKindsTitle;
+  String get guideKindsBody;
+  String get guideIntensityTitle;
+  String get guideIntensityBody;
 
   /// A fixed set of short, hand-written uplifting phrases — cycled through
   /// automatically, one at a time, by the quote carousel below the area
@@ -309,17 +368,20 @@ abstract class AppStrings {
   /// The dashboard calendar's month heading, e.g. "August 2026".
   String monthTitle(DateTime month);
 
-  // Onboarding — the first-launch "stories" tutorial explaining the
-  // star/goal/dead-star, pulsar, constellation, supernova metaphor. Also
-  // reachable from Settings' Data section (debug builds only) to replay it.
+  // Onboarding — the first-launch "stories" tutorial, walking the same
+  // metaphor the guide lays out in full: nascent/lit/pulsar/unlit/dead
+  // stars, constellations, supernovas. Also reachable from Settings' debug
+  // tools to replay it.
   String get onboardingIntroTitle;
   String get onboardingIntroBody;
-  String get onboardingVictoriesTitle;
-  String get onboardingVictoriesBody;
-  String get onboardingGoalsTitle;
-  String get onboardingGoalsBody;
-  String get onboardingHabitsTitle;
-  String get onboardingHabitsBody;
+  String get onboardingNascentTitle;
+  String get onboardingNascentBody;
+  String get onboardingLitTitle;
+  String get onboardingLitBody;
+  String get onboardingPulsarTitle;
+  String get onboardingPulsarBody;
+  String get onboardingUnlitTitle;
+  String get onboardingUnlitBody;
   String get onboardingConstellationsTitle;
   String get onboardingConstellationsBody;
   String get onboardingAreasTitle;

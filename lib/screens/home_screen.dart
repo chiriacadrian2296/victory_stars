@@ -12,28 +12,28 @@ import '../l10n/app_strings.dart';
 import '../l10n/strings_scope.dart';
 import '../models/project.dart';
 import '../models/star.dart';
+import '../models/star_kind.dart';
 import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
 import '../utils/star_stats.dart';
 import '../widgets/responsive_content.dart';
-import '../widgets/star_card.dart';
+import '../widgets/lit_star_card.dart';
 import '../widgets/star_heatmap.dart';
-import 'add_habit_screen.dart';
-import 'add_star_screen.dart';
 import 'admire_stars_screen.dart';
 import 'new_project_screen.dart';
+import 'star_form_screen.dart';
 import 'star_reader_screen.dart';
 
-/// The dashboard — one tab of [RootScreen]: a quick read on consistency
-/// (total stars, streaks) and a GitHub-contribution-style calendar of when
-/// victories were achieved, rather than a flat list (that's now the Stars
-/// tab). Still owns the "add" FAB (a chooser between Victory/Goal/Habit),
-/// since it's the natural landing tab.
+/// The old dashboard: a quick read on consistency (total stars, streaks)
+/// and a GitHub-contribution-style calendar of when stars were lit.
+///
+/// No longer reachable from normal navigation — the Sky is the app's only
+/// screen now (see [SkyScreen]) — but kept whole, and kept compiling,
+/// because a calendar of lit days is worth bringing back somewhere. Opened
+/// from Settings' debug tools in the meantime.
 ///
 /// Never caches a star list in a field — [build] always re-reads
-/// [starRepository] fresh. This tab is kept alive (not disposed) by
-/// [RootScreen]'s `IndexedStack`, so a cached list would otherwise go stale
-/// whenever data changes from a *different* tab.
+/// [starRepository] fresh.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
@@ -54,7 +54,9 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-enum _CreateChoice { victory, goal, habit, constellation }
+/// What the "add" FAB's own sheet offers: any kind of star (all three go
+/// through one form now — see [StarFormScreen]) or a whole constellation.
+enum _CreateChoice { star, constellation }
 
 class _HomeScreenState extends State<HomeScreen> {
   /// The month the activity calendar is currently showing — always the 1st,
@@ -88,52 +90,45 @@ class _HomeScreenState extends State<HomeScreen> {
     };
   }
 
-  Future<void> _openAddStarScreen({
+  /// One form for every kind of star; which repository the result belongs
+  /// to is decided by [StarFormResult.kind], not by which entry point was
+  /// used to open it.
+  Future<void> _openStarForm({
     DateTime? initialDate,
-    bool initialAchieved = true,
+    StarKind initialKind = StarKind.lit,
   }) async {
-    final result = await Navigator.of(context).push<AddStarResult>(
+    final result = await Navigator.of(context).push<Object>(
       MaterialPageRoute(
-        builder: (_) => AddStarScreen(
+        builder: (_) => StarFormScreen(
           projectRepository: widget.projectRepository,
           customConstellationRepository: widget.customConstellationRepository,
           initialDate: initialDate,
-          initialAchieved: initialAchieved,
+          initialKind: initialKind,
         ),
       ),
     );
-    if (result == null) return;
+    if (result is! StarFormResult) return;
 
-    await widget.starRepository.add(
-      title: result.title,
-      description: result.description,
-      projectId: result.projectId,
-      targetDate: result.targetDate,
-      achievedDate: result.achievedDate,
-      intensity: result.intensity,
-      photoPath: result.photoPath,
-    );
-    setState(() {});
-  }
-
-  Future<void> _openAddHabitScreen() async {
-    final result = await Navigator.of(context).push<AddHabitResult>(
-      MaterialPageRoute(
-        builder: (_) => AddHabitScreen(
-          projectRepository: widget.projectRepository,
-          customConstellationRepository: widget.customConstellationRepository,
-        ),
-      ),
-    );
-    if (result == null) return;
-
-    await widget.habitRepository.add(
-      title: result.title,
-      description: result.description,
-      projectId: result.projectId,
-      reminderHour: result.reminderHour,
-      reminderMinute: result.reminderMinute,
-    );
+    if (result.kind == StarKind.pulsar) {
+      await widget.habitRepository.add(
+        title: result.title,
+        description: result.description,
+        projectId: result.projectId,
+        intensity: result.intensity ?? 3,
+        reminderHour: result.reminderHour,
+        reminderMinute: result.reminderMinute,
+      );
+    } else {
+      await widget.starRepository.add(
+        title: result.title,
+        description: result.description,
+        projectId: result.projectId,
+        targetDate: result.targetDate,
+        achievedDate: result.achievedDate,
+        intensity: result.intensity,
+        photoPath: result.photoPath,
+      );
+    }
     setState(() {});
   }
 
@@ -176,28 +171,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ListTile(
                 leading: Icon(Icons.star, color: colors.gold),
                 title: Text(
-                  strings.addWinFabLabel,
+                  strings.menuLightAStar,
                   style: TextStyle(color: colors.text),
                 ),
-                onTap: () =>
-                    Navigator.of(sheetContext).pop(_CreateChoice.victory),
-              ),
-              ListTile(
-                leading: Icon(Icons.flag_outlined, color: colors.gold),
-                title: Text(
-                  strings.addGoalFabLabel,
-                  style: TextStyle(color: colors.text),
-                ),
-                onTap: () => Navigator.of(sheetContext).pop(_CreateChoice.goal),
-              ),
-              ListTile(
-                leading: Icon(Icons.repeat, color: colors.gold),
-                title: Text(
-                  strings.addHabitFabLabel,
-                  style: TextStyle(color: colors.text),
-                ),
-                onTap: () =>
-                    Navigator.of(sheetContext).pop(_CreateChoice.habit),
+                onTap: () => Navigator.of(sheetContext).pop(_CreateChoice.star),
               ),
               ListTile(
                 leading: Icon(Icons.auto_awesome, color: colors.gold),
@@ -215,12 +192,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     switch (choice) {
-      case _CreateChoice.victory:
-        await _openAddStarScreen();
-      case _CreateChoice.goal:
-        await _openAddStarScreen(initialAchieved: false);
-      case _CreateChoice.habit:
-        await _openAddHabitScreen();
+      case _CreateChoice.star:
+        await _openStarForm();
       case _CreateChoice.constellation:
         await _openNewProjectScreen();
       case null:
@@ -230,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<Star> _achievedStarsOnDay(DateTime day) {
     return widget.starRepository.getAll().where((s) {
-      if (!s.isAchieved) return false;
+      if (!s.isLit) return false;
       final date = s.achievedDate!;
       return date.year == day.year &&
           date.month == day.month &&
@@ -284,7 +257,7 @@ class _HomeScreenState extends State<HomeScreen> {
           },
           onAddForDay: () {
             Navigator.of(sheetContext).pop();
-            _openAddStarScreen(initialDate: day);
+            _openStarForm(initialDate: day);
           },
         );
       },
@@ -297,7 +270,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final strings = context.strings;
     final achievedStars = widget.starRepository
         .getAll()
-        .where((s) => s.isAchieved)
+        .where((s) => s.isLit)
         .toList();
     final dayCounts = starCountsByDay(achievedStars);
     final dayIntensities = starIntensityByDay(achievedStars);
@@ -359,7 +332,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     litToday: litToday,
                     onTap: litToday
                         ? () => _openDayDetail(today)
-                        : () => _openAddStarScreen(),
+                        : () => _openStarForm(),
                   ),
                   const SizedBox(height: 24),
                   Text(
@@ -801,7 +774,7 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
                   separatorBuilder: (_, _) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final star = filtered[index];
-                    return StarCard(
+                    return LitStarCard(
                       star: star,
                       project: widget.projectsById[star.projectId],
                       onTap: () => widget.onStarTap(filtered, index),

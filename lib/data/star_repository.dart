@@ -5,8 +5,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/star.dart';
 import 'photo_storage.dart';
 
-/// Reads and writes the user's stars (victories and goals together — see
-/// [Star]) as a single JSON-encoded list under one [SharedPreferences] key.
+/// Reads and writes the user's stars — lit, unlit and dead all together,
+/// see [Star] — as a single JSON-encoded list under one [SharedPreferences]
+/// key. Pulsars live in [HabitRepository] instead; every other kind of star
+/// is here.
 ///
 /// The whole list is small (personal milestones, not a high-volume log) and
 /// is always read/written together, so there's no need for a real database.
@@ -27,8 +29,9 @@ class StarRepository {
   }
 
   /// Every star currently stored, of every kind and every project — sorted
-  /// by [Star.achievedDate] (falling back to [Star.createdAt] for a goal or
-  /// a dead star that never had one), newest first, ties broken by [Star.id].
+  /// by [Star.achievedDate] (falling back to [Star.createdAt] for an unlit
+  /// or dead star that never had one), newest first, ties broken by
+  /// [Star.id].
   /// Never throws on missing or corrupted data — returns an empty list
   /// instead, since a blank archive is a safe fallback for a personal-growth
   /// log.
@@ -52,8 +55,8 @@ class StarRepository {
     }
   }
 
-  /// Every star belonging to [projectId] (victories, goals, and dead stars
-  /// all together), sorted by [Star.slotSequence] — this is the order a
+  /// Every star belonging to [projectId] (lit, unlit and dead all
+  /// together), sorted by [Star.slotSequence] — this is the order a
   /// constellation's star slots are assigned against, so it lives here once
   /// rather than being re-derived at each call site.
   List<Star> getAllForProject(int projectId) {
@@ -62,31 +65,43 @@ class StarRepository {
     return stars;
   }
 
-  /// Records a new star. Pass [achievedDate] (and [intensity]) to log a
-  /// victory directly; leave both null to create a goal instead.
+  /// Records a new star. Pass [achievedDate] (and [intensity]) to light it
+  /// straight away (a lit star / victory); leave both null to create an
+  /// unlit star (a goal) instead.
   ///
-  /// [slotSequence] is assigned automatically as one more than the highest
-  /// existing slot in this project — permanent from here on, regardless of
-  /// what happens to the star later. [number] ("this is your Nth victory")
-  /// is assigned only if [achievedDate] is given.
+  /// [slotSequence] is where the star sits on its constellation's shape.
+  /// Left null it's assigned automatically as one more than the highest
+  /// existing slot in this project; pass it explicitly to configure one
+  /// specific *nascent* star — the shape already drew that slot, and the
+  /// user tapped that one, so the new star has to land exactly there rather
+  /// than at the end of the queue. Either way it's permanent from here on,
+  /// regardless of what happens to the star later. [number] ("this is your
+  /// Nth victory") is assigned only if [achievedDate] is given.
   Future<Star> add({
     required String title,
     String? description,
     required int projectId,
+    int? slotSequence,
     DateTime? targetDate,
     DateTime? achievedDate,
     int? intensity,
     String? photoPath,
   }) async {
     final stars = getAll();
-    final nextSlot =
-        stars
-            .where((s) => s.projectId == projectId)
-            .fold<int>(
-              0,
-              (max, s) => s.slotSequence > max ? s.slotSequence : max,
-            ) +
-        1;
+    final projectStars = stars.where((s) => s.projectId == projectId);
+    // A slot the caller asked for is only honored if it's genuinely free —
+    // otherwise this falls back to appending, so a stale tap on a nascent
+    // star that someone else's flow already filled can never overwrite it.
+    final requestedIsFree =
+        slotSequence != null &&
+        !projectStars.any((s) => s.slotSequence == slotSequence);
+    final nextSlot = requestedIsFree
+        ? slotSequence
+        : projectStars.fold<int>(
+                0,
+                (max, s) => s.slotSequence > max ? s.slotSequence : max,
+              ) +
+              1;
     final trimmedDescription = description?.trim();
 
     final star = Star(
@@ -172,8 +187,8 @@ class StarRepository {
     return updated;
   }
 
-  /// Quick "log it now" action for a goal, without going through the full
-  /// edit form: sets [Star.achievedDate]/[Star.intensity] and assigns a
+  /// Quick "light it now" action for an unlit star, without going through
+  /// the full form: sets [Star.achievedDate]/[Star.intensity] and assigns a
   /// fresh [Star.number].
   Future<Star> markAchieved(
     int id, {

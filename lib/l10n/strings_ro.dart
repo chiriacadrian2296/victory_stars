@@ -48,17 +48,19 @@ class StringsRo implements AppStrings {
       'Impactul tău — a dărui, a sluji și viețile celorlalți.';
 
   @override
-  String get navHome => 'Acasă';
+  String get openMenuAction => 'Meniu';
   @override
-  String get navGalaxy => 'Galaxie';
+  String get menuLightAStar => 'Aprinde o stea';
   @override
-  String get navStats => 'Statistici';
+  String get menuNewConstellation => 'Constelație nouă';
   @override
-  String get navSettings => 'Setări';
+  String get menuVisions => 'Viziunile tale';
   @override
-  String get collapseSidebarAction => 'Restrânge bara laterală';
+  String get menuAdmire => 'Admiră-ți stelele';
   @override
-  String get expandSidebarAction => 'Extinde bara laterală';
+  String get menuSearch => 'Caută pe cer';
+  @override
+  String get menuSettings => 'Setări';
 
   @override
   String get statsEyebrow => 'NUMERELE TALE';
@@ -296,9 +298,13 @@ class StringsRo implements AppStrings {
   @override
   String get editStarEyebrow => 'EDITEAZĂ STEAUA';
   @override
-  String get addWinQuestion => 'Ce ai reușit să depășești?';
+  String get configureStarEyebrow => 'CONFIGUREAZĂ ACEASTĂ STEA';
   @override
-  String get addGoalQuestion => 'Ce vrei să atingi?';
+  String get litStarQuestion => 'Ce ai reușit să depășești?';
+  @override
+  String get unlitStarQuestion => 'Ce vrei să atingi?';
+  @override
+  String get pulsarQuestion => 'Ce vrei să faci în continuare, zi de zi?';
   @override
   String get projectLabel => 'Constelație';
   @override
@@ -323,6 +329,9 @@ class StringsRo implements AppStrings {
   @override
   String get intensityLabel => 'Intensitate';
   @override
+  String get intensityCaption =>
+      'Cât te costă acest efort — 1 e ușor, 5 e foarte mult.';
+  @override
   String get photoLabel => 'Fotografie (opțional)';
   @override
   String get addPhotoHint => 'Adaugă o fotografie';
@@ -345,6 +354,8 @@ class StringsRo implements AppStrings {
   @override
   String get lightThisStar => 'Aprinde această stea';
   @override
+  String get placeThisStarAction => 'Pune-o pe cer';
+  @override
   String get cannotSaveMissingInfo => 'Nu se poate salva: lipsesc informații';
   @override
   String get gotIt => 'Am înțeles';
@@ -352,7 +363,12 @@ class StringsRo implements AppStrings {
   String get deleteStarConfirmTitle => 'Ștergi această stea?';
   @override
   String get deleteStarConfirmBody =>
-      'Steaua va deveni o stea stinsă: dispare de aici, dar rămâne la locul ei pe cer și o poți reînvia mai târziu.';
+      'Steaua va deveni o stea stinsă: dispare de aici, dar rămâne la locul ei pe cer și o poți reaprinde mai târziu.';
+  @override
+  String get deletePulsarConfirmTitle => 'Ștergi acest pulsar?';
+  @override
+  String get deletePulsarConfirmBody =>
+      'Pulsarul devine o stea stinsă: nu mai pulsează, dar rămâne la locul lui pe cer și îl poți reaprinde mai târziu, tot ca pulsar.';
   @override
   String get deleteStarAction => 'Șterge';
   @override
@@ -363,10 +379,6 @@ class StringsRo implements AppStrings {
   @override
   String get discardChangesAction => 'Renunță la modificări';
 
-  @override
-  String get achievedToggleOn => 'Deja atins';
-  @override
-  String get achievedToggleOff => 'Obiectiv viitor';
   @override
   String get targetDateLabel => 'Dată țintă (opțional)';
   @override
@@ -383,32 +395,22 @@ class StringsRo implements AppStrings {
   @override
   String get undoAchievedAction => 'Marchează ca neatins';
   @override
-  String get deadStarTitle => 'Stea stinsă';
-  @override
   String get deadStarBody =>
-      'Această stea a fost ștearsă. O poți readuce la viață ca o stea complet nouă, în același loc pe cer.';
+      'Această stea a fost ștearsă. O poți reaprinde ca o stea complet nouă, în același loc pe cer.';
   @override
-  String get resurrectAction => 'Reînvie această stea';
+  String get deadPulsarBody =>
+      'Acest pulsar a fost șters. Îl poți reaprinde ca un pulsar complet nou, în același loc pe cer — vechea serie rămâne în urmă.';
+  @override
+  String get reigniteAction => 'Reaprinde această stea';
 
   @override
-  String get newHabitEyebrow => 'PULSAR NOU';
-  @override
-  String get editHabitEyebrow => 'EDITEAZĂ PULSARUL';
-  @override
-  String get addHabitQuestion => 'Ce pulsar vrei să aprinzi?';
+  String get pulsarTitleHint => 'Ex. Zece minute de stretching';
   @override
   String get habitFrequencyLabel => 'Frecvență';
   @override
   String get habitFrequencyDaily => 'În fiecare zi';
   @override
   String get customReminderToggleLabel => 'Oră de memento personalizată';
-  @override
-  String get deleteHabitConfirmTitle => 'Ștergi acest pulsar?';
-  @override
-  String get deleteHabitConfirmBody =>
-      'Aceasta elimină definitiv pulsarul și tot istoricul lui. Nu poate fi anulat.';
-  @override
-  String get deleteHabitAction => 'Șterge';
 
   @override
   String get habitCurrentStreakLabel => 'Serie curentă';
@@ -420,24 +422,55 @@ class StringsRo implements AppStrings {
   String get undoHabitTodayAction => 'Anulează';
 
   @override
-  String openGoalsBadge(int count) =>
-      count == 1 ? '1 obiectiv deschis' : '$count obiective deschise';
+  String unlitStarsBadge(int count) =>
+      count == 1 ? '1 stea neaprinsă' : '$count stele neaprinse';
   @override
-  String activeHabitsBadge(int count) =>
+  String activePulsarsBadge(int count) =>
       count == 1 ? '1 pulsar activ' : '$count pulsari activi';
 
   @override
-  String get starKindVictoryLabel => 'Victorii';
+  String get starKindNascentName => 'Stea nouă';
   @override
-  String get starKindVictoryTagLabel => 'Victorie';
+  String get starKindNascentPlural => 'Stele noi';
   @override
-  String get starKindGoalLabel => 'Obiective';
+  String get starKindNascentMeaning => 'Încă neconfigurată';
   @override
-  String get starKindDeadLabel => 'Stele stinse';
+  String get starKindNascentExample =>
+      'Un punct dintr-o constelație abia creată: desenat, dar încă nehotărât.';
   @override
-  String get starKindPulsarChipLabel => 'Pulsari';
+  String get starKindLitName => 'Stea aprinsă';
   @override
-  String get starKindPulsarTagLabel => 'Pulsar';
+  String get starKindLitPlural => 'Stele aprinse';
+  @override
+  String get starKindLitMeaning => 'O victorie — deja făcută';
+  @override
+  String get starKindLitExample =>
+      'Am dus interviul până la capăt, deși eram îngrozit.';
+  @override
+  String get starKindUnlitName => 'Stea neaprinsă';
+  @override
+  String get starKindUnlitPlural => 'Stele neaprinse';
+  @override
+  String get starKindUnlitMeaning => 'Un obiectiv — încă în față';
+  @override
+  String get starKindUnlitExample => 'Să alerg primii mei 10 km.';
+  @override
+  String get starKindPulsarName => 'Pulsar';
+  @override
+  String get starKindPulsarPlural => 'Pulsari';
+  @override
+  String get starKindPulsarMeaning => 'Un obicei — zi de zi';
+  @override
+  String get starKindPulsarExample => 'Zece minute de stretching, în fiecare zi.';
+  @override
+  String get starKindDeadName => 'Stea stinsă';
+  @override
+  String get starKindDeadPlural => 'Stele stinse';
+  @override
+  String get starKindDeadMeaning => 'Ștearsă — poate fi reaprinsă';
+  @override
+  String get starKindDeadExample =>
+      'Un obiectiv la care ai renunțat: e încă acolo, îl poți reaprinde.';
 
   @override
   String get photoBadgeLabel => 'Fotografie';
@@ -469,13 +502,87 @@ class StringsRo implements AppStrings {
   String get viewYourStars => 'Privește-ți stelele';
 
   @override
-  String get addWinFabLabel => 'Victorie nouă';
-  @override
-  String get addGoalFabLabel => 'Obiectiv nou';
-  @override
-  String get addHabitFabLabel => 'Pulsar nou';
-  @override
   String get newConstellationOption => 'Constelație nouă';
+
+  @override
+  String get visionsEyebrow => 'IMAGINEA CEA MAI MARE';
+  @override
+  String get visionsTitle => 'Viziunile tale';
+  @override
+  String get visionsSubtitle =>
+      'O viziune pentru fiecare supernovă — realitatea pe care o vrei în '
+      'zona aceea a vieții tale. Revino să le citești și rescrie-le pe '
+      'măsură ce te schimbi.';
+  @override
+  String get visionEmptyLabel => 'Nicio viziune scrisă încă';
+
+  @override
+  String get guideOpenAction => 'Metafora';
+  @override
+  String get guideEyebrow => 'CUM FUNCȚIONEAZĂ CERUL TĂU';
+  @override
+  String get guideTitle => 'Metafora';
+  @override
+  String get guideIntroBody =>
+      'Totul aici e un singur cer, citit la trei mărimi: zonele vieții '
+      'tale ard ca supernove, proiectele dinăuntrul lor sunt constelații, '
+      'iar fiecare efort pe care îl faci e o stea.';
+  @override
+  String get examplesLabel => 'Exemple';
+  @override
+  String get guideAreaTitle => 'Supernovă';
+  @override
+  String get guideAreaMeaning => 'O zonă a vieții tale';
+  @override
+  String get guideAreaBody =>
+      'Cel mai mare lucru de pe cerul tău și singurul fix: 8 zone, mereu '
+      'aceleași. O supernovă păstrează viziunea ta — realitatea pe care o '
+      'vrei în partea aceea a vieții. Tot restul se așază în jurul celei '
+      'de care aparține.';
+  @override
+  String get guideAreaExamples =>
+      'Fizic · Profesional · Social — fiecare cu viziunea pe care i-o '
+      'scrii: „un corp în care am încredere, tot anul".';
+  @override
+  String get guideConstellationTitle => 'Constelație';
+  @override
+  String get guideConstellationMeaning => 'Un proiect din viața ta';
+  @override
+  String get guideConstellationBody =>
+      'O formă pe care o desenezi tu, într-o supernovă. Adună toate '
+      'eforturile despre același lucru. Forma ei există din prima zi — '
+      'stelele de pe ea pornesc pur și simplu ca stele noi, așteptându-te.';
+  @override
+  String get guideConstellationExamples =>
+      'Revin în formă · Construiesc această aplicație · Sunt un prieten mai bun';
+  @override
+  String get guideStarTitle => 'Stea';
+  @override
+  String get guideStarMeaning => 'Un efort — trecut, prezent sau viitor';
+  @override
+  String get guideStarBody =>
+      'Cel mai mic lucru de pe cerul tău și singurul pe care îl faci tu. O '
+      'stea e mereu un efort; tipul ei spune unde stă acel efort în timp '
+      'și dacă arde chiar acum.';
+  @override
+  String get guideStarExamples =>
+      'M-am antrenat deși nu aveam chef · Să alerg 10 km · Zece minute de '
+      'stretching, în fiecare zi';
+  @override
+  String get guideKindsTitle => 'Cele cinci tipuri de stea';
+  @override
+  String get guideKindsBody =>
+      'Auriul înseamnă lumină: efortul arde. Albastrul înseamnă lipsă de '
+      'lumină: acum nu dai nimic. Albul înseamnă un loc care e încă al tău '
+      'de umplut.';
+  @override
+  String get guideIntensityTitle => 'Intensitate';
+  @override
+  String get guideIntensityBody =>
+      'Fiecare stea care arde poartă o intensitate, de la 1 la 5 — cât '
+      'te-a costat efortul cu adevărat, nu cât de mare pare rezultatul din '
+      'afară. O stea aprinsă păstrează intensitatea care i-a trebuit; un '
+      'pulsar o poartă pe cea care te costă în fiecare zi.';
 
   @override
   List<String> get upliftingQuotes => const [
@@ -586,25 +693,31 @@ class StringsRo implements AppStrings {
       'tău cer nocturn — un loc unde să privești înapoi la tot ce ai '
       'trecut.';
   @override
-  String get onboardingVictoriesTitle => 'Fiecare victorie devine o stea';
+  String get onboardingNascentTitle => 'O constelație se naște întreagă';
   @override
-  String get onboardingVictoriesBody =>
+  String get onboardingNascentBody =>
+      'Cum o desenezi, forma ei e deja acolo: liniile, și o stea nouă în '
+      'fiecare punct. Atinge una ca să hotărăști ce devine.';
+  @override
+  String get onboardingLitTitle => 'Un efort făcut e o stea aprinsă';
+  @override
+  String get onboardingLitBody =>
       'În momentul în care treci peste ceva important, aprinzi o stea. '
       'Rămâne acolo — dovada a ceea ce ai făcut, oricând vrei să o '
       'revezi.';
   @override
-  String get onboardingGoalsTitle => 'Nu toate stelele sunt încă aprinse';
+  String get onboardingPulsarTitle => 'Obiceiurile pulsează ca niște pulsari';
   @override
-  String get onboardingGoalsBody =>
-      'Stabilește un obiectiv pentru ceva la care lucrezi. Atinge-l și se '
-      'va aprinde ca orice altă stea — sau renunță, și va deveni o stea '
-      'moartă. Oricum, rămâne parte din cerul tău.';
+  String get onboardingPulsarBody =>
+      'Ceva ce faci zi de zi e un pulsar — auriu atât timp cât păstrezi '
+      'ritmul, albastru în clipa în care îl pierzi.';
   @override
-  String get onboardingHabitsTitle => 'Obiceiurile pulsează ca niște pulsari';
+  String get onboardingUnlitTitle => 'Obiectivele sunt stele încă neaprinse';
   @override
-  String get onboardingHabitsBody =>
-      'Un obicei pe care continui să-l urmezi este un pulsar — rămâne '
-      'aprins atât timp cât păstrezi ritmul.';
+  String get onboardingUnlitBody =>
+      'Stabilește un obiectiv și te așteaptă pe cer, neaprins. Atinge-l și '
+      'se aprinde ca orice altă stea — sau renunță, și devine o stea '
+      'stinsă. Oricum, rămâne parte din cerul tău.';
   @override
   String get onboardingConstellationsTitle => 'Grupează-le în constelații';
   @override
@@ -622,8 +735,8 @@ class StringsRo implements AppStrings {
   String get onboardingOutroTitle => 'Gata să aprinzi prima ta stea?';
   @override
   String get onboardingOutroBody =>
-      'Mergi oricând la tab-ul Cer ca să privești înapoi, sau începe '
-      'chiar acum să-ți adaugi victoriile.';
+      'Deschide oricând meniul Cerului: de acolo aprinzi o stea, desenezi '
+      'o constelație sau îți recitești viziunile.';
   @override
   String get onboardingNextAction => 'Următorul';
   @override

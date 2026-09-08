@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/strings_scope.dart';
-import '../models/habit.dart';
 import '../models/project.dart';
+import '../models/star.dart';
+import '../models/star_kind.dart';
 import '../theme/app_colors.dart';
+import '../utils/date_format.dart';
 import 'area_tag.dart';
 import 'navigate_here_button.dart';
 import 'project_tag.dart';
@@ -11,31 +13,24 @@ import 'star_created_at.dart';
 import 'star_extra_badge.dart';
 import 'star_kind_label.dart';
 
-/// A pulsar (habit) in a flat star list — a repeat icon and a streak badge
-/// instead of a date/intensity block. [isLit] dims only the title; every
-/// other card kind's border/background look the same regardless of state,
-/// and the kind label and streak badge stay the same gold look every other
-/// card's does too.
-class HabitCard extends StatelessWidget {
-  const HabitCard({
+/// An unlit star (a goal) in a flat star list — [star] is always expected
+/// to satisfy [Star.isUnlit].
+class UnlitStarCard extends StatelessWidget {
+  const UnlitStarCard({
     super.key,
-    required this.habit,
-    required this.currentStreak,
-    required this.isLit,
+    required this.star,
     this.onTap,
     this.project,
     this.onNavigateTo,
   });
 
-  final Habit habit;
-  final int currentStreak;
-  final bool isLit;
+  final Star star;
   final VoidCallback? onTap;
   final Project? project;
 
   /// Shows a "take me there" corner button when non-null — only passed by
-  /// the Galaxy tab's search popup, which can actually jump its sky camera
-  /// to this habit's constellation.
+  /// the Sky's search popup, which can actually jump its sky camera
+  /// to this star's constellation.
   final VoidCallback? onNavigateTo;
 
   @override
@@ -60,10 +55,7 @@ class HabitCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                StarKindLabel(
-                  icon: Icons.repeat,
-                  label: strings.starKindPulsarTagLabel,
-                ),
+                const StarKindLabel(kind: StarKind.unlit),
                 if (project != null) ...[
                   const SizedBox(height: 10),
                   Center(
@@ -87,18 +79,18 @@ class HabitCard extends StatelessWidget {
                 ],
                 const SizedBox(height: 12),
                 Text(
-                  habit.title,
+                  star.title,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 19,
-                    color: isLit ? colors.text : colors.muted,
+                    color: colors.text,
                   ),
                 ),
-                if (habit.description != null) ...[
+                if (star.description != null) ...[
                   const SizedBox(height: 6),
                   Text(
-                    habit.description!,
+                    star.description!,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
@@ -109,12 +101,17 @@ class HabitCard extends StatelessWidget {
                 ],
                 const SizedBox(height: 12),
                 StarExtraBadge(
-                  icon: Icons.local_fire_department,
-                  label: strings.streakBadgeLabel,
-                  value: '$currentStreak',
+                  icon: Icons.event_outlined,
+                  label: star.targetDate == null
+                      ? strings.noTargetDateLabel
+                      : strings.targetDateBadgeLabel,
+                  value: star.targetDate == null
+                      ? null
+                      : formatDisplayDate(star.targetDate!, strings),
+                  dimmed: star.targetDate == null,
                 ),
                 const SizedBox(height: 18),
-                StarCreatedAt(createdAt: habit.createdAt),
+                StarCreatedAt(createdAt: star.createdAt),
               ],
             ),
           ),

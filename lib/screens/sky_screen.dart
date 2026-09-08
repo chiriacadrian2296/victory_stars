@@ -16,6 +16,9 @@ import '../l10n/strings_scope.dart';
 import '../models/habit_completion.dart';
 import '../models/life_area.dart';
 import '../models/project.dart';
+import '../models/star_kind.dart';
+import '../notifications/reminder_service.dart';
+import '../settings/settings_controller.dart';
 import '../theme/app_colors.dart';
 import '../utils/responsive.dart';
 import '../widgets/constellation_field.dart';
@@ -28,13 +31,19 @@ import '../widgets/nebula_background.dart';
 // import '../widgets/sky_black_hole.dart'; — the lensed-black-hole take,
 // disabled too.
 import '../widgets/sky_area_sigils.dart';
+import '../widgets/sky_menu_drawer.dart';
 import '../widgets/sky_navigation_target.dart';
 import '../widgets/sky_supernova.dart';
+import 'admire_stars_screen.dart';
 import 'area_detail_screen.dart';
 import 'constellation_screen.dart';
-import 'galaxy_search_screen.dart';
-import 'habit_reader_screen.dart';
+import 'sky_search_screen.dart';
+import 'pulsar_reader_screen.dart';
+import 'new_project_screen.dart';
+import 'settings_screen.dart';
+import 'star_form_screen.dart';
 import 'star_reader_screen.dart';
+import 'visions_screen.dart';
 
 /// Shared by the Grid switch pill and [_ZoomSlider] at the bottom of the
 /// sky overlay, so the two read as matching controls rather than each
@@ -46,51 +55,44 @@ import 'star_reader_screen.dart';
 const double _bottomPillHeight = 44.0;
 const double _bottomPillRadius = 22.0;
 
-/// The Nebula tab: every project's constellation, scattered across one
-/// shared pannable/zoomable sky over the animated nebula background —
-/// mixing two things that already worked separately (`NebulaBackground`,
-/// and `ConstellationScreen`'s shape rendering/tap-to-open) rather than
-/// building either from scratch. Tapping a star opens the same
-/// `StarReaderScreen`/`HabitReaderScreen` a single project's own
-/// constellation view does.
-class NebulaScreen extends StatefulWidget {
-  const NebulaScreen({
+/// The Sky: the app's one and only screen. Every constellation, scattered
+/// across a single pannable/zoomable sky over the animated nebula
+/// background, with each supernova burning where its own area sits.
+/// Everything else in the app opens as a page on top of this one — from
+/// the side menu ([SkyMenuDrawer]), from the search popup, or by tapping
+/// the sky itself.
+///
+/// Tapping resolves to whatever was aimed at: a star (opening its reader,
+/// or the form that configures it if it's still nascent), a constellation,
+/// or a supernova.
+class SkyScreen extends StatefulWidget {
+  const SkyScreen({
     super.key,
+    required this.settings,
     required this.projectRepository,
     required this.starRepository,
     required this.habitRepository,
     required this.habitCompletionRepository,
     required this.customConstellationRepository,
     required this.areaVisionRepository,
-    required this.isFullscreen,
-    required this.onToggleFullscreen,
+    required this.reminderService,
   });
 
+  final SettingsController settings;
   final ProjectRepository projectRepository;
   final StarRepository starRepository;
   final HabitRepository habitRepository;
   final HabitCompletionRepository habitCompletionRepository;
   final CustomConstellationRepository customConstellationRepository;
   final AreaVisionRepository areaVisionRepository;
-
-  /// Whether `RootScreen` currently has its own surrounding chrome (the
-  /// bottom nav bar / desktop side rail) hidden for this tab — owned by
-  /// `RootScreen`, not this screen, since hiding that chrome is only
-  /// possible from the parent that actually renders it. This screen just
-  /// reflects the current state (which icon its own toggle button shows)
-  /// and requests a change via [onToggleFullscreen]; it never flips the
-  /// flag itself.
-  final bool isFullscreen;
-
-  /// Requests entering/exiting fullscreen — see [isFullscreen].
-  final VoidCallback onToggleFullscreen;
+  final ReminderService reminderService;
 
   @override
-  State<NebulaScreen> createState() => _NebulaScreenState();
+  State<SkyScreen> createState() => _SkyScreenState();
 }
 
-class _NebulaScreenState extends State<NebulaScreen>
-    with TickerProviderStateMixin {
+class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
   // See kSkyMaxZoom's own doc comment (constellation_field.dart) for why
   // this value, and why it's shared rather than private to this class.
   // Halved along with minZoomWithoutRepeats and the starting _zoom below
@@ -322,7 +324,6 @@ class _NebulaScreenState extends State<NebulaScreen>
       habits: habits,
       renderStars: built.stars,
       edges: built.edges,
-      shapeStarCount: built.shapeStarCount,
     );
   }
 
@@ -337,13 +338,23 @@ class _NebulaScreenState extends State<NebulaScreen>
     PlacedConstellation constellation,
     ConstellationStar star,
   ) async {
-    if (star.kind == StarKind.habit) {
+    // A nascent star isn't something to read — it's an empty slot on the
+    // shape, and tapping it is how you give it a meaning.
+    if (star.kind == StarKind.nascent) {
+      await _configureNascentStar(constellation, star);
+      return;
+    }
+    // Sitting on a slot is what makes a star part of the shape; a pulsar
+    // (alive or dead) scatters around it instead and has none. That's the
+    // reliable test for which repository this star came from — its kind
+    // isn't, since a dead star can be either.
+    if (star.slotSequence == null) {
       final habit = constellation.habits.firstWhere(
         (h) => h.id == star.entityId,
       );
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => HabitReaderScreen(
+          builder: (_) => PulsarReaderScreen(
             habit: habit,
             project: constellation.project,
             habitRepository: widget.habitRepository,
@@ -377,13 +388,136 @@ class _NebulaScreenState extends State<NebulaScreen>
     _refresh();
   }
 
-  /// Opens the search/filter popup (the Sky tab's own content, minus its
-  /// header — see [GalaxySearchScreen]) and, if a card's "take me there"
+  /// Opens the star form on one specific empty slot of [constellation]'s
+  /// shape — the slot the tapped nascent star occupies — and creates the
+  /// star exactly there, so the point of light the user aimed at is the one
+  /// that lights up. The pulsar option is off: this slot belongs to the
+  /// shape, and a pulsar never sits on the shape.
+  Future<void> _configureNascentStar(
+    PlacedConstellation constellation,
+    ConstellationStar star,
+  ) async {
+    final result = await Navigator.of(context).push<Object>(
+      MaterialPageRoute(
+        builder: (_) => StarFormScreen(
+          lockedProject: constellation.project,
+          slotSequence: star.slotSequence,
+          allowPulsar: false,
+        ),
+      ),
+    );
+    if (result is! StarFormResult) return;
+    await widget.starRepository.add(
+      title: result.title,
+      description: result.description,
+      projectId: result.projectId,
+      slotSequence: result.slotSequence,
+      targetDate: result.targetDate,
+      achievedDate: result.achievedDate,
+      intensity: result.intensity,
+      photoPath: result.photoPath,
+    );
+    _refresh();
+  }
+
+  /// The menu's own "light a star" entry: the same form, with every kind
+  /// on offer and no constellation implied yet, so it can create a lit
+  /// star, a pulsar or an unlit star anywhere.
+  Future<void> _openStarForm() async {
+    final result = await Navigator.of(context).push<Object>(
+      MaterialPageRoute(
+        builder: (_) => StarFormScreen(
+          projectRepository: widget.projectRepository,
+          customConstellationRepository: widget.customConstellationRepository,
+        ),
+      ),
+    );
+    if (result is! StarFormResult) return;
+    if (result.kind == StarKind.pulsar) {
+      await widget.habitRepository.add(
+        title: result.title,
+        description: result.description,
+        projectId: result.projectId,
+        intensity: result.intensity ?? 3,
+        reminderHour: result.reminderHour,
+        reminderMinute: result.reminderMinute,
+      );
+    } else {
+      await widget.starRepository.add(
+        title: result.title,
+        description: result.description,
+        projectId: result.projectId,
+        targetDate: result.targetDate,
+        achievedDate: result.achievedDate,
+        intensity: result.intensity,
+        photoPath: result.photoPath,
+      );
+    }
+    _refresh();
+  }
+
+  Future<void> _openNewConstellation() async {
+    await Navigator.of(context).push<Project>(
+      MaterialPageRoute(
+        builder: (_) => NewProjectScreen(
+          projectRepository: widget.projectRepository,
+          customConstellationRepository: widget.customConstellationRepository,
+        ),
+      ),
+    );
+    _refresh();
+  }
+
+  Future<void> _openVisions() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => VisionsScreen(
+          areaVisionRepository: widget.areaVisionRepository,
+          projectRepository: widget.projectRepository,
+          starRepository: widget.starRepository,
+        ),
+      ),
+    );
+    _refresh();
+  }
+
+  void _openAdmire() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AdmireStarsScreen(
+          starRepository: widget.starRepository,
+          projectRepository: widget.projectRepository,
+          customConstellationRepository: widget.customConstellationRepository,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openSettings() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SettingsScreen(
+          settings: widget.settings,
+          starRepository: widget.starRepository,
+          projectRepository: widget.projectRepository,
+          habitRepository: widget.habitRepository,
+          habitCompletionRepository: widget.habitCompletionRepository,
+          customConstellationRepository: widget.customConstellationRepository,
+          areaVisionRepository: widget.areaVisionRepository,
+          reminderService: widget.reminderService,
+        ),
+      ),
+    );
+    _refresh();
+  }
+
+  /// Opens the search/filter popup (three levels of the same sky, minus a
+  /// header — see [SkySearchScreen]) and, if a card's "take me there"
   /// button closed it with a target, snaps the camera to it.
   Future<void> _openSearch() async {
     final target = await Navigator.of(context).push<SkyNavigationTarget>(
       MaterialPageRoute(
-        builder: (_) => GalaxySearchScreen(
+        builder: (_) => SkySearchScreen(
           projectRepository: widget.projectRepository,
           starRepository: widget.starRepository,
           habitRepository: widget.habitRepository,
@@ -686,7 +820,7 @@ class _NebulaScreenState extends State<NebulaScreen>
   /// Opens the small centered dialog that flips [_showGridControl]/
   /// [_showZoomControl]/[_showRotationControl] — a `StatefulBuilder` wraps
   /// its own content so each switch's own animation plays immediately
-  /// inside the dialog itself, rather than waiting on `NebulaScreen`'s own
+  /// inside the dialog itself, rather than waiting on `SkyScreen`'s own
   /// next rebuild; [setState] is still called alongside it on every change
   /// so the sky behind the (translucent) dialog barrier actually shows/
   /// hides each control as you go, not just once the dialog is dismissed.
@@ -775,6 +909,19 @@ class _NebulaScreenState extends State<NebulaScreen>
     final showRotation = _showRotationControl && !isTouchOnlyMobile;
 
     return Scaffold(
+      key: _scaffoldKey,
+      // The sky is dragged edge to edge to look around, so the drawer must
+      // never claim an edge-swipe of its own — it opens from its button and
+      // nowhere else.
+      drawerEdgeDragWidth: 0,
+      drawer: SkyMenuDrawer(
+        onLightAStar: _openStarForm,
+        onNewConstellation: _openNewConstellation,
+        onVisions: _openVisions,
+        onSearch: _openSearch,
+        onAdmire: _openAdmire,
+        onSettings: _openSettings,
+      ),
       body: Listener(
         onPointerSignal: _handlePointerSignal,
         child: GestureDetector(
@@ -808,24 +955,18 @@ class _NebulaScreenState extends State<NebulaScreen>
                 camera: _camera,
                 zoom: _zoom,
                 flareProgram: _flareProgram,
-                // A white core with a gold glow around it, matching
-                // `SkySupernova`'s own icons (a plain white glyph over a
-                // gold gradient border/glow) — starColor/habitColor tint
-                // the soft glow blob and the connecting lines, coreColor
-                // is the small bright sparkle mark drawn on top of it, so
-                // there's still a crisp bright point to read as the star
-                // itself instead of one flat gold blob.
-                starColor: kConstellationGold,
-                coreColor: Colors.white,
-                habitColor: kConstellationGold,
+                // See [kSkyStarPalette]: a white core with a gold glow
+                // around it for anything burning, matching `SkySupernova`'s
+                // own icons (a plain white glyph over a gold gradient
+                // border/glow), and the blue/white families for everything
+                // that isn't.
+                palette: kSkyStarPalette,
                 revision: _revision,
               ),
-              // Same disc/navy/gold styling as [_RollKnob] — one button
-              // that both enters and exits fullscreen (see
-              // [NebulaScreen.isFullscreen]/[NebulaScreen.onToggleFullscreen]),
-              // just showing whichever icon matches what tapping it would
-              // do next, rather than two separate buttons for the two
-              // directions.
+              // The way into everything that isn't the sky itself — same
+              // disc/navy/gold styling as every other overlay control.
+              // There's no nav bar left for it to duplicate: this button
+              // *is* the app's navigation.
               Positioned(
                 top: 0,
                 left: 0,
@@ -839,16 +980,17 @@ class _NebulaScreenState extends State<NebulaScreen>
                       ),
                       child: InkWell(
                         customBorder: const CircleBorder(),
-                        onTap: widget.onToggleFullscreen,
+                        onTap: () => _scaffoldKey.currentState?.openDrawer(),
                         child: SizedBox(
                           width: 42,
                           height: 42,
-                          child: Icon(
-                            widget.isFullscreen
-                                ? Icons.fullscreen_exit
-                                : Icons.fullscreen,
-                            color: colors.gold,
-                            size: 22,
+                          child: Tooltip(
+                            message: strings.openMenuAction,
+                            child: Icon(
+                              Icons.menu,
+                              color: colors.gold,
+                              size: 22,
+                            ),
                           ),
                         ),
                       ),
@@ -1089,7 +1231,7 @@ class _NebulaScreenState extends State<NebulaScreen>
 /// A two-finger rotate gesture (see `_handleScaleUpdate`) is touch-only —
 /// a mouse/trackpad has no equivalent, so desktop/web needs its own
 /// control for the same [SkyCamera.rolled]; shown on phone too (see
-/// `NebulaScreen.build`'s own comment on why) rather than hardcoded off
+/// `SkyScreen.build`'s own comment on why) rather than hardcoded off
 /// there just because touch already has the gesture. Drag anywhere
 /// around this dial (not just directly on the icon) and the
 /// camera rolls by however far the angle around the dial's own center
@@ -1210,7 +1352,7 @@ class _RollKnobState extends State<_RollKnob> {
 }
 
 /// A dedicated zoom control alongside the pinch/scroll-wheel gestures
-/// `NebulaScreen` already handles — styled like the "Grid" switch, same
+/// `SkyScreen` already handles — styled like the "Grid" switch, same
 /// as [_RollKnob]: the translucent `colors.nightPanel` pill, a muted
 /// "Zoom" caption the same way "Grid" labels its own switch, and gold
 /// (`colors.gold`) wherever the switch itself would turn gold — the
@@ -1220,7 +1362,7 @@ class _RollKnobState extends State<_RollKnob> {
 /// fills). A plain horizontal [Slider], the "Zoom" caption at its zoomed-
 /// out (min) end and the percentage readout at its zoomed-in (max) end —
 /// bottom-center alongside the Grid switch and roll knob (see
-/// `NebulaScreen.build`'s shared [FittedBox] row) rather than its own
+/// `SkyScreen.build`'s shared [FittedBox] row) rather than its own
 /// rotated-on-its-side rail off to the right.
 ///
 /// Mapped through `math.log` rather than [zoom] itself: zoom is

@@ -1,43 +1,41 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/strings_scope.dart';
+import '../models/star_kind.dart';
 import '../theme/app_colors.dart';
+import 'star_glyph.dart';
 
-/// The star-list cards' first row: the kind alone (e.g. "Goal"), centered
-/// and large — the one thing a glance at the card should answer first,
-/// before area, project, or title. [iconColor] defaults to gold; [textColor]
-/// defaults to the theme's text color (used by every kind except
-/// [StarCard], which passes gold so a victory reads as fully "lit" rather
-/// than just accented, and [DeadStarCard], whose icon is the app's other
-/// light-blue accent instead of gold).
+/// The star-list cards' first row: which kind of star this is, centered and
+/// large — the one thing a glance at a card should answer first, before
+/// area, constellation, or title.
+///
+/// The kind is named *and* drawn, in its own family's color, so the card
+/// and the point of light in the sky it stands for are recognizably the
+/// same thing.
 class StarKindLabel extends StatelessWidget {
-  const StarKindLabel({
-    super.key,
-    required this.icon,
-    required this.label,
-    this.iconColor,
-    this.textColor,
-  });
+  const StarKindLabel({super.key, required this.kind, this.lit = true});
 
-  final IconData icon;
-  final String label;
-  final Color? iconColor;
-  final Color? textColor;
+  final StarKind kind;
+
+  /// Only meaningful for [StarKind.pulsar] — see [StarGlyph.lit].
+  final bool lit;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final strings = context.strings;
     return Center(
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 20, color: iconColor ?? colors.gold),
-          const SizedBox(width: 8),
+          StarGlyph(kind: kind, lit: lit, size: 20),
+          const SizedBox(width: 4),
           Text(
-            label,
+            kind.label(strings),
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w700,
-              color: textColor ?? colors.text,
+              color: starKindColor(kind, colors, lit: lit),
             ),
           ),
         ],

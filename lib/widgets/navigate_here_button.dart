@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
 /// A small "take me there" trigger shown on a card only when the caller can
-/// jump the Galaxy tab's sky camera to it (the search popup opened from
+/// jump the Sky's sky camera to it (the search popup opened from
 /// [NebulaScreen]) — omitted everywhere else, such as the plain Sky tab,
 /// where there's no 3D camera to move.
 class NavigateHereButton extends StatelessWidget {

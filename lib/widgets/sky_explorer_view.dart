@@ -12,9 +12,10 @@ import '../models/habit.dart';
 import '../models/life_area.dart';
 import '../models/project.dart';
 import '../models/star.dart';
+import '../models/star_kind.dart';
 import '../screens/area_detail_screen.dart';
 import '../screens/constellation_screen.dart';
-import '../screens/habit_reader_screen.dart';
+import '../screens/pulsar_reader_screen.dart';
 import '../screens/star_reader_screen.dart';
 import '../theme/app_colors.dart';
 import '../utils/date_format.dart';
@@ -22,34 +23,33 @@ import '../utils/habit_stats.dart';
 import '../utils/icon_for_slug.dart';
 import 'area_filter_sheet.dart';
 import 'area_tag.dart';
-import 'constellation_painter.dart' show StarKind;
 import 'dead_star_card.dart';
-import 'goal_card.dart';
-import 'habit_card.dart';
+import 'lit_star_card.dart';
 import 'navigate_here_button.dart';
+import 'pulsar_card.dart';
 import 'responsive_content.dart';
 import 'sky_navigation_target.dart';
-import 'star_card.dart';
+import 'unlit_star_card.dart';
 
 enum _SkyMode { supernovas, constellations, stars }
 
-/// One flat-list row — either a [Star] (victory/goal/dead, told apart by
-/// [kind]) or a [Habit] (pulsar, [kind] always [StarKind.habit]) — wrapped
-/// with a shared [sortKey] so the two can be merged into one newest-first
-/// list without either side needing to know about the other's shape.
+/// One flat-list row — either a [Star] (lit, unlit or dead) or a [Habit]
+/// (a pulsar, or dead if it's been deleted) — wrapped with a shared
+/// [sortKey] so the two can be merged into one newest-first list without
+/// either side needing to know about the other's shape.
 class _SkyEntry {
   _SkyEntry.fromStar(Star star)
     : star = star,
       habit = null,
-      kind = star.dead
-          ? StarKind.dead
-          : (star.isAchieved ? StarKind.victory : StarKind.goal),
+      kind = star.kind,
       sortKey = star.achievedDate ?? star.createdAt;
 
   _SkyEntry.fromHabit(Habit habit)
     : star = null,
       habit = habit,
-      kind = StarKind.habit,
+      // A deleted pulsar is a dead star like any other — it just remembers
+      // what it was, which is what [DeadStarCard.fromHabit] shows.
+      kind = habit.dead ? StarKind.dead : StarKind.pulsar,
       sortKey = habit.createdAt;
 
   final Star? star;
@@ -69,7 +69,10 @@ class _SkyEntry {
 /// row). Constellations and Stars share one area filter (default: every
 /// area), opened from [showAreaFilterSheet].
 ///
-/// The Galaxy tab's search popup (`GalaxySearchScreen`) is this widget's
+/// Nascent stars appear in none of the three: they have no record behind
+/// them, only an empty slot on a shape (see [kListableStarKinds]).
+///
+/// The Sky's search popup (`SkySearchScreen`) is this widget's
 /// only caller — every card's "take me there" button calls [onNavigateTo]
 /// unconditionally, and [onModeLabelChanged] is how the popup's own AppBar
 /// title tracks whichever of the three views is currently selected, since
@@ -111,12 +114,7 @@ class SkyExplorerView extends StatefulWidget {
 class _SkyExplorerViewState extends State<SkyExplorerView> {
   _SkyMode _mode = _SkyMode.supernovas;
   String _query = '';
-  Set<StarKind> _kindFilter = {
-    StarKind.victory,
-    StarKind.goal,
-    StarKind.dead,
-    StarKind.habit,
-  };
+  Set<StarKind> _kindFilter = {...kListableStarKinds};
   Set<LifeArea> _areaFilter = {...LifeArea.values};
 
   List<Project> get _filteredAreaProjects => widget.projectRepository
@@ -131,9 +129,9 @@ class _SkyExplorerViewState extends State<SkyExplorerView> {
   List<Star> _starsForProject(int projectId) =>
       widget.starRepository.getAllForProject(projectId);
 
-  int _activeHabitCountForProject(int projectId) {
+  int _activePulsarCountForProject(int projectId) {
     var count = 0;
-    for (final habit in widget.habitRepository.getAllForProject(projectId)) {
+    for (final habit in widget.habitRepository.getActiveForProject(projectId)) {
       if (isHabitLit(_completedDaysFor(habit.id))) count++;
     }
     return count;
@@ -179,12 +177,13 @@ class _SkyExplorerViewState extends State<SkyExplorerView> {
     }).toList();
   }
 
-  /// The star-only (victory/goal/dead) subset of [_filteredEntries], in the
-  /// same order — what [StarReaderScreen]'s prev/next actually browses,
-  /// since pulsars aren't part of that reader.
+  /// The [Star]-backed subset of [_filteredEntries], in the same order —
+  /// what [StarReaderScreen]'s prev/next actually browses, since pulsars
+  /// aren't part of that reader. Keyed on which entity is behind the row,
+  /// not on its kind: a dead row can be either.
   List<Star> _filteredStarsOnly() {
     return _filteredEntries
-        .where((e) => e.kind != StarKind.habit)
+        .where((e) => e.star != null)
         .map((e) => e.star!)
         .toList();
   }
@@ -199,7 +198,7 @@ class _SkyExplorerViewState extends State<SkyExplorerView> {
   void initState() {
     super.initState();
     // Deferred a frame — this fires a callback that ends up calling setState
-    // on the parent (`GalaxySearchScreen`'s AppBar title), which isn't safe
+    // on the parent (`SkySearchScreen`'s AppBar title), which isn't safe
     // to do synchronously while this widget is still mounting/building.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) widget.onModeLabelChanged(_labelFor(_mode, context.strings));
@@ -259,7 +258,7 @@ class _SkyExplorerViewState extends State<SkyExplorerView> {
   Future<void> _openHabitReader(Habit habit) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => HabitReaderScreen(
+        builder: (_) => PulsarReaderScreen(
           habit: habit,
           project: _projectsById[habit.projectId],
           habitRepository: widget.habitRepository,
@@ -414,7 +413,7 @@ class _SkyExplorerViewState extends State<SkyExplorerView> {
                 hasAnyProjects: _filteredAreaProjects.isNotEmpty,
                 filteredProjects: _filteredProjects,
                 starsForProject: _starsForProject,
-                activeHabitCountForProject: _activeHabitCountForProject,
+                activePulsarCountForProject: _activePulsarCountForProject,
                 onTap: _openProject,
                 onNavigateTo: widget.onNavigateTo,
               ),
@@ -562,7 +561,7 @@ class _ConstellationsList extends StatelessWidget {
     required this.hasAnyProjects,
     required this.filteredProjects,
     required this.starsForProject,
-    required this.activeHabitCountForProject,
+    required this.activePulsarCountForProject,
     required this.onTap,
     required this.onNavigateTo,
   });
@@ -570,7 +569,7 @@ class _ConstellationsList extends StatelessWidget {
   final bool hasAnyProjects;
   final List<Project> filteredProjects;
   final List<Star> Function(int projectId) starsForProject;
-  final int Function(int projectId) activeHabitCountForProject;
+  final int Function(int projectId) activePulsarCountForProject;
   final void Function(Project) onTap;
   final ValueChanged<SkyNavigationTarget> onNavigateTo;
 
@@ -611,24 +610,24 @@ class _ConstellationsList extends StatelessWidget {
       itemBuilder: (context, index) {
         final project = filteredProjects[index];
         final stars = starsForProject(project.id);
-        final achievedStars = stars.where((s) => s.isAchieved).toList();
-        final openGoals = stars.where((s) => s.isGoal).length;
-        final activeHabits = activeHabitCountForProject(project.id);
+        final litStars = stars.where((s) => s.isLit).toList();
+        final unlitStars = stars.where((s) => s.isUnlit).length;
+        final activePulsars = activePulsarCountForProject(project.id);
         return ResponsiveContent(
           child: _ProjectCard(
             project: project,
-            starCount: achievedStars.length,
-            lastStarDate: achievedStars.isEmpty
+            starCount: litStars.length,
+            lastStarDate: litStars.isEmpty
                 ? null
-                : achievedStars
+                : litStars
                       .map((s) => s.achievedDate!)
                       .reduce((a, b) => a.isAfter(b) ? a : b),
-            combinedIntensity: achievedStars.fold<int>(
+            combinedIntensity: litStars.fold<int>(
               0,
               (sum, s) => sum + s.intensity!,
             ),
-            openGoals: openGoals,
-            activeHabits: activeHabits,
+            unlitStars: unlitStars,
+            activePulsars: activePulsars,
             onTap: () => onTap(project),
             onNavigateTo: () => onNavigateTo(SkyProjectTarget(project)),
           ),
@@ -638,8 +637,8 @@ class _ConstellationsList extends StatelessWidget {
   }
 }
 
-/// The "Stars" flat list — mixed victories/goals/dead stars/pulsars, each
-/// rendered by the card suited to its kind.
+/// The "Stars" flat list — lit, unlit, dead and pulsar all mixed together,
+/// each rendered by the card suited to its kind.
 class _FlatList extends StatelessWidget {
   const _FlatList({
     required this.hasAnyEntries,
@@ -705,31 +704,41 @@ class _FlatList extends StatelessWidget {
 
         final Widget card;
         switch (entry.kind) {
-          case StarKind.victory:
-            card = StarCard(
+          case StarKind.lit:
+            card = LitStarCard(
               star: entry.star!,
               project: project,
               onTap: () => onOpenStar(entry),
               onNavigateTo: navigateTo,
             );
-          case StarKind.goal:
-            card = GoalCard(
+          case StarKind.unlit:
+            card = UnlitStarCard(
               star: entry.star!,
               project: project,
               onTap: () => onOpenStar(entry),
               onNavigateTo: navigateTo,
             );
+          // The one kind that can come from either repository — which is
+          // exactly what the card has to say, since a dead star only ever
+          // comes back as what it was.
           case StarKind.dead:
-            card = DeadStarCard(
-              star: entry.star!,
-              project: project,
-              onTap: () => onOpenStar(entry),
-              onNavigateTo: navigateTo,
-            );
-          case StarKind.habit:
+            card = entry.habit != null
+                ? DeadStarCard.fromHabit(
+                    habit: entry.habit!,
+                    project: project,
+                    onTap: () => onOpenHabit(entry.habit!),
+                    onNavigateTo: navigateTo,
+                  )
+                : DeadStarCard.fromStar(
+                    star: entry.star!,
+                    project: project,
+                    onTap: () => onOpenStar(entry),
+                    onNavigateTo: navigateTo,
+                  );
+          case StarKind.pulsar:
             final habit = entry.habit!;
             final completedDays = completedDaysFor(habit.id);
-            card = HabitCard(
+            card = PulsarCard(
               habit: habit,
               project: project,
               currentStreak: habitCurrentStreak(completedDays),
@@ -737,6 +746,9 @@ class _FlatList extends StatelessWidget {
               onTap: () => onOpenHabit(habit),
               onNavigateTo: navigateTo,
             );
+          // Never listed — see [kListableStarKinds].
+          case StarKind.nascent:
+            return const SizedBox.shrink();
         }
         return ResponsiveContent(child: card);
       },
@@ -744,18 +756,18 @@ class _FlatList extends StatelessWidget {
   }
 }
 
-/// A project ("constellation") card — big icon + name up top, which area it
+/// A constellation card — big icon + name up top, which supernova it
 /// belongs to (results span every area in the filter, so this is no longer
 /// implicit from context), a secondary detail row below, and gold-tinted
-/// metric badges for star count, open goals, and active pulsars.
+/// metric badges for lit stars, unlit stars, and active pulsars.
 class _ProjectCard extends StatelessWidget {
   const _ProjectCard({
     required this.project,
     required this.starCount,
     required this.lastStarDate,
     required this.combinedIntensity,
-    required this.openGoals,
-    required this.activeHabits,
+    required this.unlitStars,
+    required this.activePulsars,
     required this.onTap,
     required this.onNavigateTo,
   });
@@ -764,8 +776,8 @@ class _ProjectCard extends StatelessWidget {
   final int starCount;
   final DateTime? lastStarDate;
   final int combinedIntensity;
-  final int openGoals;
-  final int activeHabits;
+  final int unlitStars;
+  final int activePulsars;
   final VoidCallback onTap;
   final VoidCallback onNavigateTo;
 
@@ -853,15 +865,15 @@ class _ProjectCard extends StatelessWidget {
                             icon: Icons.offline_bolt,
                             text: strings.intensityCount(combinedIntensity),
                           ),
-                          if (openGoals > 0)
+                          if (unlitStars > 0)
                             _MetricBadge(
-                              icon: Icons.flag_outlined,
-                              text: strings.openGoalsBadge(openGoals),
+                              icon: StarKind.unlit.icon,
+                              text: strings.unlitStarsBadge(unlitStars),
                             ),
-                          if (activeHabits > 0)
+                          if (activePulsars > 0)
                             _MetricBadge(
-                              icon: Icons.repeat,
-                              text: strings.activeHabitsBadge(activeHabits),
+                              icon: StarKind.pulsar.icon,
+                              text: strings.activePulsarsBadge(activePulsars),
                             ),
                         ],
                       ),

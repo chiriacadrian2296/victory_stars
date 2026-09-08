@@ -71,7 +71,7 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
   List<Star> _poolForSelection() {
     final projectsById = _projectsById();
     return widget.starRepository.getAll().where((s) {
-      if (!s.isAchieved) return false;
+      if (!s.isLit) return false;
       final project = projectsById[s.projectId];
       return project != null && _selected.contains(project.area);
     }).toList();
@@ -89,7 +89,7 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
       final projectsById = _projectsById();
       final byId = {for (final s in widget.starRepository.getAll()) s.id: s};
       return shuffledIds.map((id) => byId[id]).whereType<Star>().where((s) {
-        if (!s.isAchieved) return false;
+        if (!s.isLit) return false;
         final project = projectsById[s.projectId];
         return project != null && selectionSnapshot.contains(project.area);
       }).toList();

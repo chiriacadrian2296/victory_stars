@@ -10,7 +10,7 @@ import '../l10n/strings_scope.dart';
 import '../theme/app_colors.dart';
 import '../widgets/sky_explorer_view.dart';
 
-/// A full-screen popup opened from the Galaxy tab's sky-search overlay
+/// A full-screen popup opened from the Sky's sky-search overlay
 /// button — search/filter/3-level browsing ([SkyExplorerView]) over the
 /// same close-button-only header every other popup page in the app uses,
 /// with the selected level's name (Supernovas/Constellations/Stars) as this
@@ -18,8 +18,8 @@ import '../widgets/sky_explorer_view.dart';
 /// body, freeing space below for the list itself. Every card's "take me
 /// there" button pops this page with a `SkyNavigationTarget` for
 /// `NebulaScreen` to fly its camera to.
-class GalaxySearchScreen extends StatefulWidget {
-  const GalaxySearchScreen({
+class SkySearchScreen extends StatefulWidget {
+  const SkySearchScreen({
     super.key,
     required this.projectRepository,
     required this.starRepository,
@@ -37,10 +37,10 @@ class GalaxySearchScreen extends StatefulWidget {
   final AreaVisionRepository areaVisionRepository;
 
   @override
-  State<GalaxySearchScreen> createState() => _GalaxySearchScreenState();
+  State<SkySearchScreen> createState() => _SkySearchScreenState();
 }
 
-class _GalaxySearchScreenState extends State<GalaxySearchScreen> {
+class _SkySearchScreenState extends State<SkySearchScreen> {
   /// Null only for the first frame or two, before [SkyExplorerView] reports
   /// its own starting mode via `onModeLabelChanged` — [build] falls back to
   /// the same "Supernovas" label it starts on regardless, so there's no

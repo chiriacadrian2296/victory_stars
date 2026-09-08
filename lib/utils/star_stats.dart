@@ -16,7 +16,7 @@ int starsInArea(
   for (final project in projectRepository.getProjectsForArea(area)) {
     total += starRepository
         .getAllForProject(project.id)
-        .where((s) => s.isAchieved)
+        .where((s) => s.isLit)
         .length;
   }
   return total;
@@ -33,7 +33,7 @@ int totalIntensityInArea(
   var total = 0;
   for (final project in projectRepository.getProjectsForArea(area)) {
     for (final star in starRepository.getAllForProject(project.id)) {
-      if (star.isAchieved) total += star.intensity ?? 0;
+      if (star.isLit) total += star.intensity ?? 0;
     }
   }
   return total;

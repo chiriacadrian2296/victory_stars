@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../l10n/strings_scope.dart';
 import '../models/life_area.dart';
+import '../models/star_kind.dart';
 import '../theme/app_colors.dart';
-import 'constellation_painter.dart' show StarKind;
+import 'star_glyph.dart';
 
 /// Opens the filter modal used by Sky's Constellations/Stars views. Always
 /// has an area section (the "All areas" toggle + area-chip grid, same
@@ -70,7 +71,8 @@ class _AreaFilterSheetState extends State<_AreaFilterSheet> {
     });
   }
 
-  bool get _allKindsSelected => (_kinds?.length ?? 0) == StarKind.values.length;
+  bool get _allKindsSelected =>
+      (_kinds?.length ?? 0) == kListableStarKinds.length;
 
   void _toggleAllKinds() {
     final kinds = _kinds;
@@ -78,7 +80,7 @@ class _AreaFilterSheetState extends State<_AreaFilterSheet> {
     final selectAll = !_allKindsSelected;
     setState(() {
       kinds.clear();
-      if (selectAll) kinds.addAll(StarKind.values);
+      if (selectAll) kinds.addAll(kListableStarKinds);
     });
   }
 
@@ -137,49 +139,36 @@ class _AreaFilterSheetState extends State<_AreaFilterSheet> {
                 onChanged: (_) => _toggleAllKinds(),
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: _FilterChip(
-                      icon: Icons.star,
-                      label: strings.starKindVictoryLabel,
-                      selected: kinds.contains(StarKind.victory),
-                      onTap: () => _toggleKind(StarKind.victory),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _FilterChip(
-                      icon: Icons.flag_outlined,
-                      label: strings.starKindGoalLabel,
-                      selected: kinds.contains(StarKind.goal),
-                      onTap: () => _toggleKind(StarKind.goal),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _FilterChip(
-                      icon: Icons.star_outline,
-                      label: strings.starKindDeadLabel,
-                      selected: kinds.contains(StarKind.dead),
-                      onTap: () => _toggleKind(StarKind.dead),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _FilterChip(
-                      icon: Icons.repeat,
-                      label: strings.starKindPulsarChipLabel,
-                      selected: kinds.contains(StarKind.habit),
-                      onTap: () => _toggleKind(StarKind.habit),
-                    ),
-                  ),
-                ],
-              ),
+              // Two per row, in [kListableStarKinds] order — one chip per
+              // kind, each in its own family's color, so the filter reads
+              // the same way the sky does.
+              for (var row = 0; row * 2 < kListableStarKinds.length; row++) ...[
+                if (row > 0) const SizedBox(height: 10),
+                Row(
+                  children: [
+                    for (var col = 0; col < 2; col++) ...[
+                      if (col > 0) const SizedBox(width: 10),
+                      Expanded(
+                        child: _FilterChip(
+                          icon: kListableStarKinds[row * 2 + col].icon,
+                          iconColor: starKindColor(
+                            kListableStarKinds[row * 2 + col],
+                            colors,
+                          ),
+                          label: kListableStarKinds[row * 2 + col].plural(
+                            strings,
+                          ),
+                          selected: kinds.contains(
+                            kListableStarKinds[row * 2 + col],
+                          ),
+                          onTap: () =>
+                              _toggleKind(kListableStarKinds[row * 2 + col]),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
             ],
             const SizedBox(height: 16),
             SizedBox(
@@ -220,12 +209,18 @@ class _FilterChip extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    this.iconColor,
   });
 
   final IconData icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
+
+  /// Overrides the chip's own gold/muted icon tint — passed by the star
+  /// kind chips so each one carries its family's color even while
+  /// deselected, since that color *is* the thing being filtered on.
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -248,7 +243,11 @@ class _FilterChip extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, size: 16, color: selected ? colors.gold : colors.muted),
+            Icon(
+              icon,
+              size: 16,
+              color: iconColor ?? (selected ? colors.gold : colors.muted),
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(

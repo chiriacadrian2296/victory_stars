@@ -157,6 +157,7 @@ Future<void> seedSampleData({
       final habit = await habitRepository.add(
         title: habitSeed.title,
         projectId: project.id,
+        intensity: habitSeed.intensity,
       );
       for (final offset in habitSeed.completedDayOffsets) {
         await habitCompletionRepository.markDone(
@@ -188,9 +189,14 @@ class _WinSeed {
 /// - A short burst several days back (e.g. `[4, 5, 6]`) exercises a habit
 ///   that's gone dark — its streak broke days ago and it hasn't recovered.
 class _HabitSeed {
-  const _HabitSeed(this.title, this.completedDayOffsets);
+  const _HabitSeed(this.title, this.completedDayOffsets, {this.intensity = 3});
   final String title;
   final List<int> completedDayOffsets;
+
+  /// What keeping this up costs each day, 1-5 — left at the middle of the
+  /// scale for most seeds, so a deliberately heavy one (an ice bath) still
+  /// stands out against them.
+  final int intensity;
 }
 
 class _ProjectSeed {
@@ -297,7 +303,7 @@ final _specsEn = [
     goals: ['Run a half marathon', 'Beat 50 minutes on a 10k'],
     habits: [
       _HabitSeed('Morning stretch', _activeStreak(10)),
-      _HabitSeed('Ice bath', [4, 5, 6]),
+      _HabitSeed('Ice bath', [4, 5, 6], intensity: 5),
     ],
     seedDeadStar: true,
   ),
@@ -431,7 +437,7 @@ final _specsEn = [
       _WinSeed('Started a book that intimidated me'),
       _WinSeed('Finished a chapter instead of stopping mid-way'),
     ],
-    habits: [_HabitSeed('Read before bed', _activeStreak(7))],
+    habits: [_HabitSeed('Read before bed', _activeStreak(7), intensity: 1)],
   ),
   _ProjectSeed(
     'Reconnect with old friends',
@@ -502,7 +508,7 @@ final _specsIt = [
     goals: ['Correre una mezza maratona', 'Scendere sotto i 50 minuti nei 10 km'],
     habits: [
       _HabitSeed('Stretching mattutino', _activeStreak(10)),
-      _HabitSeed('Bagno di ghiaccio', [4, 5, 6]),
+      _HabitSeed('Bagno di ghiaccio', [4, 5, 6], intensity: 5),
     ],
     seedDeadStar: true,
   ),
@@ -636,7 +642,7 @@ final _specsIt = [
       _WinSeed('Ho iniziato un libro che mi intimidiva'),
       _WinSeed('Ho finito un capitolo invece di fermarmi a metà'),
     ],
-    habits: [_HabitSeed('Leggere prima di dormire', _activeStreak(7))],
+    habits: [_HabitSeed('Leggere prima di dormire', _activeStreak(7), intensity: 1)],
   ),
   _ProjectSeed(
     'Riallacciare i rapporti con vecchi amici',
@@ -707,7 +713,7 @@ final _specsRo = [
     goals: ['Aleargă un semimaraton', 'Sub 50 de minute la 10k'],
     habits: [
       _HabitSeed('Întindere de dimineață', _activeStreak(10)),
-      _HabitSeed('Baie cu gheață', [4, 5, 6]),
+      _HabitSeed('Baie cu gheață', [4, 5, 6], intensity: 5),
     ],
     seedDeadStar: true,
   ),
@@ -841,7 +847,7 @@ final _specsRo = [
       _WinSeed('Am început o carte care mă intimida'),
       _WinSeed('Am terminat un capitol în loc să mă opresc la jumătate'),
     ],
-    habits: [_HabitSeed('Citesc înainte de culcare', _activeStreak(7))],
+    habits: [_HabitSeed('Citesc înainte de culcare', _activeStreak(7), intensity: 1)],
   ),
   _ProjectSeed(
     'Reconectez cu vechi prieteni',

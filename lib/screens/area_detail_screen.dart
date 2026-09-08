@@ -10,7 +10,7 @@ import '../utils/star_stats.dart';
 import '../widgets/area_tag.dart';
 import '../widgets/responsive_content.dart';
 
-/// One Supernova's own page — reached by tapping it in the Galaxy tab's
+/// One Supernova's own page — reached by tapping it in the Sky's
 /// search popup (`SkyExplorerView`'s Supernovas view). Shows the area's
 /// icon, name, and description, three big numbers (constellations/stars/
 /// intensity), and that area's "vision" — their own words for what they

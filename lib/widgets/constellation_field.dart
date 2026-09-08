@@ -14,7 +14,7 @@ import 'constellation_painter.dart';
 
 /// One project's constellation, already built (see
 /// `buildConstellationRenderStars`) and given a stable spot in the shared
-/// pannable/zoomable world the Nebula tab scatters every constellation
+/// pannable/zoomable world the Sky scatters every constellation
 /// across.
 class PlacedConstellation {
   const PlacedConstellation({
@@ -25,7 +25,6 @@ class PlacedConstellation {
     required this.habits,
     required this.renderStars,
     required this.edges,
-    required this.shapeStarCount,
   });
 
   final Project project;
@@ -46,10 +45,9 @@ class PlacedConstellation {
 
   final List<ConstellationStar> renderStars;
   final List<(int, int)> edges;
-  final int shapeStarCount;
 }
 
-/// The Nebula tab's world is a sky sphere — the camera (see [SkyCamera])
+/// The Sky's world is a sky sphere — the camera (see [SkyCamera])
 /// sits at its center, like a viewer inside an HDRI environment map.
 /// Content (a constellation's spot in the sky) is still placed with a
 /// fixed (azimuth, elevation) pair in turns — [Offset.dx]/[Offset.dy] —
@@ -907,19 +905,31 @@ const double _kLabelZoomFadeEndPercent = 35;
 const double _kLabelFontSize = 11;
 
 /// The shared gold every part of the constellation layer that isn't a
-/// star's own bright core is tinted with — the soft glow behind a lit
-/// star/habit (see `ConstellationFieldPainter`'s own `starColor`/
-/// `habitColor`, which `NebulaScreen` sets to this) and the connecting
-/// lines between them, so the layer reads as one warm family with
-/// `SkySupernova`'s own gold rather than clashing white against it. A
-/// star's own core mark stays white (`coreColor`, set to plain
+/// star's own bright core is tinted with — the soft glow behind anything
+/// burning (see [StarPalette.lit], which `SkyScreen` sets to this) and the
+/// connecting lines between them, so the layer reads as one warm family
+/// with `SkySupernova`'s own gold rather than clashing white against it. A
+/// star's own core mark stays white ([StarPalette.core], set to plain
 /// [Colors.white]) the same way a supernova's own icon is a white glyph
 /// over a gold glow/border — not this same gold, which would wash the two
 /// together into one flat blob with no bright point left to read as the
 /// star itself. Fixed rather than pulled from the active theme, like
-/// [_drawPillLabel]'s own colors below — the Galaxy tab's sky is dark
-/// regardless of light/dark mode.
+/// [_drawPillLabel]'s own colors below — the Sky tab is dark regardless of
+/// light/dark mode.
 const Color kConstellationGold = Color(0xFFF2C879);
+
+/// The palette the Sky tab paints every constellation with. Fixed for the
+/// same reason [kConstellationGold] is, and deliberately a touch brighter
+/// than the app's own `context.colors` star colors: out here a star is a
+/// few pixels across on a black sky, not an icon on a panel, so the same
+/// values would read as barely-there rather than as "no light".
+const StarPalette kSkyStarPalette = StarPalette(
+  lit: kConstellationGold,
+  core: Colors.white,
+  nascent: Color(0xFFEFF3FF),
+  unlit: Color(0xFF87A3EC),
+  dead: Color(0xFF55689F),
+);
 
 /// A lighter, paler gold than [kConstellationGold] for a label's own pill
 /// background (see [_drawPillLabel]) — the deeper gold used on
@@ -1004,9 +1014,7 @@ class ConstellationFieldPainter extends CustomPainter {
     required this.camera,
     required this.zoom,
     required this.flareProgram,
-    required this.starColor,
-    required this.coreColor,
-    required this.habitColor,
+    required this.palette,
     required this.revision,
     this.time = 0,
   });
@@ -1018,9 +1026,11 @@ class ConstellationFieldPainter extends CustomPainter {
   /// Forwarded straight through to [ConstellationPainter.flareProgram] —
   /// see its own doc comment.
   final ui.FragmentProgram? flareProgram;
-  final Color starColor;
-  final Color coreColor;
-  final Color habitColor;
+
+  /// Forwarded straight through to [ConstellationPainter.palette] — see
+  /// [StarPalette].
+  final StarPalette palette;
+
   final int revision;
 
   /// Forwarded straight through to [ConstellationPainter.time] — see its
@@ -1114,12 +1124,8 @@ class ConstellationFieldPainter extends CustomPainter {
         stars: constellation.renderStars,
         flareProgram: flareProgram,
         revision: revision,
-        starColor: starColor,
-        coreColor: coreColor,
-        habitColor: habitColor,
+        palette: palette,
         edges: constellation.edges,
-        linkThreshold: constellation.shape?.points.length ?? 0,
-        shapeStarCount: constellation.shapeStarCount,
         // Bolder than ConstellationScreen's own single-project defaults —
         // at kSkyConstellationAngularSpan's now much smaller size, a
         // constellation needs to read through thicker lines/icons/glow
@@ -1148,6 +1154,9 @@ class ConstellationFieldPainter extends CustomPainter {
       }
       if (_kShowStarLabels && starLabelAlpha > 0.01) {
         for (final star in constellation.renderStars) {
+          // A nascent star has nothing to be called yet — an empty pill
+          // floating next to it would read as a rendering bug.
+          if (star.label.isEmpty) continue;
           final starScreenPos =
               transform.center +
               transform.right * (star.position.dx - 0.5) +
@@ -1213,9 +1222,7 @@ class AnimatedConstellationField extends StatefulWidget {
     required this.camera,
     required this.zoom,
     required this.flareProgram,
-    required this.starColor,
-    required this.coreColor,
-    required this.habitColor,
+    required this.palette,
     required this.revision,
   });
 
@@ -1223,9 +1230,7 @@ class AnimatedConstellationField extends StatefulWidget {
   final SkyCamera camera;
   final double zoom;
   final ui.FragmentProgram? flareProgram;
-  final Color starColor;
-  final Color coreColor;
-  final Color habitColor;
+  final StarPalette palette;
   final int revision;
 
   @override
@@ -1260,9 +1265,7 @@ class _AnimatedConstellationFieldState
         camera: widget.camera,
         zoom: widget.zoom,
         flareProgram: widget.flareProgram,
-        starColor: widget.starColor,
-        coreColor: widget.coreColor,
-        habitColor: widget.habitColor,
+        palette: widget.palette,
         revision: widget.revision,
         time: _elapsed.inMicroseconds / Duration.microsecondsPerSecond,
       ),

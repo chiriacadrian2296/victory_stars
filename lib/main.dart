@@ -14,9 +14,10 @@ import 'data/star_repository.dart';
 import 'debug/seed_data.dart';
 import 'l10n/strings_scope.dart';
 import 'notifications/reminder_service.dart';
-import 'screens/add_star_screen.dart';
+import 'models/star_kind.dart';
 import 'screens/onboarding_screen.dart';
-import 'screens/root_screen.dart';
+import 'screens/sky_screen.dart';
+import 'screens/star_form_screen.dart';
 import 'settings/settings_controller.dart';
 import 'theme/app_theme.dart';
 
@@ -28,13 +29,11 @@ void main() {
   // Android just paints its own default (white) behind them instead.
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  // Portrait-only: landscape trips RootScreen's own wide-layout desktop
-  // side rail (isWideLayout only checks width, and a phone turned
-  // sideways is often wide enough) without any of an actual desktop
-  // window's screen real estate to fit it in. Simplest fix for that whole
-  // class of problem is to never let a phone get turned sideways in the
-  // first place. No-op on web/desktop, which don't rotate the app this
-  // way regardless.
+  // Portrait-only: the Sky's own overlay controls are laid out for a tall
+  // window, and a phone turned sideways has nowhere near the height they
+  // assume. Simplest fix for that whole class of problem is to never let a
+  // phone get turned sideways in the first place. No-op on web/desktop,
+  // which don't rotate the app this way regardless.
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -94,7 +93,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
       // button first. Matters most for the web: `flutter run -d chrome`
       // opens a brand-new, disposable browser profile on every single
       // launch, so without this every fresh web debug session would start
-      // from zero projects (and, on the Galaxy tab, zero constellations)
+      // from zero projects (and, on the Sky, zero constellations)
       // regardless of what was seeded last time.
       if (kDebugMode && projectRepository.getAll().isEmpty) {
         await seedSampleData(
@@ -185,16 +184,21 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
       return;
     }
 
-    final result = await navigator.push<AddStarResult>(
+    final result = await navigator.push<Object>(
       MaterialPageRoute(
-        builder: (_) => AddStarScreen(
+        builder: (_) => StarFormScreen(
           projectRepository: projectRepository,
           customConstellationRepository: customConstellationRepository,
         ),
       ),
     );
-    if (result == null) return;
+    if (result is! StarFormResult) return;
 
+    // The reminder is a nudge to light a star, but the form it opens can
+    // create any kind — a pulsar chosen here belongs to the habit
+    // repository, which this shortcut doesn't hold, so it's simply not
+    // offered a path it can't finish.
+    if (result.kind == StarKind.pulsar) return;
     await starRepository.add(
       title: result.title,
       description: result.description,
@@ -289,7 +293,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
           systemNavigationBarDividerColor: Colors.transparent,
           systemNavigationBarContrastEnforced: false,
         ),
-        child: RootScreen(
+        child: SkyScreen(
           settings: settings,
           starRepository: starRepository,
           projectRepository: projectRepository,

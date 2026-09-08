@@ -33,7 +33,7 @@ void main() {
 
       expect(first.number, 1);
       expect(second.number, 2);
-      expect(first.isAchieved, isTrue);
+      expect(first.isLit, isTrue);
       expect(repo.getAll().map((s) => s.title), ['Second step', 'First step']);
     },
   );
@@ -45,7 +45,7 @@ void main() {
 
       final goal = await repo.add(title: 'Someday', projectId: 1);
 
-      expect(goal.isGoal, isTrue);
+      expect(goal.isUnlit, isTrue);
       expect(goal.number, isNull);
       expect(goal.achievedDate, isNull);
     },
@@ -220,7 +220,7 @@ void main() {
 
     final achieved = await repo.markAchieved(goal.id, intensity: 4);
 
-    expect(achieved.isAchieved, isTrue);
+    expect(achieved.isLit, isTrue);
     expect(achieved.intensity, 4);
     expect(achieved.number, 1);
     expect(achieved.slotSequence, goal.slotSequence);
@@ -237,7 +237,7 @@ void main() {
 
     final reverted = await repo.markNotAchieved(star.id);
 
-    expect(reverted.isGoal, isTrue);
+    expect(reverted.isUnlit, isTrue);
     expect(reverted.number, isNull);
     expect(reverted.intensity, isNull);
   });
@@ -289,7 +289,7 @@ void main() {
     expect(resurrected.dead, isFalse);
     expect(resurrected.deadDate, isNull);
     expect(resurrected.title, 'Reborn');
-    expect(resurrected.isAchieved, isTrue);
+    expect(resurrected.isLit, isTrue);
     expect(resurrected.number, 1);
   });
 
@@ -302,5 +302,37 @@ void main() {
     expect(repo.getAll(), isEmpty);
     final reloaded = await StarRepository.create();
     expect(reloaded.getAll(), isEmpty);
+  });
+
+  test('add() with an explicit slotSequence lands on exactly that slot — how '
+      'a nascent star gets configured', () async {
+    final repo = await StarRepository.create();
+    await repo.add(title: 'First', projectId: 1);
+
+    final placed = await repo.add(
+      title: 'Fourth slot',
+      projectId: 1,
+      slotSequence: 4,
+    );
+
+    expect(placed.slotSequence, 4);
+    // Slots 2 and 3 stay free, so their nascent stars are still there to be
+    // configured later; the next unplaced star appends past the highest.
+    final next = await repo.add(title: 'Next', projectId: 1);
+    expect(next.slotSequence, 5);
+  });
+
+  test('add() falls back to appending when the requested slot is already '
+      'taken', () async {
+    final repo = await StarRepository.create();
+    final first = await repo.add(title: 'First', projectId: 1);
+
+    final second = await repo.add(
+      title: 'Second',
+      projectId: 1,
+      slotSequence: first.slotSequence,
+    );
+
+    expect(second.slotSequence, first.slotSequence + 1);
   });
 }

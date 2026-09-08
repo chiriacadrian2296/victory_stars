@@ -29,7 +29,7 @@ class TotalStarsDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final strings = context.strings;
-    final stars = starRepository.getAll().where((s) => s.isAchieved).toList();
+    final stars = starRepository.getAll().where((s) => s.isLit).toList();
 
     if (stars.isEmpty) {
       return _StatDetailScaffold(
@@ -146,7 +146,7 @@ class CurrentStreakDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final strings = context.strings;
-    final stars = starRepository.getAll().where((s) => s.isAchieved).toList();
+    final stars = starRepository.getAll().where((s) => s.isLit).toList();
     final dayCounts = starCountsByDay(stars);
     final range = currentStreakRange(dayCounts);
 
@@ -197,7 +197,7 @@ class LongestStreakDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final strings = context.strings;
-    final stars = starRepository.getAll().where((s) => s.isAchieved).toList();
+    final stars = starRepository.getAll().where((s) => s.isLit).toList();
     final dayCounts = starCountsByDay(stars);
     final range = longestStreakRange(dayCounts);
 

@@ -1,0 +1,50 @@
+name: Deploy web
+
+# Builds the Flutter web app and publishes it to GitHub Pages on every push
+# to main — so sharing a link with someone (see the app's own README-less
+# "share the web build with a friend" use case) always points at whatever
+# is currently on main, with no manual build/publish step needed.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deployment at a time; a newer push supersedes an
+# in-progress one rather than queuing behind it.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      # --base-href matches this repo's GitHub Pages URL
+      # (https://chiriacadrian2296.github.io/victory_stars/) — without it
+      # the built app's asset/script paths are absolute from the domain
+      # root and 404 under a project-site subpath.
+      - run: flutter build web --release --base-href /victory_stars/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

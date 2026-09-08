@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../data/constellation_shapes_v2.dart';
 import '../models/habit.dart';
@@ -1002,21 +1003,29 @@ class ConstellationFieldPainter extends CustomPainter {
     required this.placed,
     required this.camera,
     required this.zoom,
-    required this.glowSprite,
+    required this.flareProgram,
     required this.starColor,
     required this.coreColor,
     required this.habitColor,
     required this.revision,
+    this.time = 0,
   });
 
   final List<PlacedConstellation> placed;
   final SkyCamera camera;
   final double zoom;
-  final ui.Image? glowSprite;
+
+  /// Forwarded straight through to [ConstellationPainter.flareProgram] —
+  /// see its own doc comment.
+  final ui.FragmentProgram? flareProgram;
   final Color starColor;
   final Color coreColor;
   final Color habitColor;
   final int revision;
+
+  /// Forwarded straight through to [ConstellationPainter.time] — see its
+  /// own doc comment.
+  final double time;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1103,7 +1112,7 @@ class ConstellationFieldPainter extends CustomPainter {
       );
       ConstellationPainter(
         stars: constellation.renderStars,
-        glowSprite: glowSprite,
+        flareProgram: flareProgram,
         revision: revision,
         starColor: starColor,
         coreColor: coreColor,
@@ -1120,6 +1129,7 @@ class ConstellationFieldPainter extends CustomPainter {
         lineAlpha: 0.9,
         sparkleScale: 2.2,
         glowScale: 1.8,
+        time: time,
       ).paint(canvas, Size.square(localSizePx));
       canvas.restore();
 
@@ -1185,7 +1195,77 @@ class ConstellationFieldPainter extends CustomPainter {
     return revision != oldDelegate.revision ||
         camera != oldDelegate.camera ||
         zoom != oldDelegate.zoom ||
-        glowSprite != oldDelegate.glowSprite ||
-        placed.length != oldDelegate.placed.length;
+        flareProgram != oldDelegate.flareProgram ||
+        placed.length != oldDelegate.placed.length ||
+        time != oldDelegate.time;
+  }
+}
+
+/// A self-ticking wrapper around [ConstellationFieldPainter] — owns its own
+/// [Ticker] (same pattern as `NebulaBackground`'s) so the flare rays on lit
+/// stars (see [ConstellationPainter._drawGlowAndSparkle]) actually animate,
+/// without making the whole host screen repaint every frame just to feed
+/// this one painter a clock.
+class AnimatedConstellationField extends StatefulWidget {
+  const AnimatedConstellationField({
+    super.key,
+    required this.placed,
+    required this.camera,
+    required this.zoom,
+    required this.flareProgram,
+    required this.starColor,
+    required this.coreColor,
+    required this.habitColor,
+    required this.revision,
+  });
+
+  final List<PlacedConstellation> placed;
+  final SkyCamera camera;
+  final double zoom;
+  final ui.FragmentProgram? flareProgram;
+  final Color starColor;
+  final Color coreColor;
+  final Color habitColor;
+  final int revision;
+
+  @override
+  State<AnimatedConstellationField> createState() =>
+      _AnimatedConstellationFieldState();
+}
+
+class _AnimatedConstellationFieldState
+    extends State<AnimatedConstellationField>
+    with SingleTickerProviderStateMixin {
+  late final Ticker _ticker;
+  Duration _elapsed = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = createTicker((elapsed) => setState(() => _elapsed = elapsed))
+      ..start();
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: ConstellationFieldPainter(
+        placed: widget.placed,
+        camera: widget.camera,
+        zoom: widget.zoom,
+        flareProgram: widget.flareProgram,
+        starColor: widget.starColor,
+        coreColor: widget.coreColor,
+        habitColor: widget.habitColor,
+        revision: widget.revision,
+        time: _elapsed.inMicroseconds / Duration.microsecondsPerSecond,
+      ),
+    );
   }
 }

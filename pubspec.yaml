@@ -33,6 +33,7 @@ flutter:
     - assets/icon/app_icon_ring_centered.png
   shaders:
     - shaders/nebula_particles.frag
+    - shaders/constellation_flare.frag
     - shaders/sky_decorations.frag
     - shaders/sky_wisps.frag
     - shaders/sky_black_hole.frag

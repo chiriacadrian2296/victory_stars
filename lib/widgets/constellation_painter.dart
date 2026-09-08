@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -36,30 +37,22 @@ class ConstellationStar {
   final String label;
 }
 
-/// Renders a small white radial-gradient glow once and caches it as a
-/// [ui.Image], so [ConstellationPainter] can batch-draw hundreds of stars
-/// with a single `canvas.drawAtlas()` call (tinted per-star via its
-/// `colors` argument) instead of paying for a blurred [Paint] per star.
-Future<ui.Image> buildGlowSprite({double size = 48}) async {
-  final recorder = ui.PictureRecorder();
-  final canvas = Canvas(recorder);
-  final center = Offset(size / 2, size / 2);
-  final paint = Paint()
-    ..shader = ui.Gradient.radial(center, size / 2, [
-      Colors.white,
-      Colors.white.withValues(alpha: 0),
-    ]);
-  canvas.drawCircle(center, size / 2, paint);
-  final picture = recorder.endRecording();
-  final image = await picture.toImage(size.toInt(), size.toInt());
-  picture.dispose();
-  return image;
+/// Compiles `shaders/constellation_flare.frag` once — callers hold the
+/// returned [ui.FragmentProgram] (not a [ui.FragmentShader]) and call
+/// [ui.FragmentProgram.fragmentShader] fresh each time they actually draw
+/// with it (see [ConstellationPainter._drawGlowAndSparkle]): a `.frag`
+/// asset only needs compiling once, but each draw needs its *own* shader
+/// instance so its uniforms (this group's star positions) can't be
+/// overwritten by another draw's before the canvas actually gets
+/// rasterized.
+Future<ui.FragmentProgram> buildConstellationFlareProgram() {
+  return ui.FragmentProgram.fromAsset('shaders/constellation_flare.frag');
 }
 
 class ConstellationPainter extends CustomPainter {
   const ConstellationPainter({
     required this.stars,
-    required this.glowSprite,
+    required this.flareProgram,
     required this.revision,
     required this.starColor,
     required this.coreColor,
@@ -71,10 +64,26 @@ class ConstellationPainter extends CustomPainter {
     this.lineAlpha = 0.35,
     this.sparkleScale = 1,
     this.glowScale = 1,
+    this.time = 0,
   });
 
   final List<ConstellationStar> stars;
-  final ui.Image? glowSprite;
+
+  /// See [buildConstellationFlareProgram] — the compiled
+  /// `constellation_flare.frag` a lit star's flare is drawn with. Null
+  /// (or a group with too many stars for a single shader pass — see
+  /// [_drawGlowAndSparkle]'s own `kMaxFlareStars`) just skips the flare,
+  /// leaving the star's identity icon on its own.
+  final ui.FragmentProgram? flareProgram;
+
+  /// Seconds, free-running — drives the flare's flicker (see
+  /// [_drawGlowAndSparkle]) with the same 2-sine-product formula
+  /// `nebula_particles.frag`'s own `flareStarLayer()` uses, so a lit star
+  /// here pulses in sync with the same formula the background flare stars
+  /// use rather than sitting static. Defaults to 0 (a fixed, non-animated
+  /// flicker phase) so any caller that doesn't thread a real clock through
+  /// still renders correctly, just without the pulse.
+  final double time;
 
   /// Passed in rather than read from a static palette — a [CustomPainter]
   /// has no [BuildContext], and these must follow the active light/dark
@@ -145,8 +154,7 @@ class ConstellationPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final sprite = glowSprite;
-    if (sprite == null || stars.isEmpty) return;
+    if (stars.isEmpty) return;
     final sizeScale = size.width / _referenceSize;
 
     if (shapeStarCount >= linkThreshold && linkThreshold > 0) {
@@ -177,16 +185,7 @@ class ConstellationPainter extends CustomPainter {
         .where((s) => s.kind == StarKind.habit && !s.lit)
         .toList();
 
-    _drawGlowAndSparkle(
-      canvas,
-      size,
-      sprite,
-      lit,
-      tint: starColor,
-      sparkleColor: coreColor,
-      sparkleRadius: _sparkleRadius * sizeScale * sparkleScale,
-      spriteScale: sizeScale * glowScale,
-    );
+    _drawGlowAndSparkle(canvas, size, lit, flareRadius: size.width * 0.42);
     _drawSparkleOnly(
       canvas,
       size,
@@ -205,12 +204,8 @@ class ConstellationPainter extends CustomPainter {
     _drawGlowAndSparkle(
       canvas,
       size,
-      sprite,
       litHabits,
-      tint: habitColor,
-      sparkleColor: habitColor,
-      sparkleRadius: _habitSparkleRadius * sizeScale * sparkleScale,
-      spriteScale: sizeScale * 0.55 * glowScale,
+      flareRadius: size.width * 0.42 * 0.55,
     );
     _drawSparkleOnly(
       canvas,
@@ -221,81 +216,108 @@ class ConstellationPainter extends CustomPainter {
     );
   }
 
+  // Comfortably above any real constellation's star count — must match
+  // `constellation_flare.frag`'s own `kMaxStars` exactly (positions
+  // beyond however many stars actually exist are padded with (-1, -1),
+  // which the shader skips).
+  static const _kMaxFlareStars = 24;
+
   void _drawGlowAndSparkle(
     Canvas canvas,
     Size size,
-    ui.Image sprite,
     List<ConstellationStar> group, {
-    required Color tint,
-    required Color sparkleColor,
-    required double sparkleRadius,
-    double spriteScale = 1,
+    // A fraction of [size.width] (the caller always passes
+    // size.width * someFraction), not of [_sparkleRadius] — that constant
+    // is scaled for a small icon and, tied to
+    // `kSkyConstellationAngularSpan`'s own tiny sky patch, comes out to a
+    // fraction of a pixel at the Galaxy tab's typical zoom, nowhere near
+    // big enough for a flare meant to read as one of the bright stars in
+    // the sky. [size] itself (a constellation's own on-screen footprint —
+    // `localSizePx` in the Galaxy tab, a fixed 1000 in `ConstellationScreen`)
+    // scales with zoom the same way the bg's own flare stars do, so tying
+    // this to it keeps the ratio between the two roughly constant across
+    // zoom levels instead of needing a hand-tuned multiplier per case.
+    required double flareRadius,
   }) {
     if (group.isEmpty) return;
 
-    final srcRect = Rect.fromLTWH(
-      0,
-      0,
-      sprite.width.toDouble(),
-      sprite.height.toDouble(),
+    final program = flareProgram;
+    if (program == null) return;
+
+    // `constellation_flare.frag` — the exact same glow/spike/core math
+    // `nebula_particles.frag`'s own `flareStarLayer()` computes per pixel
+    // for the bg stars, just evaluated live against this group's actual
+    // star positions instead of a procedural lattice (see that shader's
+    // own doc comment for why this replaced two earlier, visibly weaker
+    // attempts: a pre-baked sprite stamped via drawAtlas, then a
+    // Canvas gradient+Path approximation). One shader pass covers every
+    // star in [group] at once — cheaper than one draw call per star, and
+    // avoids needing per-star canvas transforms (rotation is computed
+    // inside the shader, from each star's own position hash).
+    // [positions] are absolute canvas pixels (where to actually draw each
+    // star) — these shift continuously as the camera pans/zooms, since
+    // [size] itself (a constellation's own on-screen footprint) does.
+    // [seeds] are each star's *normalized* 0..1 position within its own
+    // constellation's local shape space instead — never affected by the
+    // camera at all — used only to seed the shader's per-star hash
+    // (flicker phase, rotation). Feeding that hash [positions] instead (an
+    // earlier version did) meant its own input value drifted continuously
+    // with the camera too, so every star's rotation angle jumped to a
+    // essentially new random value on every single pan/zoom frame instead
+    // of staying fixed between a star's own occasional flicker.
+    final positions = Float32List(_kMaxFlareStars * 2);
+    final seeds = Float32List(_kMaxFlareStars * 2);
+    for (var i = 0; i < _kMaxFlareStars; i++) {
+      if (i < group.length) {
+        final center = _toCanvas(group[i].position, size);
+        positions[i * 2] = center.dx;
+        positions[i * 2 + 1] = center.dy;
+        seeds[i * 2] = group[i].position.dx;
+        seeds[i * 2 + 1] = group[i].position.dy;
+      } else {
+        positions[i * 2] = -1;
+        positions[i * 2 + 1] = -1;
+      }
+    }
+
+    // A fresh shader instance per draw, from the already-compiled
+    // [program] (cheap — no recompilation) — not one shared instance
+    // reused across draws, since this same [program] gets a new shader
+    // for every group of every constellation, all within one frame, and
+    // sharing a single instance would risk a later draw's `setFloat`
+    // calls landing on an earlier draw's uniforms before the canvas is
+    // actually rasterized.
+    final shader = program.fragmentShader();
+    shader.setFloat(0, time);
+    shader.setFloat(1, flareRadius);
+    for (var i = 0; i < positions.length; i++) {
+      shader.setFloat(2 + i, positions[i]);
+    }
+    for (var i = 0; i < seeds.length; i++) {
+      shader.setFloat(2 + positions.length + i, seeds[i]);
+    }
+    // BlendMode.plus, not the default srcOver — this is the actual
+    // structural difference from the bg's own flare stars, not a tuning
+    // knob: nebula_particles.frag never has a transparent pixel at all
+    // (its main() always writes vec4(color, 1.0) — the flare stars are
+    // just added straight into that one always-opaque color before the
+    // single write), so real alpha-blend compositing never happens for
+    // them. This shader, drawn as its own separate layer over the sky/
+    // constellation content beneath it, *does* have to composite through
+    // real alpha at its low-alpha edges — and whatever the exact mismatch
+    // was (straight vs. premultiplied output, most likely), it kept
+    // reading as a dark/rough edge no matter how the falloff curve itself
+    // was retuned. Plus mode sidesteps the question entirely: it just
+    // adds this shader's (already alpha-weighted) color onto whatever's
+    // beneath, the same "pure addition into something already there"
+    // relationship the bg stars have with their own nebula backdrop —
+    // nothing for a blend-mode mismatch to darken.
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()
+        ..shader = shader
+        ..blendMode = BlendMode.plus,
     );
-    final transforms = <RSTransform>[];
-    final srcRects = <Rect>[];
-    final colors = <Color>[];
-
-    for (final star in group) {
-      final center = _toCanvas(star.position, size);
-      transforms.add(
-        RSTransform.fromComponents(
-          rotation: 0,
-          scale: spriteScale,
-          anchorX: sprite.width / 2,
-          anchorY: sprite.height / 2,
-          translateX: center.dx,
-          translateY: center.dy,
-        ),
-      );
-      srcRects.add(srcRect);
-      colors.add(tint);
-    }
-
-    canvas.drawAtlas(
-      sprite,
-      transforms,
-      srcRects,
-      colors,
-      BlendMode.modulate,
-      null,
-      Paint(),
-    );
-
-    // A miniature echo of `sky_supernova.frag`'s own four-point cross
-    // spike — same cardinal-rays shape, just a plain filled Path instead
-    // of a shader, and sized off this group's own [sparkleRadius] so a
-    // habit's smaller stars get proportionally smaller rays too. Drawn in
-    // [tint] (the same gold the glow blob above is tinted) rather than
-    // [sparkleColor], so it reads as an extension of the glow's own light
-    // reaching outward, with the bright sparkle core still the one crisp
-    // white point on top of it.
-    final spikes = _spikesPath(sparkleRadius * 3);
-    final spikePaint = Paint()..color = tint.withValues(alpha: 0.55);
-    for (final star in group) {
-      final center = _toCanvas(star.position, size);
-      canvas.save();
-      canvas.translate(center.dx, center.dy);
-      canvas.drawPath(spikes, spikePaint);
-      canvas.restore();
-    }
-
-    final sparkle = _sparklePath(sparkleRadius);
-    final corePaint = Paint()..color = sparkleColor;
-    for (final star in group) {
-      final center = _toCanvas(star.position, size);
-      canvas.save();
-      canvas.translate(center.dx, center.dy);
-      canvas.drawPath(sparkle, corePaint);
-      canvas.restore();
-    }
   }
 
   void _drawSparkleOnly(
@@ -326,11 +348,12 @@ class ConstellationPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant ConstellationPainter oldDelegate) {
     return revision != oldDelegate.revision ||
-        glowSprite != oldDelegate.glowSprite ||
+        flareProgram != oldDelegate.flareProgram ||
         starColor != oldDelegate.starColor ||
         coreColor != oldDelegate.coreColor ||
         habitColor != oldDelegate.habitColor ||
-        stars.length != oldDelegate.stars.length;
+        stars.length != oldDelegate.stars.length ||
+        time != oldDelegate.time;
   }
 }
 
@@ -346,28 +369,6 @@ Path _sparklePath(double radius) {
     ..quadraticBezierTo(-waist, waist, -radius, 0)
     ..quadraticBezierTo(-waist, -waist, 0, -radius)
     ..close();
-}
-
-/// Four thin rays radiating along the cardinal directions out to [radius]
-/// — a plain filled [Path] echo of `sky_supernova.frag`'s own cross spike
-/// (wide at the base, tapering to a point), scaled down to sit on a single
-/// star instead of filling the screen. A shader can't be reused here (this
-/// is a per-star Canvas draw, not a full-screen fragment pass), so this is
-/// a hand-built approximation of the same shape rather than a shared
-/// formula.
-Path _spikesPath(double radius) {
-  final halfBase = radius * 0.05;
-  final path = Path();
-  for (final direction in const [Offset(1, 0), Offset(-1, 0), Offset(0, 1), Offset(0, -1)]) {
-    final perp = Offset(-direction.dy, direction.dx) * halfBase;
-    final tip = direction * radius;
-    path
-      ..moveTo(-perp.dx, -perp.dy)
-      ..lineTo(perp.dx, perp.dy)
-      ..lineTo(tip.dx, tip.dy)
-      ..close();
-  }
-  return path;
 }
 
 Offset _toCanvas(Offset normalized, Size size) {

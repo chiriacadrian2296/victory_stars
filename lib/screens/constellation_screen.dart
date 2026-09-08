@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../data/constellation_layout.dart';
 import '../data/constellation_shapes_v2.dart';
@@ -77,7 +78,7 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
   late List<(int, int)> _edges;
   late int _shapeStarCount;
   int _revision = 0;
-  ui.Image? _glowSprite;
+  ui.FragmentProgram? _flareProgram;
   final _transformationController = TransformationController();
   bool _framed = false;
 
@@ -85,21 +86,20 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
   void initState() {
     super.initState();
     _loadData();
-    _loadGlowSprite();
+    _loadFlareProgram();
   }
 
   @override
   void dispose() {
-    _glowSprite?.dispose();
     _transformationController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadGlowSprite() async {
-    final sprite = await buildGlowSprite();
+  Future<void> _loadFlareProgram() async {
+    final program = await buildConstellationFlareProgram();
     if (!mounted) return;
     setState(() {
-      _glowSprite = sprite;
+      _flareProgram = program;
       _revision++;
     });
   }
@@ -292,19 +292,17 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
                                 );
                                 if (star != null) _openStar(star);
                               },
-                              child: CustomPaint(
-                                size: _canvasSize,
-                                painter: ConstellationPainter(
-                                  stars: _renderStars,
-                                  glowSprite: _glowSprite,
-                                  revision: _revision,
-                                  starColor: colors.gold,
-                                  coreColor: colors.text,
-                                  habitColor: colors.crisisMuted,
-                                  edges: _edges,
-                                  linkThreshold: shape.points.length,
-                                  shapeStarCount: _shapeStarCount,
-                                ),
+                              child: _TickingConstellationCanvas(
+                                canvasSize: _canvasSize,
+                                stars: _renderStars,
+                                flareProgram: _flareProgram,
+                                revision: _revision,
+                                starColor: colors.gold,
+                                coreColor: colors.text,
+                                habitColor: colors.crisisMuted,
+                                edges: _edges,
+                                linkThreshold: shape.points.length,
+                                shapeStarCount: _shapeStarCount,
                               ),
                             ),
                           ),
@@ -314,6 +312,80 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// A self-ticking wrapper around [ConstellationPainter] — owns its own
+/// [Ticker] (same pattern as `AnimatedConstellationField`'s in the Galaxy
+/// tab) so the flare rays' flicker on lit stars actually animates, without
+/// making the whole surrounding screen (toolbar, `InteractiveViewer`, etc.)
+/// rebuild every frame just to feed this one painter a clock.
+class _TickingConstellationCanvas extends StatefulWidget {
+  const _TickingConstellationCanvas({
+    required this.canvasSize,
+    required this.stars,
+    required this.flareProgram,
+    required this.revision,
+    required this.starColor,
+    required this.coreColor,
+    required this.habitColor,
+    required this.edges,
+    required this.linkThreshold,
+    required this.shapeStarCount,
+  });
+
+  final Size canvasSize;
+  final List<ConstellationStar> stars;
+  final ui.FragmentProgram? flareProgram;
+  final int revision;
+  final Color starColor;
+  final Color coreColor;
+  final Color habitColor;
+  final List<(int, int)> edges;
+  final int linkThreshold;
+  final int shapeStarCount;
+
+  @override
+  State<_TickingConstellationCanvas> createState() =>
+      _TickingConstellationCanvasState();
+}
+
+class _TickingConstellationCanvasState
+    extends State<_TickingConstellationCanvas>
+    with SingleTickerProviderStateMixin {
+  late final Ticker _ticker;
+  Duration _elapsed = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = createTicker((elapsed) => setState(() => _elapsed = elapsed))
+      ..start();
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: widget.canvasSize,
+      painter: ConstellationPainter(
+        stars: widget.stars,
+        flareProgram: widget.flareProgram,
+        revision: widget.revision,
+        starColor: widget.starColor,
+        coreColor: widget.coreColor,
+        habitColor: widget.habitColor,
+        edges: widget.edges,
+        linkThreshold: widget.linkThreshold,
+        shapeStarCount: widget.shapeStarCount,
+        time: _elapsed.inMicroseconds / Duration.microsecondsPerSecond,
       ),
     );
   }

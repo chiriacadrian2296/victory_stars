@@ -109,6 +109,82 @@ float starLayer(vec3 dir, float density, float twinkleSpeed, float seed) {
   return smoothstep(0.1, 0.0, dist) * brightness;
 }
 
+// A second, far sparser kind of background star — same cell-hash
+// placement technique as starLayer, but with actual light rays (a tiny
+// cross-shaped flare) and a white-hot core instead of a plain twinkling
+// gold dot, echoing sky_supernova.frag's own spike/core treatment at a
+// much smaller scale so these read as part of the same visual family as
+// the 8 area supernovas, not a different kind of graphic. Only ~1.5% of
+// cells hold one (step(0.985, h), vs. starLayer's own 20%) — these are
+// meant to be rare, eye-catching accents scattered through the base
+// field, not another layer of it.
+vec3 flareStarLayer(vec3 dir, float density, float seed) {
+  vec3 grid = dir * density;
+  vec3 cell = floor(grid);
+  vec3 local = fract(grid) - 0.5;
+
+  float h = hash3(cell + seed);
+  if (h < 0.985) return vec3(0.0);
+
+  // Kept close to this cell's own center (±0.15/axis, was ±0.3) — this
+  // function only ever looks at the current cell, never its neighbors, so
+  // a star placed too near an edge would have no way to finish rendering
+  // its glow/rays once a pixel crosses into the next cell over.
+  vec3 starPos = (vec3(
+    hash3(cell + seed * 2.0),
+    hash3(cell + seed * 3.0),
+    hash3(cell + seed * 4.0)
+  ) - 0.5) * 0.3;
+  vec3 diff = local - starPos;
+
+  // A local 2-axis frame tangent to the sphere at this pixel's own
+  // direction, built from the *camera's* own uRight (Gram-Schmidt: the
+  // component of uRight perpendicular to dir) rather than a world-up
+  // reference that flips to a different vector near the poles
+  // (sky_supernova.frag's supernova() does that, but it's anchored to
+  // each supernova's own fixed direction, so the flip only ever happens
+  // once per supernova, not once per star scattered across the whole
+  // sky). Tying every star's axes to the same camera basis instead makes
+  // every one of them line up consistently with the screen, rather than
+  // each getting its own, essentially arbitrary rotation depending on
+  // where it happens to sit — which is what read as some stars' rays
+  // looking crooked relative to the others.
+  vec3 axisA = normalize(uRight - dir * dot(uRight, dir));
+  vec3 axisB = cross(dir, axisA);
+  vec2 uv = vec2(dot(diff, axisA), dot(diff, axisB)) * 2.2;
+  float dist = length(uv);
+
+  // A per-star flicker — occasional brief brighten, echoing
+  // sky_supernova.frag's own flicker on the area supernovas, so these
+  // accent stars feel related rather than a separate, unrelated effect.
+  float flickerRaw = sin(uTime * 2.3 + h * 41.0) * sin(uTime * 0.9 + h * 17.0);
+  float flicker = pow(clamp(flickerRaw, 0.0, 1.0), 3.0);
+
+  float glow = exp(-dist * 9.0) * (0.7 + flicker * 0.8);
+  float baseWidth = 0.045;
+  float widthX = baseWidth * exp(-abs(uv.x) * 5.0);
+  float widthY = baseWidth * exp(-abs(uv.y) * 5.0);
+  float horizSpike = smoothstep(widthX, 0.0, abs(uv.y)) * exp(-abs(uv.x) * 5.0);
+  float vertSpike = smoothstep(widthY, 0.0, abs(uv.x)) * exp(-abs(uv.y) * 5.0);
+  float spikes = (horizSpike + vertSpike) * (0.8 + flicker * 0.6);
+  float core = smoothstep(0.1, 0.0, dist) * (1.0 + flicker * 0.5);
+
+  // Belt-and-braces on top of the tighter falloff above: fades this
+  // star's whole contribution to zero as the *pixel* approaches the
+  // cell's own boundary (0.5), starting at 0.34. Without this, any
+  // leftover reach past the cell edge reads as a hard, asymmetric slice
+  // through the star and its glow — this way it fades out smoothly and
+  // symmetrically well before the seam, whatever the star's own offset.
+  float edgeFade = smoothstep(
+    0.5,
+    0.34,
+    max(max(abs(local.x), abs(local.y)), abs(local.z))
+  );
+
+  vec3 colorCore = vec3(1.0, 0.98, 0.9);
+  return (kGold * (glow + spikes) + colorCore * core * 1.5) * edgeFade;
+}
+
 void main() {
   // A free-orientation camera at the center of the sky sphere — uForward/
   // uRight/uUp are its already-orthonormal basis, straight from
@@ -171,7 +247,12 @@ void main() {
   stars += starLayer(dir, 48.0, 3.1, 13.0) * 0.6;
   stars += starLayer(dir, 75.0, 4.0, 19.0) * 0.4;
 
-  vec3 color = nebula + kGold * stars;
+  // Only at the two sparser/larger-celled densities — a flare star this
+  // small already reads clearly at this scale; the denser layers would
+  // just place too many too close together.
+  vec3 flareStars = flareStarLayer(dir, 15.0, 31.0) + flareStarLayer(dir, 27.0, 37.0);
+
+  vec3 color = nebula + kGold * stars + flareStars;
 
   // Debug aid, toggled from NebulaScreen's own switch (uShowGrid) —
   // meridians/parallels every 15°, so panning/zoom can be calibrated by

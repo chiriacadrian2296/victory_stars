@@ -116,8 +116,8 @@ class _NebulaScreenState extends State<NebulaScreen>
   double _zoomAtGestureStart = 1;
 
   List<PlacedConstellation> _placed = [];
-  ui.Image? _glowSprite;
   int _revision = 0;
+  ui.FragmentProgram? _flareProgram;
 
   /// Momentum left over from a drag release, in pan-units (turns) per
   /// second — see [_handleScaleEnd]/[_onInertiaTick]. Google Earth's
@@ -171,6 +171,7 @@ class _NebulaScreenState extends State<NebulaScreen>
           duration: const Duration(milliseconds: 900),
         )..addListener(_onFlyTick);
     _loadData();
+    _loadFlareProgram();
     // Opens centered on "Love" rather than the world origin — with a
     // dozen-plus constellations spiraling out from there, landing on empty
     // space by default made the tab feel empty on first open. Leaves
@@ -185,14 +186,12 @@ class _NebulaScreenState extends State<NebulaScreen>
         break;
       }
     }
-    _loadGlowSprite();
   }
 
   @override
   void dispose() {
     _flyController.dispose();
     _inertiaTicker?.dispose();
-    _glowSprite?.dispose();
     super.dispose();
   }
 
@@ -252,11 +251,11 @@ class _NebulaScreenState extends State<NebulaScreen>
     }
   }
 
-  Future<void> _loadGlowSprite() async {
-    final sprite = await buildGlowSprite();
+  Future<void> _loadFlareProgram() async {
+    final program = await buildConstellationFlareProgram();
     if (!mounted) return;
     setState(() {
-      _glowSprite = sprite;
+      _flareProgram = program;
       _revision++;
     });
   }
@@ -804,24 +803,22 @@ class _NebulaScreenState extends State<NebulaScreen>
               // is explored; swap which one's active here to compare, none
               // of the files are deleted.
               SkySupernova(camera: _camera, zoom: _zoom),
-              CustomPaint(
-                painter: ConstellationFieldPainter(
-                  placed: _placed,
-                  camera: _camera,
-                  zoom: _zoom,
-                  glowSprite: _glowSprite,
-                  // A white core with a gold glow around it, matching
-                  // `SkySupernova`'s own icons (a plain white glyph over a
-                  // gold gradient border/glow) — starColor/habitColor tint
-                  // the soft glow blob and the connecting lines, coreColor
-                  // is the small bright sparkle mark drawn on top of it, so
-                  // there's still a crisp bright point to read as the star
-                  // itself instead of one flat gold blob.
-                  starColor: kConstellationGold,
-                  coreColor: Colors.white,
-                  habitColor: kConstellationGold,
-                  revision: _revision,
-                ),
+              AnimatedConstellationField(
+                placed: _placed,
+                camera: _camera,
+                zoom: _zoom,
+                flareProgram: _flareProgram,
+                // A white core with a gold glow around it, matching
+                // `SkySupernova`'s own icons (a plain white glyph over a
+                // gold gradient border/glow) — starColor/habitColor tint
+                // the soft glow blob and the connecting lines, coreColor
+                // is the small bright sparkle mark drawn on top of it, so
+                // there's still a crisp bright point to read as the star
+                // itself instead of one flat gold blob.
+                starColor: kConstellationGold,
+                coreColor: Colors.white,
+                habitColor: kConstellationGold,
+                revision: _revision,
               ),
               // Same disc/navy/gold styling as [_RollKnob] — one button
               // that both enters and exits fullscreen (see

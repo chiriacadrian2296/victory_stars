@@ -4,6 +4,7 @@ import '../data/project_repository.dart';
 import '../data/star_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_style.dart';
 import '../utils/star_stats.dart';
 import '../widgets/responsive_content.dart';
 import 'stat_detail_screen.dart';
@@ -164,7 +165,7 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final borderRadius = BorderRadius.circular(12);
+    final borderRadius = BorderRadius.circular(kRadiusCard);
     return Material(
       color: colors.nightPanel,
       borderRadius: borderRadius,
@@ -224,7 +225,7 @@ class _TotalStarsBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final borderRadius = BorderRadius.circular(16);
+    final borderRadius = BorderRadius.circular(kRadiusCard);
 
     return Material(
       color: Colors.transparent,

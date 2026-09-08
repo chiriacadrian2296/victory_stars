@@ -9,6 +9,7 @@ import '../models/habit.dart';
 import '../models/project.dart';
 import '../models/star_kind.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_style.dart';
 import '../utils/habit_stats.dart';
 import '../widgets/area_tag.dart';
 import '../widgets/intensity_bolts.dart';
@@ -230,14 +231,6 @@ class _PulsarReaderScreenState extends State<PulsarReaderScreen> {
                         onPressed: _reignite,
                         icon: const Icon(Icons.auto_fix_high),
                         label: Text(strings.reigniteAction),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: colors.gold,
-                          foregroundColor: colors.onGold,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
                       ),
                     ),
                   ] else ...[
@@ -282,11 +275,7 @@ class _PulsarReaderScreenState extends State<PulsarReaderScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
                     clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      color: colors.nightPanel,
-                      border: Border.all(color: colors.nightBorder),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    decoration: panelDecoration(colors),
                     child: StarHeatmap(
                       countsByDay: countsByDay,
                       intensityByDay: countsByDay,
@@ -295,32 +284,20 @@ class _PulsarReaderScreenState extends State<PulsarReaderScreen> {
                   const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () => _toggleToday(doneToday),
-                      icon: Icon(
-                        doneToday
-                            ? Icons.check_circle
-                            : Icons.radio_button_unchecked,
-                      ),
-                      label: Text(
-                        doneToday
-                            ? strings.habitDoneTodayLabel
-                            : strings.markHabitDoneAction,
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: doneToday
-                            ? colors.nightPanel
-                            : colors.gold,
-                        foregroundColor: doneToday
-                            ? colors.gold
-                            : colors.onGold,
-                        side: doneToday ? BorderSide(color: colors.gold) : null,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                    ),
+                    // Done today reads as the secondary (outlined) form of
+                    // the same action: the pulsar is already burning, so
+                    // the button stops being the thing to reach for.
+                    child: doneToday
+                        ? OutlinedButton.icon(
+                            onPressed: () => _toggleToday(true),
+                            icon: const Icon(Icons.check_circle),
+                            label: Text(strings.habitDoneTodayLabel),
+                          )
+                        : ElevatedButton.icon(
+                            onPressed: () => _toggleToday(false),
+                            icon: const Icon(Icons.radio_button_unchecked),
+                            label: Text(strings.markHabitDoneAction),
+                          ),
                   ),
                   if (doneToday) ...[
                     const SizedBox(height: 8),

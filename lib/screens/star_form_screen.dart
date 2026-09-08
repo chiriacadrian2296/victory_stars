@@ -13,12 +13,15 @@ import '../models/project.dart';
 import '../models/star.dart';
 import '../models/star_kind.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_style.dart';
 import '../utils/date_format.dart';
+import '../utils/icon_for_slug.dart';
+import '../widgets/app_action_disc.dart';
+import '../widgets/app_field.dart';
 import '../widgets/area_tag.dart';
 import '../widgets/intensity_bolts.dart';
 import '../widgets/photo_picker.dart';
 import '../widgets/project_picker.dart';
-import '../widgets/project_tag.dart';
 import '../widgets/responsive_content.dart';
 import '../widgets/star_glyph.dart';
 import 'photo_crop_screen.dart';
@@ -326,17 +329,18 @@ class _StarFormScreenState extends State<StarFormScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: colors.nightPanel,
-        title: Text(title, style: TextStyle(color: colors.text)),
-        content: Text(body, style: TextStyle(color: colors.muted)),
+        title: Text(title),
+        content: Text(body),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(strings.cancel, style: TextStyle(color: colors.muted)),
+            style: TextButton.styleFrom(foregroundColor: colors.muted),
+            child: Text(strings.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(confirmLabel, style: TextStyle(color: colors.danger)),
+            style: TextButton.styleFrom(foregroundColor: colors.danger),
+            child: Text(confirmLabel),
           ),
         ],
       ),
@@ -371,21 +375,16 @@ class _StarFormScreenState extends State<StarFormScreen> {
   }
 
   void _showCannotSaveMessage() {
-    final colors = context.colors;
     final strings = context.strings;
     showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: colors.nightPanel,
-        content: Text(
-          strings.cannotSaveMissingInfo,
-          style: TextStyle(color: colors.text),
-        ),
+        content: Text(strings.cannotSaveMissingInfo),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(strings.gotIt, style: TextStyle(color: colors.gold)),
+            child: Text(strings.gotIt),
           ),
         ],
       ),
@@ -401,7 +400,6 @@ class _StarFormScreenState extends State<StarFormScreen> {
 
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
-      backgroundColor: colors.nightPanel,
       builder: (sheetContext) {
         return SafeArea(
           child: Column(
@@ -631,47 +629,15 @@ class _StarFormScreenState extends State<StarFormScreen> {
                 ],
                 const SizedBox(height: 24),
                 if (widget.lockedProject == null) ...[
-                  Text(
-                    strings.projectLabel,
-                    style: TextStyle(fontSize: 13, color: colors.muted),
-                  ),
-                  const SizedBox(height: 6),
-                  InkWell(
+                  AppPickerField(
+                    label: strings.projectLabel,
+                    hint: strings.selectAProject,
+                    icon: _selectedProject == null
+                        ? Icons.auto_awesome_outlined
+                        : iconForSlug(_selectedProject!.iconSlug),
+                    text: _selectedProject?.name,
                     onTap: _openProjectPicker,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colors.nightPanel,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: colors.nightBorder),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _selectedProject != null
-                                ? ProjectTag(
-                                    project: _selectedProject!,
-                                    iconSize: 18,
-                                    fontSize: 15,
-                                    textColor: colors.text,
-                                  )
-                                : Text(
-                                    strings.selectAProject,
-                                    style: TextStyle(
-                                      color: colors.muted,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                          ),
-                          Icon(Icons.expand_more, color: colors.muted),
-                        ],
-                      ),
-                    ),
+                    trailing: Icon(Icons.expand_more, color: colors.muted),
                   ),
                   const SizedBox(height: 20),
                 ],
@@ -680,7 +646,7 @@ class _StarFormScreenState extends State<StarFormScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: _DateField(
+                        child: AppPickerField(
                           label: strings.dateLabel,
                           hint: strings.selectADateHint,
                           icon: Icons.calendar_today,
@@ -692,7 +658,7 @@ class _StarFormScreenState extends State<StarFormScreen> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _DateField(
+                        child: AppPickerField(
                           label: strings.timeLabel,
                           hint: strings.selectATimeHint,
                           icon: Icons.access_time,
@@ -706,7 +672,7 @@ class _StarFormScreenState extends State<StarFormScreen> {
                   ),
                   const SizedBox(height: 20),
                 ] else if (_kind == StarKind.unlit) ...[
-                  _DateField(
+                  AppPickerField(
                     label: strings.targetDateLabel,
                     hint: strings.selectATargetDateHint,
                     icon: Icons.flag_outlined,
@@ -717,34 +683,24 @@ class _StarFormScreenState extends State<StarFormScreen> {
                   ),
                   const SizedBox(height: 20),
                 ],
-                Text(
-                  strings.titleFieldLabel,
-                  style: TextStyle(fontSize: 13, color: colors.muted),
-                ),
+                AppFieldLabel(strings.titleFieldLabel),
                 const SizedBox(height: 6),
-                TextField(
+                AppTextField(
                   controller: _titleController,
                   textInputAction: TextInputAction.next,
-                  style: TextStyle(color: colors.text, fontSize: 15),
-                  decoration: InputDecoration(
-                    hintText: _kind == StarKind.pulsar
-                        ? strings.pulsarTitleHint
-                        : strings.titleHint,
-                  ),
+                  hintText: _kind == StarKind.pulsar
+                      ? strings.pulsarTitleHint
+                      : strings.titleHint,
                   onChanged: (_) => setState(() {}),
                 ),
                 const SizedBox(height: 20),
-                Text(
-                  strings.detailsLabel,
-                  style: TextStyle(fontSize: 13, color: colors.muted),
-                ),
+                AppFieldLabel(strings.detailsLabel),
                 const SizedBox(height: 6),
-                TextField(
+                AppTextField(
                   controller: _descriptionController,
                   minLines: _kind == StarKind.pulsar ? 3 : 4,
                   maxLines: 6,
-                  style: TextStyle(color: colors.text, fontSize: 15),
-                  decoration: InputDecoration(hintText: strings.detailsHint),
+                  hintText: strings.detailsHint,
                   onChanged: (_) => setState(() {}),
                 ),
                 // Every kind that's already burning carries an intensity —
@@ -753,10 +709,7 @@ class _StarFormScreenState extends State<StarFormScreen> {
                 // gets one the moment it's lit.
                 if (_kind != StarKind.unlit) ...[
                   const SizedBox(height: 20),
-                  Text(
-                    strings.intensityLabel,
-                    style: TextStyle(fontSize: 13, color: colors.muted),
-                  ),
+                  AppFieldLabel(strings.intensityLabel),
                   const SizedBox(height: 4),
                   Text(
                     strings.intensityCaption,
@@ -776,32 +729,20 @@ class _StarFormScreenState extends State<StarFormScreen> {
                   Center(
                     child: FractionallySizedBox(
                       widthFactor: 0.7,
-                      child: SliderTheme(
-                        data: SliderTheme.of(context).copyWith(
-                          activeTrackColor: colors.gold,
-                          inactiveTrackColor: colors.nightBorder,
-                          thumbColor: colors.gold,
-                          overlayColor: Colors.transparent,
-                          overlayShape: SliderComponentShape.noOverlay,
-                        ),
-                        child: Slider(
-                          value: _intensity.toDouble(),
-                          min: 1,
-                          max: 5,
-                          divisions: 4,
-                          onChanged: (value) =>
-                              setState(() => _intensity = value.round()),
-                        ),
+                      child: Slider(
+                        value: _intensity.toDouble(),
+                        min: 1,
+                        max: 5,
+                        divisions: 4,
+                        onChanged: (value) =>
+                            setState(() => _intensity = value.round()),
                       ),
                     ),
                   ),
                 ],
                 if (_kind == StarKind.lit) ...[
                   const SizedBox(height: 20),
-                  Text(
-                    strings.photoLabel,
-                    style: TextStyle(fontSize: 13, color: colors.muted),
-                  ),
+                  AppFieldLabel(strings.photoLabel),
                   const SizedBox(height: 6),
                   PhotoPicker(
                     photoPath: _photoPath,
@@ -811,49 +752,44 @@ class _StarFormScreenState extends State<StarFormScreen> {
                 ],
                 if (_kind == StarKind.pulsar) ...[
                   const SizedBox(height: 20),
-                  Text(
-                    strings.habitFrequencyLabel,
-                    style: TextStyle(fontSize: 13, color: colors.muted),
-                  ),
+                  AppFieldLabel(strings.habitFrequencyLabel),
                   const SizedBox(height: 6),
+                  // Fixed to daily in v1, so it's shown as a filled field
+                  // rather than a picker — it already holds its answer.
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
                       vertical: 12,
                     ),
-                    decoration: BoxDecoration(
-                      color: colors.nightPanel,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: colors.nightBorder),
-                    ),
+                    decoration: fieldDecoration(colors, FieldState.filled),
                     child: Row(
                       children: [
-                        Icon(Icons.repeat, size: 16, color: colors.gold),
+                        Icon(Icons.repeat, size: 20, color: colors.gold),
                         const SizedBox(width: 10),
                         Text(
                           strings.habitFrequencyDaily,
-                          style: TextStyle(color: colors.text, fontSize: 15),
+                          style: TextStyle(
+                            color: colors.text,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 20),
                   Material(
-                    color: colors.nightPanel,
-                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(kRadiusCard),
                     child: Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: colors.nightBorder),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      decoration: panelDecoration(colors),
                       child: Column(
                         children: [
                           SwitchListTile(
                             value: _customReminder,
                             onChanged: (value) =>
                                 setState(() => _customReminder = value),
-                            activeThumbColor: colors.gold,
                             title: Text(
                               strings.customReminderToggleLabel,
                               style: TextStyle(
@@ -895,17 +831,10 @@ class _StarFormScreenState extends State<StarFormScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (widget.isEditing && !widget.hideDelete) ...[
-                        FloatingActionButton(
+                        AppActionDisc.danger(
                           heroTag: 'deleteStarFab',
                           onPressed: _confirmAndDelete,
-                          backgroundColor: colors.danger,
-                          elevation: 0,
-                          shape: const CircleBorder(),
                           tooltip: strings.deleteStarAction,
-                          child: Icon(
-                            Icons.delete_outline,
-                            color: colors.night,
-                          ),
                         ),
                         const SizedBox(width: 20),
                       ],
@@ -916,38 +845,18 @@ class _StarFormScreenState extends State<StarFormScreen> {
                               value.text.trim().isNotEmpty &&
                               _selectedProject != null &&
                               (!widget.isEditing || _hasUnsavedChanges);
-                          return Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              boxShadow: canSave
-                                  ? [
-                                      BoxShadow(
-                                        color: colors.gold.withValues(
-                                          alpha: 0.35,
-                                        ),
-                                        blurRadius: 20,
-                                        offset: const Offset(0, 6),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: FloatingActionButton(
-                              heroTag: 'saveStarFab',
-                              onPressed: canSave
-                                  ? _save
-                                  : _showCannotSaveMessage,
-                              backgroundColor: canSave
-                                  ? colors.gold
-                                  : colors.muted,
-                              elevation: 0,
-                              shape: const CircleBorder(),
-                              tooltip: widget.isEditing
-                                  ? strings.saveChanges
-                                  : (_kind == StarKind.lit
-                                        ? strings.lightThisStar
-                                        : strings.placeThisStarAction),
-                              child: Icon(Icons.check, color: colors.night),
-                            ),
+                          return AppActionDisc(
+                            heroTag: 'saveStarFab',
+                            icon: Icons.check,
+                            lit: canSave,
+                            onPressed: canSave
+                                ? _save
+                                : _showCannotSaveMessage,
+                            tooltip: widget.isEditing
+                                ? strings.saveChanges
+                                : (_kind == StarKind.lit
+                                      ? strings.lightThisStar
+                                      : strings.placeThisStarAction),
                           );
                         },
                       ),
@@ -1001,19 +910,12 @@ class _StarKindSwitch extends StatelessWidget {
           Expanded(
             child: InkWell(
               onTap: () => onChanged(kinds[i]),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(kRadiusField),
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: kinds[i] == selected
-                      ? colors.gold.withValues(alpha: 0.12)
-                      : colors.nightPanel,
-                  border: Border.all(
-                    color: kinds[i] == selected
-                        ? colors.gold.withValues(alpha: 0.55)
-                        : colors.nightBorder,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
+                decoration: selectableDecoration(
+                  colors,
+                  selected: kinds[i] == selected,
                 ),
                 child: Column(
                   children: [
@@ -1084,63 +986,6 @@ class _StarKindMeaning extends StatelessWidget {
               style: TextStyle(fontSize: 12, color: colors.muted),
             ),
           ],
-        ),
-      ],
-    );
-  }
-}
-
-class _DateField extends StatelessWidget {
-  const _DateField({
-    required this.label,
-    required this.hint,
-    required this.icon,
-    required this.text,
-    required this.onTap,
-  });
-
-  final String label;
-  final String hint;
-  final IconData icon;
-  final String? text;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(fontSize: 13, color: colors.muted)),
-        const SizedBox(height: 6),
-        InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: colors.nightPanel,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: colors.nightBorder),
-            ),
-            child: Row(
-              children: [
-                Icon(icon, size: 16, color: colors.muted),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    text ?? hint,
-                    style: TextStyle(
-                      color: text == null ? colors.muted : colors.text,
-                      fontSize: 15,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ),
       ],
     );

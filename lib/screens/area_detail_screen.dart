@@ -6,6 +6,7 @@ import '../data/star_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../models/life_area.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_style.dart';
 import '../utils/star_stats.dart';
 import '../widgets/area_tag.dart';
 import '../widgets/responsive_content.dart';
@@ -201,23 +202,11 @@ class _AreaDetailScreenState extends State<AreaDetailScreen> {
                       onPressed: _editingVision
                           ? _confirmVision
                           : _startEditingVision,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: colors.gold,
-                        side: BorderSide(color: colors.gold),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
                       icon: Icon(_editingVision ? Icons.check : Icons.edit),
                       label: Text(
                         _editingVision
                             ? strings.saveChanges
                             : strings.editVisionAction,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
                       ),
                     ),
                   ),
@@ -245,11 +234,7 @@ class _StatBlock extends StatelessWidget {
     final colors = context.colors;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-      decoration: BoxDecoration(
-        color: colors.nightPanel,
-        border: Border.all(color: colors.nightBorder),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: panelDecoration(colors),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

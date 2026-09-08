@@ -7,6 +7,7 @@ import '../l10n/strings_scope.dart';
 import '../models/life_area.dart';
 import '../models/star_kind.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_style.dart';
 import '../widgets/constellation_field.dart' show kSkyStarPalette;
 import '../widgets/constellation_painter.dart';
 import '../widgets/responsive_content.dart';
@@ -189,11 +190,7 @@ class _LevelSection extends StatelessWidget {
     final strings = context.strings;
 
     return Container(
-      decoration: BoxDecoration(
-        color: colors.nightPanel,
-        border: Border.all(color: colors.nightBorder),
-        borderRadius: BorderRadius.circular(14),
-      ),
+      decoration: panelDecoration(colors),
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -279,11 +276,7 @@ class _KindCard extends StatelessWidget {
     final strings = context.strings;
 
     return Container(
-      decoration: BoxDecoration(
-        color: colors.nightPanel,
-        border: Border.all(color: colors.nightBorder),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: panelDecoration(colors),
       padding: const EdgeInsets.fromLTRB(14, 14, 16, 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

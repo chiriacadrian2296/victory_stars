@@ -6,6 +6,7 @@ import '../models/project.dart';
 import '../models/star.dart';
 import '../models/star_kind.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_style.dart';
 import '../utils/date_format.dart';
 import 'area_tag.dart';
 import 'navigate_here_button.dart';
@@ -90,7 +91,7 @@ class DeadStarCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final strings = context.strings;
-    final borderRadius = BorderRadius.circular(12);
+    final borderRadius = BorderRadius.circular(kRadiusCard);
 
     final card = Material(
       color: Colors.transparent,
@@ -98,11 +99,7 @@ class DeadStarCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: borderRadius,
         child: Ink(
-          decoration: BoxDecoration(
-            color: colors.nightPanel,
-            border: Border.all(color: colors.nightBorder),
-            borderRadius: borderRadius,
-          ),
+          decoration: panelDecoration(colors),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
             child: Column(

@@ -18,9 +18,11 @@ import '../screens/constellation_screen.dart';
 import '../screens/pulsar_reader_screen.dart';
 import '../screens/star_reader_screen.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_style.dart';
 import '../utils/date_format.dart';
 import '../utils/habit_stats.dart';
 import '../utils/icon_for_slug.dart';
+import 'app_field.dart';
 import 'area_filter_sheet.dart';
 import 'area_tag.dart';
 import 'dead_star_card.dart';
@@ -113,6 +115,7 @@ class SkyExplorerView extends StatefulWidget {
 
 class _SkyExplorerViewState extends State<SkyExplorerView> {
   _SkyMode _mode = _SkyMode.supernovas;
+  final _queryController = TextEditingController();
   String _query = '';
   Set<StarKind> _kindFilter = {...kListableStarKinds};
   Set<LifeArea> _areaFilter = {...LifeArea.values};
@@ -193,6 +196,12 @@ class _SkyExplorerViewState extends State<SkyExplorerView> {
     _SkyMode.constellations => strings.constellationsModeLabel,
     _SkyMode.stars => strings.listModeLabel,
   };
+
+  @override
+  void dispose() {
+    _queryController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -309,7 +318,6 @@ class _SkyExplorerViewState extends State<SkyExplorerView> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
                   child: SegmentedButton<_SkyMode>(
-                    style: _segmentedButtonStyle(colors),
                     showSelectedIcon: false,
                     segments: const [
                       ButtonSegment(
@@ -339,20 +347,15 @@ class _SkyExplorerViewState extends State<SkyExplorerView> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: TextField(
+                          child: AppTextField(
+                            controller: _queryController,
+                            hintText: strings.searchHint,
                             onChanged: (value) =>
                                 setState(() => _query = value),
-                            style: TextStyle(
-                              color: colors.text,
-                              fontSize: 15,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: strings.searchHint,
-                              prefixIcon: Icon(
-                                Icons.search,
-                                color: colors.muted,
-                                size: 20,
-                              ),
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: colors.muted,
+                              size: 20,
                             ),
                           ),
                         ),
@@ -455,18 +458,15 @@ class _AreaCard extends StatelessWidget {
     final strings = context.strings;
 
     return Material(
-      color: colors.nightPanel,
-      borderRadius: BorderRadius.circular(12),
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(kRadiusCard),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(kRadiusCard),
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: BoxDecoration(
-            border: Border.all(color: colors.nightBorder),
-            borderRadius: BorderRadius.circular(12),
-          ),
+          decoration: panelDecoration(colors),
           child: Row(
             children: [
               // Mirrors the trailing button's own width so the tag stays
@@ -510,22 +510,15 @@ class _AreaFilterButton extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: active ? colors.gold.withValues(alpha: 0.14) : colors.nightPanel,
-        borderRadius: BorderRadius.circular(10),
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(kRadiusField),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(kRadiusField),
           child: Container(
             width: 48,
             height: 48,
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: active
-                    ? colors.gold.withValues(alpha: 0.5)
-                    : colors.nightBorder,
-              ),
-              borderRadius: BorderRadius.circular(10),
-            ),
+            decoration: selectableDecoration(colors, selected: active),
             child: Stack(
               alignment: Alignment.center,
               children: [
@@ -785,19 +778,14 @@ class _ProjectCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final strings = context.strings;
-    final borderRadius = BorderRadius.circular(12);
+    final borderRadius = BorderRadius.circular(kRadiusCard);
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         borderRadius: borderRadius,
-        child: Ink(
-          decoration: BoxDecoration(
-            color: colors.nightPanel,
-            border: Border.all(color: colors.nightBorder),
-            borderRadius: borderRadius,
-          ),
+        child: Ink(decoration: panelDecoration(colors),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
             child: Row(
@@ -907,7 +895,7 @@ class _MetricBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: colors.gold.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(kRadiusPill),
         border: Border.all(color: colors.gold.withValues(alpha: 0.4)),
       ),
       child: Row(
@@ -949,12 +937,3 @@ class _StatChip extends StatelessWidget {
   }
 }
 
-ButtonStyle _segmentedButtonStyle(AppColors colors) {
-  return SegmentedButton.styleFrom(
-    backgroundColor: colors.nightPanel,
-    foregroundColor: colors.muted,
-    selectedBackgroundColor: colors.gold,
-    selectedForegroundColor: colors.onGold,
-    side: BorderSide(color: colors.nightBorder),
-  );
-}

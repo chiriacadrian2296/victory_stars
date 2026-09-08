@@ -190,22 +190,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () => _next(pages.length),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colors.gold,
-                      foregroundColor: colors.onGold,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
                     child: Text(
                       _index == pages.length - 1
                           ? strings.onboardingGetStartedAction
                           : strings.onboardingNextAction,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                      ),
                     ),
                   ),
                 ),

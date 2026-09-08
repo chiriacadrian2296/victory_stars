@@ -209,7 +209,6 @@ class _StarReaderScreenState extends State<StarReaderScreen> {
     final current = _stars[_index];
     final result = await showModalBottomSheet<_MarkAchievedResult>(
       context: context,
-      backgroundColor: context.colors.nightPanel,
       isScrollControlled: true,
       builder: (_) => const _MarkAchievedSheet(),
     );
@@ -799,7 +798,6 @@ class _MarkAchievedSheetState extends State<_MarkAchievedSheet> {
 
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
-      backgroundColor: colors.nightPanel,
       builder: (sheetContext) {
         return SafeArea(
           child: Column(
@@ -884,19 +882,12 @@ class _MarkAchievedSheetState extends State<_MarkAchievedSheet> {
               emphasizeLast: true,
               emphasizedScale: 1.6,
             ),
-            SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                activeTrackColor: colors.gold,
-                inactiveTrackColor: colors.nightBorder,
-                thumbColor: colors.gold,
-              ),
-              child: Slider(
-                value: _intensity.toDouble(),
-                min: 1,
-                max: 5,
-                divisions: 4,
-                onChanged: (v) => setState(() => _intensity = v.round()),
-              ),
+            Slider(
+              value: _intensity.toDouble(),
+              min: 1,
+              max: 5,
+              divisions: 4,
+              onChanged: (v) => setState(() => _intensity = v.round()),
             ),
             const SizedBox(height: 6),
             Align(
@@ -920,14 +911,6 @@ class _MarkAchievedSheetState extends State<_MarkAchievedSheet> {
                   _MarkAchievedResult(
                     intensity: _intensity,
                     photoPath: _photoPath,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.gold,
-                  foregroundColor: colors.onGold,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
                   ),
                 ),
                 child: Text(strings.markAchievedConfirm),

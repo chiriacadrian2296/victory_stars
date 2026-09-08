@@ -6,6 +6,7 @@ import '../l10n/strings_scope.dart';
 import '../models/life_area.dart';
 import '../models/star.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_style.dart';
 import '../utils/date_format.dart';
 import '../utils/star_stats.dart';
 import '../widgets/area_tag.dart';
@@ -357,7 +358,7 @@ class _DetailCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
         border: Border.all(color: colors.crisisMuted.withValues(alpha: 0.15)),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(kRadiusCard),
       ),
       child: Column(
         children: divideRows

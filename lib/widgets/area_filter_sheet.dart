@@ -4,6 +4,8 @@ import '../l10n/strings_scope.dart';
 import '../models/life_area.dart';
 import '../models/star_kind.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_style.dart';
+import 'app_toggle_chip.dart';
 import 'star_glyph.dart';
 
 /// Opens the filter modal used by Sky's Constellations/Stars views. Always
@@ -23,10 +25,8 @@ Future<({Set<LifeArea> areas, Set<StarKind>? kinds})?> showAreaFilterSheet(
   required Set<LifeArea> selectedAreas,
   Set<StarKind>? selectedKinds,
 }) {
-  final colors = context.colors;
   return showModalBottomSheet<({Set<LifeArea> areas, Set<StarKind>? kinds})>(
     context: context,
-    backgroundColor: colors.nightPanel,
     isScrollControlled: true,
     builder: (_) => _AreaFilterSheet(
       initialAreas: selectedAreas,
@@ -98,7 +98,7 @@ class _AreaFilterSheetState extends State<_AreaFilterSheet> {
           children: [
             _SectionTitle(strings.skyModeSupernovas),
             const SizedBox(height: 10),
-            _AllToggleSwitch(
+            AppToggleChip(
               label: strings.allAreasLabel,
               value: _allAreasSelected,
               onChanged: (_) => _toggleAllAreas(),
@@ -133,7 +133,7 @@ class _AreaFilterSheetState extends State<_AreaFilterSheet> {
               const SizedBox(height: 16),
               _SectionTitle(strings.filterKindSectionTitle),
               const SizedBox(height: 10),
-              _AllToggleSwitch(
+              AppToggleChip(
                 label: strings.allKindsLabel,
                 value: _allKindsSelected,
                 onChanged: (_) => _toggleAllKinds(),
@@ -176,21 +176,7 @@ class _AreaFilterSheetState extends State<_AreaFilterSheet> {
               child: ElevatedButton(
                 onPressed: () =>
                     Navigator.of(context).pop((areas: _areas, kinds: _kinds)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.gold,
-                  foregroundColor: colors.onGold,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: Text(
-                  strings.applyAreaFilterAction,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
-                ),
+                child: Text(strings.applyAreaFilterAction),
               ),
             ),
           ],
@@ -227,20 +213,10 @@ class _FilterChip extends StatelessWidget {
     final colors = context.colors;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(kRadiusField),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: selected
-              ? colors.gold.withValues(alpha: 0.14)
-              : Colors.transparent,
-          border: Border.all(
-            color: selected
-                ? colors.gold.withValues(alpha: 0.5)
-                : colors.nightBorder,
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
+        decoration: selectableDecoration(colors, selected: selected),
         child: Row(
           children: [
             Icon(
@@ -296,85 +272,3 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-/// The "select everything in this section" toggle — shrink-wrapped and
-/// centered rather than stretched edge to edge, so it reads as one compact
-/// control rather than a full-width bar competing with the section title
-/// above it.
-class _AllToggleSwitch extends StatelessWidget {
-  const _AllToggleSwitch({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String label;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Center(
-      child: InkWell(
-        onTap: () => onChanged(!value),
-        borderRadius: BorderRadius.circular(22),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: value
-                ? colors.gold.withValues(alpha: 0.1)
-                : Colors.transparent,
-            border: Border.all(color: value ? colors.gold : colors.nightBorder),
-            borderRadius: BorderRadius.circular(22),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: colors.text,
-                  fontWeight: value ? FontWeight.w600 : FontWeight.w400,
-                ),
-              ),
-              const SizedBox(width: 10),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                width: 38,
-                height: 22,
-                padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  color: value
-                      ? colors.gold.withValues(alpha: 0.3)
-                      : colors.muted.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(11),
-                  border: Border.all(
-                    color: value
-                        ? colors.gold.withValues(alpha: 0.6)
-                        : colors.muted.withValues(alpha: 0.4),
-                  ),
-                ),
-                child: AnimatedAlign(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOut,
-                  alignment: value
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
-                  child: Container(
-                    width: 14,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: value ? colors.gold : colors.muted,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}

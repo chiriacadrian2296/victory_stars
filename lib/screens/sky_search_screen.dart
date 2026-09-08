@@ -8,6 +8,7 @@ import '../data/project_repository.dart';
 import '../data/star_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_style.dart';
 import '../widgets/sky_explorer_view.dart';
 
 /// A full-screen popup opened from the Sky's sky-search overlay
@@ -63,7 +64,12 @@ class _SkySearchScreenState extends State<SkySearchScreen> {
                 children: [
                   Material(
                     color: colors.nightPanel.withValues(alpha: 0.75),
-                    shape: const CircleBorder(),
+                    shape: CircleBorder(
+                      side: BorderSide(
+                        color: colors.gold,
+                        width: kBorderWidthActive,
+                      ),
+                    ),
                     child: InkWell(
                       customBorder: const CircleBorder(),
                       onTap: () => Navigator.of(context).pop(),

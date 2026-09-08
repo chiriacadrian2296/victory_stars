@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/strings_scope.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_style.dart';
 import 'photo_image.dart';
 
 /// Either an empty tappable placeholder (no photo yet) or a preview of the
@@ -29,15 +30,12 @@ class PhotoPicker extends StatelessWidget {
     if (path == null) {
       return InkWell(
         onTap: onPick,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(kRadiusField),
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 20),
-          decoration: BoxDecoration(
-            color: colors.nightPanel,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: colors.nightBorder),
-          ),
+          // Empty: the same dark, waiting field every other empty field is.
+          decoration: fieldDecoration(colors, FieldState.empty),
           child: Column(
             children: [
               Icon(Icons.add_a_photo_outlined, color: colors.muted, size: 22),
@@ -52,7 +50,7 @@ class PhotoPicker extends StatelessWidget {
       );
     }
 
-    final borderRadius = BorderRadius.circular(10);
+    final borderRadius = BorderRadius.circular(kRadiusField);
     final previewWidth = MediaQuery.sizeOf(context).width * 0.88;
     final previewHeight = previewWidth * 16 / 9;
     return SizedBox(

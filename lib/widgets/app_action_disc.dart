@@ -1,0 +1,72 @@
+import 'package:flutter/material.dart';
+
+import '../theme/app_colors.dart';
+import '../theme/app_style.dart';
+
+/// The round primary action at the bottom of every form — save a star,
+/// create a constellation — and its destructive sibling.
+///
+/// A form's disc is the clearest place in the app where the whole grammar
+/// shows up at once: it's dark and flat while the form is incomplete, and
+/// the moment everything required is there it fills gold and starts
+/// glowing. You light it the same way you light a star.
+///
+/// Was copy-pasted at three call sites with slightly different shadows.
+/// [lit] now decides fill, glow and foreground together, so there's no way
+/// to end up with a gold disc that doesn't work or a dead-looking one that
+/// does — and an unlit disc keeps its [onPressed] so it can explain *why*
+/// it isn't lit rather than sitting there inert.
+class AppActionDisc extends StatelessWidget {
+  const AppActionDisc({
+    super.key,
+    required this.icon,
+    required this.onPressed,
+    required this.heroTag,
+    this.lit = true,
+    this.tooltip,
+  }) : _danger = false;
+
+  /// The destructive variant: danger-colored, and never glowing — a delete
+  /// button that lit up would be saying the wrong thing entirely.
+  const AppActionDisc.danger({
+    super.key,
+    required this.onPressed,
+    required this.heroTag,
+    this.tooltip,
+  }) : icon = Icons.delete_outline,
+       lit = false,
+       _danger = true;
+
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final Object heroTag;
+
+  /// Whether the action is actually available.
+  final bool lit;
+
+  final String? tooltip;
+
+  final bool _danger;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final background = _danger
+        ? colors.danger
+        : (lit ? colors.gold : colors.muted);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: lit ? goldGlow(colors, strength: 1.1, size: 56) : null,
+      ),
+      child: FloatingActionButton(
+        heroTag: heroTag,
+        onPressed: onPressed,
+        backgroundColor: background,
+        tooltip: tooltip,
+        child: Icon(icon, color: colors.night),
+      ),
+    );
+  }
+}

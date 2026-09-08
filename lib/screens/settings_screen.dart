@@ -14,6 +14,7 @@ import '../l10n/strings_scope.dart';
 import '../notifications/reminder_service.dart';
 import '../settings/settings_controller.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_style.dart';
 import '../widgets/responsive_content.dart';
 import 'home_screen.dart';
 import 'metaphor_screen.dart';
@@ -178,26 +179,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: colors.nightPanel,
-        title: Text(
-          strings.resetAllDataConfirmTitle,
-          style: TextStyle(color: colors.text),
-        ),
-        content: Text(
-          strings.resetAllDataConfirmBody,
-          style: TextStyle(color: colors.muted),
-        ),
+        title: Text(strings.resetAllDataConfirmTitle),
+        content: Text(strings.resetAllDataConfirmBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(strings.cancel, style: TextStyle(color: colors.muted)),
+            style: TextButton.styleFrom(foregroundColor: colors.muted),
+            child: Text(strings.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(
-              strings.deleteEverything,
-              style: TextStyle(color: colors.danger),
-            ),
+            style: TextButton.styleFrom(foregroundColor: colors.danger),
+            child: Text(strings.deleteEverything),
           ),
         ],
       ),
@@ -271,7 +264,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _SectionLabel(strings.languageSection),
                   const SizedBox(height: 10),
                   SegmentedButton<String>(
-                    style: _segmentedButtonStyle(colors),
                     segments: [
                       ButtonSegment(
                         value: 'en',
@@ -296,19 +288,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _SectionLabel(strings.reminderSection),
                   const SizedBox(height: 4),
                   Material(
-                    color: colors.nightPanel,
-                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(kRadiusCard),
                     child: Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: colors.nightBorder),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      decoration: panelDecoration(colors),
                       child: Column(
                         children: [
                           SwitchListTile(
                             value: widget.settings.reminderEnabled,
                             onChanged: _setReminderEnabled,
-                            activeThumbColor: colors.gold,
                             title: Text(
                               strings.reminderToggleLabel,
                               style: TextStyle(
@@ -368,22 +356,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     width: double.infinity,
                     child: OutlinedButton.icon(
                       onPressed: () => _push(const MetaphorScreen()),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: colors.gold,
-                        side: BorderSide(color: colors.gold),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
                       icon: const Icon(Icons.auto_stories_outlined),
-                      label: Text(
-                        strings.guideOpenAction,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
-                      ),
+                      label: Text(strings.guideOpenAction),
                     ),
                   ),
                   // Dev-only tooling (seed/reset data, replay onboarding,
@@ -506,11 +480,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       final version = snapshot.data?.version;
                       return Container(
                         padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: colors.nightPanel,
-                          border: Border.all(color: colors.nightBorder),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        decoration: panelDecoration(colors),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -554,18 +524,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-}
-
-/// Overrides Material 3's default seed-color (teal) selection styling so
-/// the segmented controls stay on-brand with the app's gold accent.
-ButtonStyle _segmentedButtonStyle(AppColors colors) {
-  return SegmentedButton.styleFrom(
-    backgroundColor: colors.nightPanel,
-    foregroundColor: colors.muted,
-    selectedBackgroundColor: colors.gold,
-    selectedForegroundColor: colors.onGold,
-    side: BorderSide(color: colors.nightBorder),
-  );
 }
 
 class _SectionLabel extends StatelessWidget {

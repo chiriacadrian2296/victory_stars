@@ -9,6 +9,7 @@ import '../data/custom_constellation_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../models/custom_constellation.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_style.dart';
 import '../widgets/constellation_editor_painter.dart';
 import '../widgets/responsive_content.dart';
 
@@ -182,8 +183,7 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
-          backgroundColor: colors.nightPanel,
-          title: Text(
+              title: Text(
             strings.constellationEditorHelpTitle,
             style: TextStyle(color: colors.text),
           ),
@@ -216,7 +216,7 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
                 InkWell(
                   onTap: () =>
                       setDialogState(() => hideNextTime = !hideNextTime),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(kRadiusField),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(
@@ -449,8 +449,7 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: colors.nightPanel,
-        title: Text(
+          title: Text(
           strings.discardChangesConfirmTitle,
           style: TextStyle(color: colors.text),
         ),
@@ -546,7 +545,6 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
                             value: _gridEnabled,
                             onChanged: (value) =>
                                 setState(() => _gridEnabled = value),
-                            activeThumbColor: colors.gold,
                           ),
                         ),
                       ],
@@ -743,16 +741,9 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
                   child: ElevatedButton(
                     onPressed: canSave ? _save : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: colors.gold,
-                      foregroundColor: colors.onGold,
-                      disabledBackgroundColor: colors.nightBorder,
-                      disabledForegroundColor: colors.muted,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 40,
                         vertical: 14,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                     child: Text(
@@ -1288,7 +1279,6 @@ class _NameConstellationDialogState extends State<_NameConstellationDialog> {
     final strings = context.strings;
     final colors = context.colors;
     return AlertDialog(
-      backgroundColor: colors.nightPanel,
       title: Text(
         strings.nameYourConstellationTitle,
         style: TextStyle(color: colors.text),

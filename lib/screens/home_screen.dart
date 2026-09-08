@@ -14,11 +14,14 @@ import '../models/project.dart';
 import '../models/star.dart';
 import '../models/star_kind.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_style.dart';
 import '../utils/date_format.dart';
 import '../utils/star_stats.dart';
+import '../widgets/app_field.dart';
 import '../widgets/responsive_content.dart';
 import '../widgets/lit_star_card.dart';
 import '../widgets/star_heatmap.dart';
+import '../widgets/app_action_disc.dart';
 import 'admire_stars_screen.dart';
 import 'new_project_screen.dart';
 import 'star_form_screen.dart';
@@ -162,7 +165,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final choice = await showModalBottomSheet<_CreateChoice>(
       context: context,
-      backgroundColor: colors.nightPanel,
       builder: (sheetContext) {
         return SafeArea(
           child: Column(
@@ -234,14 +236,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openDayDetail(DateTime day) async {
-    final colors = context.colors;
     final projectsById = _projectsById();
     final dayStars = _achievedStarsOnDay(day);
     final sheetMaxHeight = MediaQuery.sizeOf(context).height * 0.85;
 
     await showModalBottomSheet<void>(
       context: context,
-      backgroundColor: colors.nightPanel,
       isScrollControlled: true,
       constraints: dayStars.isEmpty
           ? BoxConstraints(maxHeight: sheetMaxHeight)
@@ -348,11 +348,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
                     clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      color: colors.nightPanel,
-                      border: Border.all(color: colors.nightBorder),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    decoration: panelDecoration(colors),
                     child: StarHeatmap(
                       month: _displayedMonth,
                       countsByDay: dayCounts,
@@ -376,33 +372,19 @@ class _HomeScreenState extends State<HomeScreen> {
           FloatingActionButton.small(
             heroTag: 'admireStarsFab',
             onPressed: _openAdmireStars,
-            backgroundColor: colors.nightPanel,
             foregroundColor: colors.gold,
-            elevation: 2,
-            shape: CircleBorder(side: BorderSide(color: colors.goldDim)),
+            elevation: 0,
+            shape: CircleBorder(
+              side: BorderSide(color: colors.gold, width: kBorderWidthActive),
+            ),
             tooltip: strings.admireYourStars,
             child: const Icon(Icons.auto_awesome),
           ),
           const SizedBox(height: 12),
-          Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: colors.gold.withValues(alpha: 0.35),
-                  blurRadius: 20,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: FloatingActionButton(
-              heroTag: 'addStarFab',
-              onPressed: _showCreateMenu,
-              backgroundColor: colors.gold,
-              elevation: 0,
-              shape: const CircleBorder(),
-              child: Icon(Icons.add, color: colors.onGold),
-            ),
+          AppActionDisc(
+            heroTag: 'addStarFab',
+            icon: Icons.add,
+            onPressed: _showCreateMenu,
           ),
         ],
       ),
@@ -505,7 +487,7 @@ class _TodayStarHeroState extends State<_TodayStarHero>
       color: Colors.transparent,
       child: InkWell(
         onTap: widget.onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(kRadiusCard),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: widget.litToday
@@ -597,13 +579,9 @@ class _TodayStarHeroState extends State<_TodayStarHero>
             return Container(
               decoration: BoxDecoration(
                 color: colors.gold,
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(kRadiusPill),
                 boxShadow: [
-                  BoxShadow(
-                    color: colors.gold.withValues(alpha: 0.35),
-                    blurRadius: 20,
-                    offset: const Offset(0, 6),
-                  ),
+                  ...goldGlow(colors, strength: 1.1, size: 56),
                   ..._glow(colors.gold, 44),
                 ],
               ),
@@ -678,7 +656,14 @@ class _DayDetailSheet extends StatefulWidget {
 }
 
 class _DayDetailSheetState extends State<_DayDetailSheet> {
+  final _queryController = TextEditingController();
   String _query = '';
+
+  @override
+  void dispose() {
+    _queryController.dispose();
+    super.dispose();
+  }
 
   Text _emptyStateText(AppStrings strings, AppColors colors) {
     return Text(
@@ -720,41 +705,19 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
               ),
             ),
             const SizedBox(height: 14),
-            TextField(
+            AppTextField(
+              controller: _queryController,
+              hintText: strings.searchHint,
               onChanged: (value) => setState(() => _query = value),
-              style: TextStyle(color: colors.text, fontSize: 15),
-              decoration: InputDecoration(
-                hintText: strings.searchHint,
-                prefixIcon: Icon(Icons.search, color: colors.muted, size: 20),
-              ),
+              prefixIcon: Icon(Icons.search, color: colors.muted, size: 20),
             ),
             const SizedBox(height: 12),
-            InkWell(
-              onTap: widget.onAddForDay,
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: colors.gold.withValues(alpha: 0.12),
-                  border: Border.all(color: colors.gold),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.add, color: colors.gold),
-                    const SizedBox(width: 8),
-                    Text(
-                      strings.addStarForDayLabel,
-                      style: TextStyle(
-                        color: colors.gold,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ],
-                ),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: widget.onAddForDay,
+                icon: const Icon(Icons.add),
+                label: Text(strings.addStarForDayLabel),
               ),
             ),
             const SizedBox(height: 16),

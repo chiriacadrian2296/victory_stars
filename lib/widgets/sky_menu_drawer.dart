@@ -65,7 +65,6 @@ class SkyMenuDrawer extends StatelessWidget {
     }
 
     return Drawer(
-      backgroundColor: colors.nightPanel,
       child: SafeArea(
         child: ListView(
           padding: EdgeInsets.zero,

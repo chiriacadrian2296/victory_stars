@@ -6,6 +6,7 @@ import '../data/star_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../models/life_area.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_style.dart';
 import '../widgets/area_tag.dart';
 import '../widgets/responsive_content.dart';
 import 'area_detail_screen.dart';
@@ -140,7 +141,7 @@ class _VisionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final strings = context.strings;
-    final borderRadius = BorderRadius.circular(12);
+    final borderRadius = BorderRadius.circular(kRadiusCard);
     final trimmed = vision.trim();
 
     return Material(
@@ -149,11 +150,7 @@ class _VisionCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: borderRadius,
         child: Ink(
-          decoration: BoxDecoration(
-            color: colors.nightPanel,
-            border: Border.all(color: colors.nightBorder),
-            borderRadius: borderRadius,
-          ),
+          decoration: panelDecoration(colors),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
             child: Column(

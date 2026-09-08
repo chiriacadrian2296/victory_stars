@@ -20,6 +20,7 @@ import '../models/star_kind.dart';
 import '../notifications/reminder_service.dart';
 import '../settings/settings_controller.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_style.dart';
 import '../utils/responsive.dart';
 import '../widgets/constellation_field.dart';
 import '../widgets/constellation_painter.dart';
@@ -836,10 +837,6 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
               return SwitchListTile(
                 title: Text(label, style: TextStyle(color: colors.text)),
                 value: value,
-                activeThumbColor: colors.nightPanel,
-                activeTrackColor: colors.gold,
-                inactiveThumbColor: colors.goldDim,
-                inactiveTrackColor: colors.goldDim.withValues(alpha: 0.3),
                 onChanged: (newValue) {
                   onChanged(newValue);
                   setSheetState(() {});
@@ -848,10 +845,6 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
             }
 
             return AlertDialog(
-              backgroundColor: colors.nightPanel,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
               title: Text(
                 'Display',
                 style: TextStyle(
@@ -886,10 +879,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: Text(
-                    strings.closeAction,
-                    style: TextStyle(color: colors.gold),
-                  ),
+                  child: Text(strings.closeAction),
                 ),
               ],
             );
@@ -976,7 +966,10 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
                     child: Material(
                       color: colors.nightPanel.withValues(alpha: 0.75),
                       shape: CircleBorder(
-                        side: BorderSide(color: colors.gold, width: 1.5),
+                        side: BorderSide(
+                          color: colors.gold,
+                          width: kBorderWidthActive,
+                        ),
                       ),
                       child: InkWell(
                         customBorder: const CircleBorder(),
@@ -1011,18 +1004,26 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
                   child: Center(
                     child: Padding(
                       padding: const EdgeInsets.all(6),
-                      child: Material(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(kRadiusField),
+                          boxShadow: goldGlow(colors, strength: 1.1, size: 56),
+                        ),
+                        child: Material(
                         color: colors.gold,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(kRadiusField),
                           // Dark navy rather than the gold every other
                           // control's border uses — this button's own fill
                           // is already gold, so a gold border would
                           // disappear into it.
-                          side: BorderSide(color: colors.night, width: 1.5),
+                          side: BorderSide(
+                            color: colors.night,
+                            width: kBorderWidthActive,
+                          ),
                         ),
                         child: InkWell(
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(kRadiusField),
                           onTap: _openSearch,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
@@ -1050,6 +1051,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
                             ),
                           ),
                         ),
+                        ),
                       ),
                     ),
                   ),
@@ -1067,7 +1069,10 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
                     child: Material(
                       color: colors.nightPanel.withValues(alpha: 0.75),
                       shape: CircleBorder(
-                        side: BorderSide(color: colors.gold, width: 1.5),
+                        side: BorderSide(
+                          color: colors.gold,
+                          width: kBorderWidthActive,
+                        ),
                       ),
                       child: InkWell(
                         customBorder: const CircleBorder(),
@@ -1109,7 +1114,10 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
                                   borderRadius: BorderRadius.circular(
                                     _bottomPillRadius,
                                   ),
-                                  side: BorderSide(color: colors.gold, width: 1.5),
+                                  side: BorderSide(
+                                    color: colors.gold,
+                                    width: kBorderWidthActive,
+                                  ),
                                 ),
                                 child: Padding(
                                   padding: const EdgeInsets.only(left: 10),
@@ -1133,46 +1141,17 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
                                       // plain way to shrink it without
                                       // losing its built-in tap/thumb-
                                       // animation behavior.
+                                      // Colors come from the app's own
+                                      // switch theme, same as every other
+                                      // switch; only the 20% shrink is
+                                      // local, matching the other two
+                                      // sky-overlay controls' sizing.
                                       Transform.scale(
                                         scale: 0.8,
                                         child: Switch(
                                           value: _showGrid,
                                           onChanged: (value) =>
                                               setState(() => _showGrid = value),
-                                          // Left at its Material 3 default,
-                                          // the off state's thumb/track/
-                                          // outline come out a pale near-
-                                          // white and the on state's thumb
-                                          // (colorScheme.onPrimary, meant
-                                          // for text on a solid gold
-                                          // surface, not a switch thumb)
-                                          // comes out a near-black —
-                                          // neither is otherwise anywhere on
-                                          // this tab, which is only ever
-                                          // gold or navy. On uses the same
-                                          // navy every other control's own
-                                          // disc/panel does rather than a
-                                          // contrast color of its own; off
-                                          // is still obviously distinct from
-                                          // on (which fills the track solid
-                                          // gold via colorScheme.primary)
-                                          // even with a plain dimmed-gold
-                                          // thumb instead of a separate
-                                          // contrast color just to tell the
-                                          // two apart.
-                                          thumbColor: WidgetStateProperty.resolveWith(
-                                            (states) => states.contains(WidgetState.selected)
-                                                ? colors.nightPanel
-                                                : colors.goldDim,
-                                          ),
-                                          trackColor: WidgetStateProperty.resolveWith(
-                                            (states) => states.contains(WidgetState.selected)
-                                                ? colors.gold
-                                                : colors.goldDim.withValues(alpha: 0.3),
-                                          ),
-                                          trackOutlineColor: WidgetStateProperty.all(
-                                            colors.goldDim,
-                                          ),
                                         ),
                                       ),
                                     ],
@@ -1327,7 +1306,10 @@ class _RollKnobState extends State<_RollKnob> {
               child: Material(
                 color: colors.nightPanel.withValues(alpha: 0.75),
                 shape: CircleBorder(
-                  side: BorderSide(color: colors.gold, width: 1.5),
+                  side: BorderSide(
+                    color: colors.gold,
+                    width: kBorderWidthActive,
+                  ),
                 ),
                 child: SizedBox(
                   width: _knobSize,
@@ -1399,7 +1381,7 @@ class _ZoomSlider extends StatelessWidget {
       color: colors.nightPanel.withValues(alpha: 0.75),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(_bottomPillRadius),
-        side: BorderSide(color: colors.gold, width: 1.5),
+        side: BorderSide(color: colors.gold, width: kBorderWidthActive),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1414,11 +1396,11 @@ class _ZoomSlider extends StatelessWidget {
               width: _trackLength,
               height: 24,
               child: SliderTheme(
+                // Only the track height and the dimmer inactive track are
+                // local: this slider sits on the sky itself, where the
+                // app's own navy track would vanish into the background.
                 data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: colors.gold,
                   inactiveTrackColor: colors.muted.withValues(alpha: 0.35),
-                  thumbColor: colors.gold,
-                  overlayColor: colors.gold.withValues(alpha: 0.15),
                   trackHeight: 3,
                 ),
                 child: Slider(

@@ -10,6 +10,8 @@ import '../models/life_area.dart';
 import '../models/project.dart';
 import '../models/star.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_style.dart';
+import '../widgets/app_toggle_chip.dart';
 import '../widgets/responsive_content.dart';
 import 'star_reader_screen.dart';
 
@@ -172,10 +174,14 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 32),
-                                _AllAreasSwitch(
+                                AppToggleChip(
                                   label: strings.allAreasLabel,
                                   value: _allSelected,
                                   onChanged: (_) => _toggleAll(),
+                                  // This screen sits on the crisis
+                                  // gradient, not the night panel — its
+                                  // own lighter body color reads there.
+                                  labelColor: colors.crisisMuted,
                                 ),
                                 const SizedBox(height: 28),
                                 Column(
@@ -239,16 +245,13 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
                           onPressed: poolSize == 0 ? null : _start,
                           icon: const Icon(Icons.auto_awesome, size: 17),
                           label: Text(strings.viewYourStars),
+                          // This screen sits on the crisis gradient rather
+                          // than the app's night panel, so its disabled
+                          // fill is the only one that overrides the theme.
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: colors.gold,
-                            foregroundColor: colors.onGold,
                             disabledBackgroundColor: colors.crisisMuted
                                 .withValues(alpha: 0.15),
                             disabledForegroundColor: colors.crisisMuted,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
                           ),
                         ),
                       ),
@@ -282,17 +285,14 @@ class _AreaChip extends StatelessWidget {
     final colors = context.colors;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(kRadiusPill),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          border: Border.all(
-            color: selected
-                ? colors.gold
-                : colors.crisisMuted.withValues(alpha: 0.3),
-          ),
-          borderRadius: BorderRadius.circular(22),
+        decoration: selectableDecoration(
+          colors,
+          selected: selected,
+          radius: kRadiusPill,
+          glowSize: 32,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -311,83 +311,6 @@ class _AreaChip extends StatelessWidget {
                   fontSize: 14,
                   color: colors.crisisMuted,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AllAreasSwitch extends StatelessWidget {
-  const _AllAreasSwitch({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String label;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return InkWell(
-      onTap: () => onChanged(!value),
-      borderRadius: BorderRadius.circular(22),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          border: Border.all(
-            color: value
-                ? colors.gold
-                : colors.crisisMuted.withValues(alpha: 0.3),
-          ),
-          borderRadius: BorderRadius.circular(22),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                color: colors.crisisMuted,
-                fontWeight: value ? FontWeight.w600 : FontWeight.w400,
-              ),
-            ),
-            const SizedBox(width: 10),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              width: 38,
-              height: 22,
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                color: value
-                    ? colors.gold.withValues(alpha: 0.3)
-                    : colors.crisisMuted.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(11),
-                border: Border.all(
-                  color: value
-                      ? colors.gold.withValues(alpha: 0.6)
-                      : colors.crisisMuted.withValues(alpha: 0.4),
-                ),
-              ),
-              child: AnimatedAlign(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOut,
-                alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-                child: Container(
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: value ? colors.gold : colors.crisisMuted,
-                  ),
                 ),
               ),
             ),

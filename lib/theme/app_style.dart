@@ -1,0 +1,169 @@
+import 'package:flutter/material.dart';
+
+import 'app_colors.dart';
+
+/// The app's shape and surface language, in one place.
+///
+/// Everything here descends from one image: a supernova. A white glyph
+/// inside a gold ring, glowing outward against the night. That's the whole
+/// grammar — **gold and glowing means burning** (chosen, filled, active,
+/// primary), **navy and flat means dark** (available, empty, secondary).
+/// Nothing in the app should invent a third way of saying either.
+///
+/// Concretely that means: one radius scale, one border rule, one glow, one
+/// selected-surface treatment. Screens reach for these rather than
+/// hand-rolling a `BoxDecoration`, so a control looks the same wherever it
+/// turns up.
+
+/// Corner radii — three steps, and no others.
+///
+/// [kRadiusField] covers anything you touch or type into: fields, tiles,
+/// chips, pickers. [kRadiusCard] covers anything that *contains* those:
+/// cards, panels, dialogs, sheets — always one step softer than its
+/// contents, so a card never looks tighter than the things inside it.
+/// Buttons and the sky's own overlay controls are pills instead
+/// ([StadiumBorder]), which is what sets an *action* apart from a surface
+/// at a glance.
+const double kRadiusField = 12;
+const double kRadiusCard = 16;
+
+/// Any radius at or above this resolves to a stadium at the sizes the app
+/// actually uses. Named rather than written as 20/22/30 at each site, which
+/// is how three different "pills" ended up visibly different from each
+/// other.
+const double kRadiusPill = 999;
+
+/// Border weights. Active is heavier as well as gold — the weight alone
+/// carries the state for anyone who can't easily separate the two colors.
+const double kBorderWidth = 1;
+const double kBorderWidthActive = 1.5;
+
+/// The one glow in the app: gold, soft, centered. Scaled by [strength]
+/// (0 = none, 1 = a resting lit control, >1 = something actively pressed or
+/// pulsing) and by [size], which should be roughly the control's own extent
+/// so a small chip doesn't get a button-sized halo.
+///
+/// This is the supernova's own outer glow, reused everywhere something is
+/// burning — a lit star, a primary button, a filled field, a chosen tile.
+List<BoxShadow> goldGlow(
+  AppColors colors, {
+  double strength = 1,
+  double size = 48,
+}) {
+  if (strength <= 0) return const [];
+  return [
+    BoxShadow(
+      color: colors.gold.withValues(alpha: 0.16 * strength),
+      blurRadius: size * 0.42 * strength,
+      spreadRadius: size * 0.01 * strength,
+    ),
+  ];
+}
+
+/// A plain surface: night panel, navy hairline border. The app's default
+/// container — cards, sheets, anything not currently being acted on.
+BoxDecoration panelDecoration(
+  AppColors colors, {
+  double radius = kRadiusCard,
+}) {
+  return BoxDecoration(
+    color: colors.nightPanel,
+    border: Border.all(color: colors.nightBorder, width: kBorderWidth),
+    borderRadius: BorderRadius.circular(radius),
+  );
+}
+
+/// A surface that can be picked — a chip, an icon tile, a kind card.
+///
+/// Unselected it's a plain panel. Selected it lights: a gold ring, a gold
+/// glow, and a fill that's brightest at the center and fades outward, which
+/// is the supernova's own radial falloff rather than a flat tint. That
+/// radial fill is the single biggest reason a selected control here reads
+/// as *burning* instead of merely *highlighted*.
+BoxDecoration selectableDecoration(
+  AppColors colors, {
+  required bool selected,
+  double radius = kRadiusField,
+  double glowSize = 40,
+}) {
+  if (!selected) return panelDecoration(colors, radius: radius);
+  return BoxDecoration(
+    gradient: RadialGradient(
+      colors: [
+        colors.gold.withValues(alpha: 0.26),
+        colors.gold.withValues(alpha: 0.10),
+      ],
+      radius: 0.9,
+    ),
+    border: Border.all(color: colors.gold, width: kBorderWidthActive),
+    borderRadius: BorderRadius.circular(radius),
+    boxShadow: goldGlow(colors, strength: 0.85, size: glowSize),
+  );
+}
+
+/// The three states a field can be in, and the only three it can be in.
+///
+/// This is the rule the whole app now follows, and the one place it's
+/// written down: a field is dark while it's empty, lights up once it holds
+/// something, and burns brightest while you're actually in it. Before this,
+/// typed fields went gold only on focus, picker fields went gold only once
+/// filled, and date fields never went gold at all — three controls that
+/// look identical behaving three different ways.
+enum FieldState {
+  /// Empty and not focused. Navy hairline, no light.
+  empty,
+
+  /// Holds a value. Gold ring, no glow — it's lit, but resting.
+  filled,
+
+  /// Being typed into or otherwise engaged. Gold ring and a glow.
+  focused,
+}
+
+/// Resolves [FieldState] from the two things a field actually knows.
+FieldState fieldStateOf({required bool hasValue, required bool focused}) {
+  if (focused) return FieldState.focused;
+  return hasValue ? FieldState.filled : FieldState.empty;
+}
+
+Color fieldBorderColor(AppColors colors, FieldState state) {
+  return state == FieldState.empty ? colors.nightBorder : colors.gold;
+}
+
+double fieldBorderWidth(FieldState state) {
+  return state == FieldState.empty ? kBorderWidth : kBorderWidthActive;
+}
+
+/// The shared look of every field in the app — typed or tapped, they're the
+/// same object to a user, so they get the same decoration from the same
+/// function.
+BoxDecoration fieldDecoration(AppColors colors, FieldState state) {
+  return BoxDecoration(
+    color: colors.nightPanel,
+    borderRadius: BorderRadius.circular(kRadiusField),
+    border: Border.all(
+      color: fieldBorderColor(colors, state),
+      width: fieldBorderWidth(state),
+    ),
+    boxShadow: state == FieldState.focused
+        ? goldGlow(colors, strength: 0.7, size: 40)
+        : null,
+  );
+}
+
+/// The translucent disc/pill the sky's own overlay controls float in — the
+/// only surface that sits directly on the sky rather than on a page, so it
+/// keeps its transparency, but takes its gold ring and radius scale from
+/// the same grammar as everything else.
+BoxDecoration skyControlDecoration(
+  AppColors colors, {
+  bool circle = false,
+  double radius = kRadiusField,
+}) {
+  return BoxDecoration(
+    color: colors.nightPanel.withValues(alpha: 0.75),
+    shape: circle ? BoxShape.circle : BoxShape.rectangle,
+    borderRadius: circle ? null : BorderRadius.circular(radius),
+    border: Border.all(color: colors.gold, width: kBorderWidthActive),
+  );
+}

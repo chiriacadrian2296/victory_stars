@@ -8,6 +8,9 @@ import '../l10n/strings_scope.dart';
 import '../models/custom_constellation.dart';
 import '../models/life_area.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_style.dart';
+import '../widgets/app_action_disc.dart';
+import '../widgets/app_field.dart';
 import '../utils/icon_for_slug.dart';
 import '../widgets/constellation_editor_painter.dart';
 import '../widgets/responsive_content.dart';
@@ -79,7 +82,6 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
     final discard = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: colors.nightPanel,
         title: Text(
           strings.discardChangesConfirmTitle,
           style: TextStyle(color: colors.text),
@@ -111,7 +113,7 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
   /// value/hint) — see [_PickerField]. 1:3 width split (icon:area) instead
   /// of date/time's 1:1, in an [Expanded] pair.
   Widget _buildIconField(AppColors colors, AppStrings strings) {
-    return _PickerField(
+    return AppPickerField(
       label: strings.iconLabel,
       hint: strings.iconLabel,
       // A fixed representative glyph while unselected — like the calendar/
@@ -122,12 +124,12 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
           : iconForSlug(_selectedIconSlug!),
       text: _selectedIconSlug,
       onTap: _openIconPicker,
-      iconOnlyWhenSelected: true,
+      iconOnly: true,
     );
   }
 
   Widget _buildAreaField(AppColors colors, AppStrings strings) {
-    return _PickerField(
+    return AppPickerField(
       label: strings.areaLabel,
       hint: strings.areaLabel,
       icon: _selectedArea?.icon ?? Icons.explore_outlined,
@@ -277,7 +279,6 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: colors.nightPanel,
         content: Text(
           strings.cannotSaveMissingInfo,
           style: TextStyle(color: colors.text),
@@ -350,52 +351,32 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
                 else
                   _buildIconField(colors, strings),
                 const SizedBox(height: 20),
-                Text(
-                  strings.nameLabel,
-                  style: TextStyle(fontSize: 13, color: colors.muted),
-                ),
+                AppFieldLabel(strings.nameLabel),
                 const SizedBox(height: 6),
-                TextField(
+                AppTextField(
                   controller: _nameController,
                   autofocus: widget.presetArea != null,
-                  style: TextStyle(color: colors.text, fontSize: 15),
-                  decoration: InputDecoration(
-                    hintText: strings.newProjectNameHint,
-                  ),
+                  hintText: strings.newProjectNameHint,
                 ),
                 const SizedBox(height: 20),
-                Text(
-                  strings.projectDescriptionLabel,
-                  style: TextStyle(fontSize: 13, color: colors.muted),
-                ),
+                AppFieldLabel(strings.projectDescriptionLabel),
                 const SizedBox(height: 6),
-                TextField(
+                AppTextField(
                   controller: _descriptionController,
                   maxLines: 3,
-                  style: TextStyle(color: colors.text, fontSize: 15),
-                  decoration: InputDecoration(
-                    hintText: strings.projectDescriptionHint,
-                  ),
+                  hintText: strings.projectDescriptionHint,
                 ),
                 const SizedBox(height: 20),
-                Text(
-                  strings.yourConstellationsLabel,
-                  style: TextStyle(fontSize: 13, color: colors.muted),
-                ),
+                AppFieldLabel(strings.yourConstellationsLabel),
                 const SizedBox(height: 8),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: OutlinedButton(
                     onPressed: _openConstellationEditor,
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: colors.gold,
-                      side: BorderSide(color: colors.gold),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 22,
                         vertical: 18,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
                     child: Column(
@@ -403,13 +384,7 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
                       children: [
                         const Icon(Icons.gesture, size: 32),
                         const SizedBox(height: 8),
-                        Text(
-                          strings.drawYourOwnShort,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
-                        ),
+                        Text(strings.drawYourOwnShort),
                       ],
                     ),
                   ),
@@ -449,31 +424,12 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
                           _selectedArea != null &&
                           _selectedIconSlug != null &&
                           _selectedCustomConstellation != null;
-                      // Same "lit disc" treatment as AddStarScreen's own save
-                      // FAB — on (gold, glowing) once everything required is
-                      // filled in, off (muted, flat) otherwise.
-                      return Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: canSave
-                              ? [
-                                  BoxShadow(
-                                    color: colors.gold.withValues(alpha: 0.35),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 6),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: FloatingActionButton(
-                          heroTag: 'createProjectFab',
-                          onPressed: canSave ? _save : _showCannotSaveMessage,
-                          backgroundColor: canSave ? colors.gold : colors.muted,
-                          elevation: 0,
-                          shape: const CircleBorder(),
-                          tooltip: strings.createProject,
-                          child: Icon(Icons.check, color: colors.night),
-                        ),
+                      return AppActionDisc(
+                        heroTag: 'createProjectFab',
+                        icon: Icons.check,
+                        lit: canSave,
+                        onPressed: canSave ? _save : _showCannotSaveMessage,
+                        tooltip: strings.createProject,
                       );
                     },
                   ),
@@ -512,17 +468,9 @@ class _IconOption extends StatelessWidget {
     final colors = context.colors;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(kRadiusField),
       child: Container(
-        decoration: BoxDecoration(
-          color: selected
-              ? colors.gold.withValues(alpha: 0.15)
-              : colors.nightPanel,
-          border: Border.all(
-            color: selected ? colors.gold : colors.nightBorder,
-          ),
-          borderRadius: BorderRadius.circular(10),
-        ),
+        decoration: selectableDecoration(colors, selected: selected),
         child: Icon(
           iconForSlug(slug),
           color: selected ? colors.gold : colors.muted,
@@ -552,25 +500,23 @@ class _AreaOption extends StatelessWidget {
     final strings = context.strings;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(kRadiusField),
       child: Container(
-        decoration: BoxDecoration(
-          color: selected
-              ? colors.gold.withValues(alpha: 0.15)
-              : colors.nightPanel,
-          border: Border.all(
-            color: selected ? colors.gold : colors.nightBorder,
-            width: selected ? 1.5 : 1,
-          ),
-          borderRadius: BorderRadius.circular(12),
+        decoration: selectableDecoration(
+          colors,
+          selected: selected,
+          glowSize: 64,
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // A chosen area is literally a supernova, so it's drawn as
+            // one: a white glyph inside the gold ring and glow the
+            // decoration already provides, rather than a gold-on-gold icon.
             Icon(
               area.icon,
               size: 34,
-              color: selected ? colors.gold : colors.muted,
+              color: selected ? Colors.white : colors.muted,
             ),
             const SizedBox(height: 8),
             Padding(
@@ -672,19 +618,12 @@ class _CustomConstellationOption extends StatelessWidget {
       children: [
         InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(kRadiusField),
           child: Container(
             width: _side,
             height: _side,
             clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: colors.nightPanel,
-              border: Border.all(
-                color: selected ? colors.gold : colors.nightBorder,
-                width: selected ? 1.5 : 1,
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
+            decoration: selectableDecoration(colors, selected: selected),
             child: CustomPaint(
               size: const Size(_side, _side),
               painter: ConstellationEditorPainter(
@@ -716,89 +655,6 @@ class _CustomConstellationOption extends StatelessWidget {
                 child: Icon(Icons.edit, size: 18, color: colors.gold),
               ),
             ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// The area/icon selector field — a mix of two earlier designs. Unselected,
-/// it's the same shape as `AddStarScreen._DateField` (label above, a
-/// bordered full-width row with a fixed representative [icon] and [hint]),
-/// so a project's area and badge icon read as siblings of its date/time
-/// while nothing's picked yet. Once something *is* picked, it switches to
-/// the bolder look the very first version of this field had — a gold
-/// border and a bigger, fully-lit icon — since that read better than
-/// staying muted just because the row itself is compact.
-class _PickerField extends StatelessWidget {
-  const _PickerField({
-    required this.label,
-    required this.hint,
-    required this.icon,
-    required this.text,
-    required this.onTap,
-    this.iconOnlyWhenSelected = false,
-  });
-
-  final String label;
-  final String hint;
-  final IconData icon;
-  final String? text;
-  final VoidCallback onTap;
-  // The icon field has no meaningful text to show once picked (the slug
-  // isn't user-facing) — just the icon itself, centered, reads better than
-  // a Row with an empty label slot next to it.
-  final bool iconOnlyWhenSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final selected = text != null;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(fontSize: 13, color: colors.muted)),
-        const SizedBox(height: 6),
-        InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: colors.nightPanel,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: selected ? colors.gold : colors.nightBorder,
-                width: selected ? 1.5 : 1,
-              ),
-            ),
-            child: iconOnlyWhenSelected && selected
-                ? Center(child: Icon(icon, size: 22, color: colors.gold))
-                : Row(
-                    children: [
-                      Icon(
-                        icon,
-                        size: selected ? 22 : 16,
-                        color: selected ? colors.gold : colors.muted,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          text ?? hint,
-                          style: TextStyle(
-                            color: selected ? colors.text : colors.muted,
-                            fontSize: 15,
-                            fontWeight: selected
-                                ? FontWeight.w600
-                                : FontWeight.w400,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
           ),
         ),
       ],
@@ -976,23 +832,7 @@ class _SearchablePickerSheetState<T> extends State<_SearchablePickerSheet<T>> {
                   onPressed: _selected == null
                       ? null
                       : () => Navigator.of(context).pop(_selected),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colors.gold,
-                    foregroundColor: colors.onGold,
-                    disabledBackgroundColor: colors.nightBorder,
-                    disabledForegroundColor: colors.muted,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text(
-                    strings.pickerConfirmAction,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                    ),
-                  ),
+                  child: Text(strings.pickerConfirmAction),
                 ),
               ),
             ],

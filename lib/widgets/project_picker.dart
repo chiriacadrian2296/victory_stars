@@ -7,6 +7,7 @@ import '../models/life_area.dart';
 import '../models/project.dart';
 import '../screens/new_project_screen.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_style.dart';
 import 'area_tag.dart';
 import 'project_tag.dart';
 
@@ -62,7 +63,6 @@ Future<LifeArea?> _pickArea(BuildContext context) {
 
   return showModalBottomSheet<LifeArea>(
     context: context,
-    backgroundColor: colors.nightPanel,
     isScrollControlled: true,
     builder: (sheetContext) {
       return SafeArea(
@@ -99,11 +99,8 @@ Future<Object?> _pickProjectInArea(
   ProjectRepository repository,
   LifeArea area,
 ) {
-  final colors = context.colors;
-
   return showModalBottomSheet<Object>(
     context: context,
-    backgroundColor: colors.nightPanel,
     isScrollControlled: true,
     builder: (sheetContext) {
       return _ProjectPickerSheet(
@@ -174,15 +171,11 @@ class _ProjectPickerSheetState extends State<_ProjectPickerSheet> {
             const SizedBox(height: 14),
             InkWell(
               onTap: () => Navigator.of(context).pop(const _CreateNewProject()),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(kRadiusField),
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: colors.gold.withValues(alpha: 0.12),
-                  border: Border.all(color: colors.gold),
-                  borderRadius: BorderRadius.circular(10),
-                ),
+                decoration: selectableDecoration(colors, selected: true),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

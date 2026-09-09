@@ -413,7 +413,7 @@ final _specsEn = [
   _ProjectSeed(
     'Save for a house',
     LifeArea.financial,
-    'real_estate_agent',
+    'home',
     [
       _WinSeed('Skipped an impulse purchase and put the money aside instead'),
       _WinSeed('Made it through the month under budget'),
@@ -442,7 +442,7 @@ final _specsEn = [
   _ProjectSeed(
     'Reconnect with old friends',
     LifeArea.social,
-    'connect_without_contact',
+    'chat_bubble',
     [
       _WinSeed("Reached out to a friend I hadn't spoken to in years"),
       _WinSeed(
@@ -618,7 +618,7 @@ final _specsIt = [
   _ProjectSeed(
     'Risparmiare per una casa',
     LifeArea.financial,
-    'real_estate_agent',
+    'home',
     [
       _WinSeed('Ho rinunciato a un acquisto impulsivo e ho messo da parte i soldi'),
       _WinSeed('Sono arrivato a fine mese restando sotto budget'),
@@ -647,7 +647,7 @@ final _specsIt = [
   _ProjectSeed(
     'Riallacciare i rapporti con vecchi amici',
     LifeArea.social,
-    'connect_without_contact',
+    'chat_bubble',
     [
       _WinSeed('Ho contattato un amico con cui non parlavo da anni'),
       _WinSeed(
@@ -823,7 +823,7 @@ final _specsRo = [
   _ProjectSeed(
     'Economisesc pentru o casă',
     LifeArea.financial,
-    'real_estate_agent',
+    'home',
     [
       _WinSeed('Am renunțat la o cumpărătură impulsivă și am pus banii deoparte'),
       _WinSeed('Am terminat luna sub buget'),
@@ -852,7 +852,7 @@ final _specsRo = [
   _ProjectSeed(
     'Reconectez cu vechi prieteni',
     LifeArea.social,
-    'connect_without_contact',
+    'chat_bubble',
     [
       _WinSeed('Am contactat un prieten cu care nu mai vorbisem de ani de zile'),
       _WinSeed(

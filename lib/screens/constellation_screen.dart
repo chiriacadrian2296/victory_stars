@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 import '../data/constellation_layout.dart';
-import '../data/constellation_shapes_v2.dart';
+import '../data/constellation_shape.dart';
 import '../data/custom_constellation_repository.dart';
 import '../data/habit_completion_repository.dart';
 import '../data/habit_repository.dart';
@@ -61,9 +61,9 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
   // Every project is expected to carry a customConstellationId — either set
   // directly at creation (NewProjectScreen requires it) or backfilled by
   // backfillMissingConstellations for anything older. Falling back to null
-  // (rather than the old constellationShapes[iconSlug] lookup) is purely a
-  // defensive guard for that in-between moment, not a live feature — it
-  // reuses the existing "shape missing" empty state below.
+  // (rather than looking a shape up from the project's icon, the way this
+  // screen used to) is purely a defensive guard for that in-between moment,
+  // not a live feature — it reuses the "shape missing" empty state below.
   late final ConstellationShape? _shape =
       widget.project.customConstellationId != null
       ? widget.customConstellationRepository

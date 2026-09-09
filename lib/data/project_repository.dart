@@ -50,7 +50,7 @@ class ProjectRepository {
     final projects = getAll();
     final trimmedDescription = description?.trim();
     final project = Project(
-      id: DateTime.now().millisecondsSinceEpoch,
+      id: _nextId(projects),
       name: name.trim(),
       area: area,
       iconSlug: iconSlug,
@@ -63,6 +63,24 @@ class ProjectRepository {
 
     await _saveAll([project, ...projects]);
     return project;
+  }
+
+  /// Ids are millisecondsSinceEpoch, which two adds inside the same
+  /// millisecond would collide on — and a duplicate id is not cosmetic here:
+  /// [assignCustomConstellation] and [renameProject] both find their target
+  /// by id, so they'd keep resolving to whichever twin comes first and the
+  /// other would silently never be updated (`backfillMissingConstellations`
+  /// leaving the second of two same-icon projects with no shape at all is
+  /// how this first showed up). Stepping past anything already taken makes
+  /// back-to-back adds safe — `seedSampleData` creates nine projects in a
+  /// loop — without callers having to sleep between them.
+  static int _nextId(List<Project> existing) {
+    var id = DateTime.now().millisecondsSinceEpoch;
+    final taken = existing.map((p) => p.id).toSet();
+    while (taken.contains(id)) {
+      id++;
+    }
+    return id;
   }
 
   /// Backfills a [Project] that predates the hand-drawn constellation editor

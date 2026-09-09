@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:victory_stars/data/constellation_shapes_v2.dart';
+import 'package:victory_stars/data/constellation_shape.dart';
 import 'package:victory_stars/data/custom_constellation_repository.dart';
 import 'package:victory_stars/models/custom_constellation.dart';
 

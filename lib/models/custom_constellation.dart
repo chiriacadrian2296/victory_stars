@@ -1,11 +1,12 @@
 import 'dart:ui';
 
-import '../data/constellation_shapes_v2.dart';
+import '../data/constellation_shape.dart';
 
-/// A constellation shape a user drew themselves in the in-app editor (see
-/// `ConstellationEditorScreen`), saved under its own name and reusable
-/// across projects — as opposed to the 20 built-in [ConstellationShape]s in
-/// `constellation_shapes_v2.dart`, which are fixed and shared by everyone.
+/// One shape in the user's own list: either drawn by hand in
+/// `ConstellationEditorScreen`, or copied out of the ready-made library
+/// (see `constellation_presets.dart`) when a project picked one. Saved
+/// under its own name and reusable across projects.
+///
 /// Wraps a [ConstellationShape] rather than duplicating its `points`/`edges`
 /// fields, so every existing consumer of that class (`buildConstellationLayout`,
 /// `boundingBoxOf`, `ConstellationPainter`) accepts it unchanged.
@@ -20,12 +21,24 @@ class CustomConstellation {
     required this.name,
     required this.shape,
     required this.createdAt,
+    this.presetId,
   });
 
   final int id;
   final String name;
   final ConstellationShape shape;
   final DateTime createdAt;
+
+  /// The [ConstellationPreset.id] this was copied from, or null for a shape
+  /// drawn by hand. Only a provenance tag — the points live here either way,
+  /// so a preset that's later retired from the catalogue costs the tag and
+  /// nothing else.
+  ///
+  /// Cleared the moment the user edits the shape (see
+  /// [CustomConstellationRepository.update]): once the points differ from
+  /// the library's, calling it a copy of "Bicycle" would make the next
+  /// person to pick Bicycle inherit someone else's edits.
+  final String? presetId;
 
   factory CustomConstellation.fromJson(Map<String, dynamic> json) {
     return CustomConstellation(
@@ -48,6 +61,7 @@ class CustomConstellation {
             .toList(),
       ),
       createdAt: DateTime.parse(json['createdAt'] as String),
+      presetId: json['presetId'] as String?,
     );
   }
 
@@ -58,6 +72,7 @@ class CustomConstellation {
       'points': shape.points.map((p) => [p.dx, p.dy]).toList(),
       'edges': shape.edges.map((e) => [e.$1, e.$2]).toList(),
       'createdAt': createdAt.toIso8601String(),
+      if (presetId != null) 'presetId': presetId,
     };
   }
 
@@ -67,6 +82,7 @@ class CustomConstellation {
     if (other.id != id ||
         other.name != name ||
         other.createdAt != createdAt ||
+        other.presetId != presetId ||
         other.shape.points.length != shape.points.length ||
         other.shape.edges.length != shape.edges.length) {
       return false;
@@ -85,6 +101,7 @@ class CustomConstellation {
     id,
     name,
     createdAt,
+    presetId,
     Object.hashAll(shape.points),
     Object.hashAll(shape.edges),
   );

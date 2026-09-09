@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../data/constellation_shapes_v2.dart';
+import '../data/constellation_presets.dart';
+import '../data/constellation_shape.dart';
 import '../data/custom_constellation_repository.dart';
 import '../data/project_repository.dart';
 import '../l10n/app_strings.dart';
@@ -16,12 +17,17 @@ import '../widgets/constellation_editor_painter.dart';
 import '../widgets/responsive_content.dart';
 import 'constellation_editor_screen.dart';
 
-/// Creates a project: a name, a [LifeArea], a hand-drawn constellation
-/// (draw a new one or pick from [_selectedCustomConstellation] — see
-/// [ConstellationEditorScreen] — required, since every project needs an
-/// actual shape for its wins to light up stars in), and an icon slug for
-/// the small badge glyph shown in project lists — a separate, purely
-/// cosmetic choice, unrelated to the constellation shape.
+/// Creates a project: a name, a [LifeArea], a constellation shape, and an
+/// icon slug for the small badge glyph shown in project lists.
+///
+/// A shape is required — every project needs one for its wins to light up
+/// stars in — and there are three ways to get one: pick a ready-made shape
+/// from the library ([constellationPresets], 100 of them across
+/// [PresetCategory]s), draw a new one in [ConstellationEditorScreen], or
+/// reuse one already saved. Picking from the library also fills in the icon
+/// with the one paired with that shape (a bicycle shape, the bicycle
+/// badge); a hand-drawn shape leaves the icon to the user, since the app has
+/// no idea what they drew. Either way the icon stays editable afterwards.
 ///
 /// [presetArea] locks the area (e.g. opened from that area's project list);
 /// when omitted (e.g. opened inline while adding a win), the user picks an
@@ -47,7 +53,39 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
   final _descriptionController = TextEditingController();
   late LifeArea? _selectedArea = widget.presetArea;
   String? _selectedIconSlug;
+
+  /// The two shape selections are mutually exclusive — whichever was picked
+  /// last wins, and setting one clears the other (see [_selectPreset] /
+  /// [_selectCustom]). A preset is only turned into a real
+  /// [CustomConstellation] at save time (see [_save]), so abandoning this
+  /// form never leaves a stray shape behind in the user's own list.
   CustomConstellation? _selectedCustomConstellation;
+  ConstellationPreset? _selectedPreset;
+
+  bool get _hasShape =>
+      _selectedCustomConstellation != null || _selectedPreset != null;
+
+  ConstellationShape? get _selectedShape =>
+      _selectedCustomConstellation?.shape ?? _selectedPreset?.shape;
+
+  String? _selectedShapeName(AppStrings strings) =>
+      _selectedCustomConstellation?.name ??
+      _selectedPreset?.name.of(strings.languageCode);
+
+  void _selectPreset(ConstellationPreset preset) {
+    setState(() {
+      _selectedPreset = preset;
+      _selectedCustomConstellation = null;
+      _selectedIconSlug = preset.iconSlug;
+    });
+  }
+
+  void _selectCustom(CustomConstellation custom) {
+    setState(() {
+      _selectedCustomConstellation = custom;
+      _selectedPreset = null;
+    });
+  }
 
   @override
   void dispose() {
@@ -66,7 +104,7 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
         _descriptionController.text.trim().isNotEmpty ||
         _selectedArea != widget.presetArea ||
         _selectedIconSlug != null ||
-        _selectedCustomConstellation != null;
+        _hasShape;
   }
 
   /// Shared by the back button and the system back gesture: leaving with
@@ -143,12 +181,16 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
   /// the same icon and get visually confused.
   static final _areaOnlySlugs = LifeArea.values.map((a) => a.iconSlug).toSet();
 
+  /// Suggestions for [area] first, then the rest of the set. Deliberately
+  /// *not* re-sorted alphabetically: [availableIconSlugs] already comes in
+  /// the order `icon_for_slug.dart` declares it, which is the shape
+  /// library's own category order (nature, animals, body & sport, ...), so
+  /// scrolling the icon grid reads like scrolling the shape library rather
+  /// than like a phone book.
   List<String> _orderedIconSlugs(LifeArea? area) {
-    final all =
-        availableIconSlugs
-            .where((slug) => !_areaOnlySlugs.contains(slug))
-            .toList()
-          ..sort();
+    final all = availableIconSlugs
+        .where((slug) => !_areaOnlySlugs.contains(slug))
+        .toList();
     if (area == null) return all;
     final suggested =
         (suggestedIconsByArea[area.suggestedIconsKey] ?? const <String>[])
@@ -173,9 +215,64 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
         ),
       ),
     );
-    if (saved != null && mounted) {
-      setState(() => _selectedCustomConstellation = saved);
-    }
+    if (saved != null && mounted) _selectCustom(saved);
+  }
+
+  /// The ready-made shape library — one scrolling sheet, grouped by
+  /// [PresetCategory] with a search box across all 100 names, reusing the
+  /// same picker sheet the area and icon fields already use.
+  Future<void> _openLibrary() async {
+    final strings = context.strings;
+    final language = strings.languageCode;
+    final picked = await _showSearchablePicker<ConstellationPreset>(
+      context: context,
+      title: strings.shapeLibraryTitle,
+      searchHint: strings.shapeSearchHint,
+      items: constellationPresets,
+      matches: (preset, query) =>
+          preset.name.of(language).toLowerCase().contains(query) ||
+          preset.category.name.of(language).toLowerCase().contains(query),
+      initialSelection: _selectedPreset,
+      bodyBuilder: (context, filtered, selected, onSelect) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Categories keep their catalogue order, and one with nothing
+            // left after a search simply doesn't appear — no empty headings.
+            for (final category in PresetCategory.values)
+              if (filtered.any((p) => p.category == category)) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(2, 12, 2, 8),
+                  child: Text(
+                    category.name.of(language),
+                    style: TextStyle(
+                      fontSize: 12,
+                      letterSpacing: 1.2,
+                      fontWeight: FontWeight.w600,
+                      color: context.colors.gold,
+                    ),
+                  ),
+                ),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final preset
+                        in filtered.where((p) => p.category == category))
+                      _ShapeTile(
+                        shape: preset.shape,
+                        label: preset.name.of(language),
+                        selected: selected?.id == preset.id,
+                        onTap: () => onSelect(preset),
+                      ),
+                  ],
+                ),
+              ],
+          ],
+        );
+      },
+    );
+    if (picked != null && mounted) _selectPreset(picked);
   }
 
   Future<void> _openAreaPicker() async {
@@ -220,6 +317,7 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
     final picked = await _showSearchablePicker<String>(
       context: context,
       title: context.strings.chooseIconTitle,
+      searchHint: context.strings.searchHint,
       items: _orderedIconSlugs(_selectedArea),
       matches: (slug, query) => slug.toLowerCase().contains(query),
       initialSelection: _selectedIconSlug,
@@ -247,20 +345,31 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
   }
 
   Future<void> _save() async {
+    // Read off the context before the first await — [materializePreset]
+    // names its copy in the app's language, and a State's context is only
+    // safe to touch synchronously.
+    final languageCode = context.strings.languageCode;
     final name = _nameController.text.trim();
     final area = _selectedArea;
     final iconSlug = _selectedIconSlug;
-    final constellation = _selectedCustomConstellation;
-    if (name.isEmpty ||
-        area == null ||
-        iconSlug == null ||
-        constellation == null) {
+    final preset = _selectedPreset;
+    if (name.isEmpty || area == null || iconSlug == null || !_hasShape) {
       return;
     }
     assert(
       !_areaOnlySlugs.contains(iconSlug),
       'Area icons are reserved and should never reach a project.',
     );
+
+    // A library shape only becomes a real saved constellation here, once the
+    // project is actually being created — and reuses the copy made the first
+    // time this preset was picked, rather than adding another identical one.
+    final constellation = preset != null
+        ? await widget.customConstellationRepository.materializePreset(
+            preset,
+            languageCode: languageCode,
+          )
+        : _selectedCustomConstellation!;
 
     final project = await widget.projectRepository.add(
       name: name,
@@ -367,27 +476,39 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
                   hintText: strings.projectDescriptionHint,
                 ),
                 const SizedBox(height: 20),
-                AppFieldLabel(strings.yourConstellationsLabel),
+                AppFieldLabel(strings.chooseShapeLabel),
                 const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: OutlinedButton(
-                    onPressed: _openConstellationEditor,
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 22,
-                        vertical: 18,
+                // Current selection on the left, the two ways to change it
+                // on the right — so the shape being committed to is always
+                // on screen, rather than only discoverable by reopening the
+                // picker it came from.
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SelectedShapePreview(
+                      shape: _selectedShape,
+                      label: _selectedShapeName(strings),
+                      emptyHint: strings.noShapeChosenHint,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _ShapeSourceButton(
+                            icon: Icons.auto_awesome_mosaic,
+                            label: strings.pickFromLibraryShort,
+                            onTap: _openLibrary,
+                          ),
+                          const SizedBox(height: 10),
+                          _ShapeSourceButton(
+                            icon: Icons.gesture,
+                            label: strings.drawYourOwnShort,
+                            onTap: _openConstellationEditor,
+                          ),
+                        ],
                       ),
                     ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.gesture, size: 32),
-                        const SizedBox(height: 8),
-                        Text(strings.drawYourOwnShort),
-                      ],
-                    ),
-                  ),
+                  ],
                 ),
                 if (widget.customConstellationRepository
                     .getAll()
@@ -395,6 +516,8 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
                   const SizedBox(height: 20),
                   Divider(color: colors.nightBorder, height: 1),
                   const SizedBox(height: 16),
+                  AppFieldLabel(strings.yourConstellationsLabel),
+                  const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -405,9 +528,7 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
                           constellation: custom,
                           selected:
                               _selectedCustomConstellation?.id == custom.id,
-                          onTap: () => setState(
-                            () => _selectedCustomConstellation = custom,
-                          ),
+                          onTap: () => _selectCustom(custom),
                           onEdit: () =>
                               _openConstellationEditor(existing: custom),
                         ),
@@ -423,7 +544,7 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
                           value.text.trim().isNotEmpty &&
                           _selectedArea != null &&
                           _selectedIconSlug != null &&
-                          _selectedCustomConstellation != null;
+                          _hasShape;
                       return AppActionDisc(
                         heroTag: 'createProjectFab',
                         icon: Icons.check,
@@ -540,6 +661,199 @@ class _AreaOption extends StatelessWidget {
   }
 }
 
+/// A shape drawn small, inside an inset drawable area rather than the tile's
+/// full footprint — [ConstellationEditorPainter] draws each star as a
+/// fixed-radius circle, so a point sitting exactly at the shape's own 0..1
+/// edge would otherwise have its circle clipped by the tile border. Shared
+/// by every place a shape is shown at thumbnail size: the library's tiles,
+/// the current-selection preview, and the user's own saved shapes.
+class _ShapeThumbnail extends StatelessWidget {
+  const _ShapeThumbnail({required this.shape, required this.side});
+
+  final ConstellationShape shape;
+  final double side;
+
+  static const _inset = 14.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final drawable = side - _inset * 2;
+    return CustomPaint(
+      size: Size.square(side),
+      painter: ConstellationEditorPainter(
+        points: [
+          for (final p in shape.points)
+            Offset(_inset + p.dx * drawable, _inset + p.dy * drawable),
+        ],
+        edges: shape.edges,
+        highlightedIndex: null,
+        // Selection is shown by the tile's own gold border only — the drawn
+        // shape itself stays the same white/muted look either way.
+        pointColor: colors.text,
+        highlightColor: colors.gold,
+        lineColor: colors.muted.withValues(alpha: 0.6),
+        pointRadius: 2.5,
+      ),
+    );
+  }
+}
+
+/// One shape in the library sheet: its thumbnail over its name, selectable.
+/// No edit pencil, unlike [_CustomConstellationOption] — a library shape
+/// belongs to the app, not to this user. Editing one means picking it and
+/// then reopening the saved copy it becomes.
+class _ShapeTile extends StatelessWidget {
+  const _ShapeTile({
+    required this.shape,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final ConstellationShape shape;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  /// Smaller than [_constellationPreviewSide]: a hundred of these scroll past
+  /// in one sheet, so they're sized to fit three or four across a phone
+  /// rather than to be studied one at a time.
+  static const _side = 88.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return SizedBox(
+      width: _side,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(kRadiusField),
+            child: Container(
+              width: _side,
+              height: _side,
+              clipBehavior: Clip.antiAlias,
+              decoration: selectableDecoration(colors, selected: selected),
+              child: _ShapeThumbnail(shape: shape, side: _side),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11,
+              height: 1.2,
+              color: selected ? colors.gold : colors.muted,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The shape currently chosen for the project being created — whichever
+/// source it came from — or a placeholder while there isn't one. Not
+/// tappable: it reflects a choice rather than offering one, which is what
+/// the two [_ShapeSourceButton]s beside it are for.
+class _SelectedShapePreview extends StatelessWidget {
+  const _SelectedShapePreview({
+    required this.shape,
+    required this.label,
+    required this.emptyHint,
+  });
+
+  final ConstellationShape? shape;
+  final String? label;
+  final String emptyHint;
+
+  static const _side = _constellationPreviewSide;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final chosen = shape;
+    return SizedBox(
+      width: _side,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: _side,
+            height: _side,
+            clipBehavior: Clip.antiAlias,
+            decoration: selectableDecoration(colors, selected: chosen != null),
+            child: chosen == null
+                ? Center(
+                    child: Icon(
+                      Icons.auto_awesome_outlined,
+                      color: colors.muted,
+                      size: 28,
+                    ),
+                  )
+                : _ShapeThumbnail(shape: chosen, side: _side),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label ?? emptyHint,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11,
+              height: 1.2,
+              color: chosen == null ? colors.muted : colors.gold,
+              fontWeight: chosen == null ? FontWeight.w400 : FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One of the two ways to get a shape — a full-width outlined row, sized so
+/// two of them stack alongside the selection preview.
+class _ShapeSourceButton extends StatelessWidget {
+  const _ShapeSourceButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, size: 20),
+        // Flexible, not a bare Text: the button's own Row is mainAxisSize.min,
+        // so a label too long for the space left beside the shape preview
+        // (Italian and Romanian both run longer than English here) would
+        // overflow rather than ellipsize.
+        label: Flexible(
+          child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        ),
+      ),
+    );
+  }
+}
+
 /// Footprint of every saved-shape preview tile. Big enough that a shape's
 /// own stars/lines (drawn at their normal, fixed-pixel radius — see
 /// [ConstellationEditorPainter]) read clearly instead of nearly
@@ -575,25 +889,15 @@ class _CustomConstellationOption extends StatelessWidget {
   final VoidCallback onEdit;
 
   static const _side = _constellationPreviewSide;
-  static const _inset = 14.0;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final drawableSide = _side - _inset * 2;
-    final points = constellation.shape.points
-        .map(
-          (p) => Offset(
-            _inset + p.dx * drawableSide,
-            _inset + p.dy * drawableSide,
-          ),
-        )
-        .toList();
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _buildTile(colors, points),
+        _buildTile(colors),
         const SizedBox(height: 4),
         SizedBox(
           width: _side,
@@ -613,7 +917,7 @@ class _CustomConstellationOption extends StatelessWidget {
     );
   }
 
-  Widget _buildTile(AppColors colors, List<Offset> points) {
+  Widget _buildTile(AppColors colors) {
     return Stack(
       children: [
         InkWell(
@@ -624,21 +928,7 @@ class _CustomConstellationOption extends StatelessWidget {
             height: _side,
             clipBehavior: Clip.antiAlias,
             decoration: selectableDecoration(colors, selected: selected),
-            child: CustomPaint(
-              size: const Size(_side, _side),
-              painter: ConstellationEditorPainter(
-                points: points,
-                edges: constellation.shape.edges,
-                highlightedIndex: null,
-                // Selection is shown by the tile's own gold border only —
-                // the drawn shape itself (points/lines) stays the same
-                // white/muted look whether selected or not.
-                pointColor: colors.text,
-                highlightColor: colors.gold,
-                lineColor: colors.muted.withValues(alpha: 0.6),
-                pointRadius: 2.5,
-              ),
-            ),
+            child: _ShapeThumbnail(shape: constellation.shape, side: _side),
           ),
         ),
         Positioned(
@@ -682,6 +972,7 @@ Future<T?> _showSearchablePicker<T>({
   bodyBuilder,
   T? initialSelection,
   bool showSearch = true,
+  String? searchHint,
 }) {
   return showModalBottomSheet<T>(
     context: context,
@@ -694,6 +985,7 @@ Future<T?> _showSearchablePicker<T>({
       bodyBuilder: bodyBuilder,
       initialSelection: initialSelection,
       showSearch: showSearch,
+      searchHint: searchHint,
     ),
   );
 }
@@ -706,6 +998,7 @@ class _SearchablePickerSheet<T> extends StatefulWidget {
     required this.bodyBuilder,
     required this.initialSelection,
     required this.showSearch,
+    required this.searchHint,
   });
 
   final String title;
@@ -720,6 +1013,12 @@ class _SearchablePickerSheet<T> extends StatefulWidget {
   bodyBuilder;
   final T? initialSelection;
   final bool showSearch;
+
+  /// What the search box says when empty — the sheet is shared by pickers
+  /// searching quite different things (icons, shapes), so the generic
+  /// "search by title or description" doesn't fit all of them. Falls back to
+  /// that generic hint when omitted.
+  final String? searchHint;
 
   @override
   State<_SearchablePickerSheet<T>> createState() =>
@@ -795,7 +1094,7 @@ class _SearchablePickerSheetState<T> extends State<_SearchablePickerSheet<T>> {
                   onChanged: (value) => setState(() => _query = value),
                   style: TextStyle(color: colors.text, fontSize: 15),
                   decoration: InputDecoration(
-                    hintText: strings.searchHint,
+                    hintText: widget.searchHint ?? strings.searchHint,
                     prefixIcon: Icon(
                       Icons.search,
                       color: colors.muted,

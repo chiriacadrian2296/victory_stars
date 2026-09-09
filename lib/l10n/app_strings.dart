@@ -147,6 +147,15 @@ abstract class AppStrings {
   String get constellationEditorHelpDontShowAgain;
   String get constellationEditorHelpClose;
 
+  // Ready-made constellation library (constellation_presets.dart). Shape
+  // and category names aren't here — they live with the catalogue, the
+  // same way seed_data.dart owns its own translated project names.
+  String get chooseShapeLabel;
+  String get shapeLibraryTitle;
+  String get pickFromLibraryShort;
+  String get shapeSearchHint;
+  String get noShapeChosenHint;
+
   // New project
   String get newProjectEyebrow;
   String get newProjectQuestion;

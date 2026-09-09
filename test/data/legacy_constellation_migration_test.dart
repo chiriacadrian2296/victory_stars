@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:victory_stars/data/constellation_shapes_v2.dart';
+import 'package:victory_stars/data/constellation_presets.dart';
 import 'package:victory_stars/data/custom_constellation_repository.dart';
 import 'package:victory_stars/data/legacy_constellation_migration.dart';
 import 'package:victory_stars/data/project_repository.dart';
@@ -11,7 +11,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  test('backfills a project with no customConstellationId, matching its legacy icon shape', () async {
+  test('backfills a project with no customConstellationId, from its icon\'s own preset', () async {
     final projectRepository = await ProjectRepository.create();
     final customConstellationRepository = await CustomConstellationRepository.create();
     await projectRepository.add(
@@ -29,9 +29,9 @@ void main() {
     expect(migrated.customConstellationId, isNotNull);
     final shape = customConstellationRepository.getById(migrated.customConstellationId!);
     expect(shape, isNotNull);
-    expect(shape!.name, 'Build this app');
-    expect(shape.shape.points, constellationShapes['rocket_launch']!.points);
-    expect(shape.shape.edges, constellationShapes['rocket_launch']!.edges);
+    expect(shape!.presetId, 'rocket');
+    expect(shape.shape.points, presetById('rocket')!.shape.points);
+    expect(shape.shape.edges, presetById('rocket')!.shape.edges);
   });
 
   test('leaves a project that already has a customConstellationId untouched', () async {
@@ -39,7 +39,7 @@ void main() {
     final customConstellationRepository = await CustomConstellationRepository.create();
     final custom = await customConstellationRepository.add(
       name: 'My own shape',
-      shape: constellationShapes['rocket_launch']!,
+      shape: presetById('rocket')!.shape,
     );
     final project = await projectRepository.add(
       name: 'Build this app',
@@ -82,7 +82,34 @@ void main() {
     expect(customConstellationRepository.getAll(), hasLength(1));
   });
 
-  test('a project whose iconSlug has no legacy shape entry is left alone (no crash)', () async {
+  test('two projects sharing an icon share one materialized preset copy', () async {
+    final projectRepository = await ProjectRepository.create();
+    final customConstellationRepository = await CustomConstellationRepository.create();
+    await projectRepository.add(
+      name: 'Build this app',
+      area: LifeArea.professional,
+      iconSlug: 'rocket_launch',
+    );
+    await projectRepository.add(
+      name: 'Ship the sequel',
+      area: LifeArea.professional,
+      iconSlug: 'rocket_launch',
+    );
+
+    await backfillMissingConstellations(
+      projectRepository: projectRepository,
+      customConstellationRepository: customConstellationRepository,
+    );
+
+    final ids = projectRepository
+        .getAll()
+        .map((p) => p.customConstellationId)
+        .toSet();
+    expect(ids, hasLength(1));
+    expect(customConstellationRepository.getAll(), hasLength(1));
+  });
+
+  test('a project whose iconSlug is not in the catalogue still gets a shape', () async {
     final projectRepository = await ProjectRepository.create();
     final customConstellationRepository = await CustomConstellationRepository.create();
     await projectRepository.add(
@@ -96,7 +123,13 @@ void main() {
       customConstellationRepository: customConstellationRepository,
     );
 
-    expect(projectRepository.getAll().single.customConstellationId, isNull);
-    expect(customConstellationRepository.getAll(), isEmpty);
+    final migrated = projectRepository.getAll().single;
+    expect(migrated.customConstellationId, isNotNull);
+    // Deterministic, not arbitrary: the same retired slug always lands on
+    // the same fallback shape, so re-running never reshuffles anything.
+    expect(
+      customConstellationRepository.getById(migrated.customConstellationId!)!.presetId,
+      presetForIconSlug('not_a_real_slug').id,
+    );
   });
 }

@@ -71,7 +71,7 @@ extension LifeAreaX on LifeArea {
   IconData get icon {
     switch (this) {
       case LifeArea.physical:
-        return Icons.fitness_center;
+        return Icons.accessibility_new;
       case LifeArea.psychological:
         return Icons.psychology;
       case LifeArea.professional:
@@ -89,15 +89,19 @@ extension LifeAreaX on LifeArea {
     }
   }
 
-  /// The slug equivalent of [icon]. Most of these also happen to be keys in
-  /// `constellation_shapes_v2.dart` (same icon, same name) — this getter is
-  /// what lets the project icon picker filter them out, reserving them for
-  /// areas only. `self_improvement` isn't in that shape library at all, so
-  /// it was never selectable as a project icon regardless.
+  /// The slug equivalent of [icon]. None of these appear in
+  /// `icon_for_slug.dart` — the two sets are kept disjoint by construction,
+  /// so an area and a project can never render with the same glyph — and
+  /// the project icon picker filters them out again anyway, as a guard
+  /// against the two drifting back together.
+  ///
+  /// Physical wears `accessibility_new` (a standing figure) rather than the
+  /// dumbbell it used to: the dumbbell is a shape in the constellation
+  /// library now, and the library's own icon for it has to be the dumbbell.
   String get iconSlug {
     switch (this) {
       case LifeArea.physical:
-        return 'fitness_center';
+        return 'accessibility_new';
       case LifeArea.psychological:
         return 'psychology';
       case LifeArea.professional:
@@ -115,7 +119,7 @@ extension LifeAreaX on LifeArea {
     }
   }
 
-  /// Key into `suggestedIconsByArea` (constellation_shapes_v2.dart). Kept
+  /// Key into `suggestedIconsByArea` (icon_for_slug.dart). Kept
   /// separate from [name] because that map spells this area
   /// "philanthropical", not "philanthropic".
   String get suggestedIconsKey {

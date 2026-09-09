@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 
 import '../data/constellation_editor_prefs.dart';
-import '../data/constellation_shapes_v2.dart';
+import '../data/constellation_shape.dart';
 import '../data/custom_constellation_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../models/custom_constellation.dart';
@@ -49,10 +49,11 @@ class ConstellationEditorScreen extends StatefulWidget {
 /// A soft cap, distinct from `maxChainedStars` in constellation_layout.dart
 /// (which bounds the *rendered, algorithmically grown* graph for
 /// performance). This one bounds how many points a person can usefully
-/// place and keep track of by hand in one sitting — the 20 built-in shapes
-/// all land at 5-10 points, so this leaves generous headroom without
-/// inviting a shape so dense it stops reading as a constellation on a phone
-/// screen.
+/// place and keep track of by hand in one sitting — the ready-made library
+/// shapes (see `constellation_presets.dart`, which respects this same cap so
+/// every preset is one a person could have drawn here) mostly land at 6-14
+/// points, so this leaves headroom without inviting a shape so dense it
+/// stops reading as a constellation on a phone screen.
 const int _maxEditorPoints = 25;
 
 class _EditorSnapshot {

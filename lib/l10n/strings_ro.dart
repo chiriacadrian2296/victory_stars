@@ -265,6 +265,16 @@ class StringsRo implements AppStrings {
   String get constellationEditorHelpDontShowAgain => 'Nu mai arăta asta';
   @override
   String get constellationEditorHelpClose => 'Am înțeles';
+  @override
+  String get chooseShapeLabel => 'Forma constelației';
+  @override
+  String get shapeLibraryTitle => 'Bibliotecă de forme';
+  @override
+  String get pickFromLibraryShort => 'Alege o formă';
+  @override
+  String get shapeSearchHint => 'Caută o formă';
+  @override
+  String get noShapeChosenHint => 'Nicio formă aleasă';
 
   @override
   String get newProjectEyebrow => 'CONSTELAȚIE NOUĂ';

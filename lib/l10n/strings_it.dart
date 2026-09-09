@@ -265,6 +265,16 @@ class StringsIt implements AppStrings {
   String get constellationEditorHelpDontShowAgain => 'Non mostrarlo più';
   @override
   String get constellationEditorHelpClose => 'Ho capito';
+  @override
+  String get chooseShapeLabel => 'Forma della costellazione';
+  @override
+  String get shapeLibraryTitle => 'Libreria di forme';
+  @override
+  String get pickFromLibraryShort => 'Scegli una forma';
+  @override
+  String get shapeSearchHint => 'Cerca una forma';
+  @override
+  String get noShapeChosenHint => 'Nessuna forma scelta';
 
   @override
   String get newProjectEyebrow => 'NUOVA COSTELLAZIONE';

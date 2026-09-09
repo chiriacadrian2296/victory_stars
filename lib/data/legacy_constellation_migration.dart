@@ -1,42 +1,42 @@
-import 'constellation_shapes_v2.dart';
+import 'constellation_presets.dart';
 import 'custom_constellation_repository.dart';
 import 'project_repository.dart';
 
-/// Backfills every [Project] that predates the hand-drawn constellation
-/// editor — or was created by the debug seed tool, which still creates
-/// projects the old way — with a real [CustomConstellation], generated from
-/// the fixed shape [Project.iconSlug] used to fall back to. Preserves
-/// exactly what that project's constellation already looked like (same
-/// points/edges, so already-lit stars don't shift), just re-homing it into
-/// the same system every hand-drawn shape lives in.
+/// Gives a real constellation to every [Project] that somehow doesn't have
+/// one — a project that predates the in-app editor, or one the debug seed
+/// tool made (it still creates projects the old way, icon slug only).
 ///
-/// Idempotent: skips any project that already has a [Project.customConstellationId],
-/// so it's safe to call on every app launch (see `main.dart`) and again
-/// right after seeding sample data (see `SettingsScreen._seedSampleData`)
-/// without ever creating a duplicate.
+/// The shape comes from the ready-made library: the preset paired with that
+/// project's own [Project.iconSlug] where there is one (so a project badged
+/// with a rocket gets the rocket shape), otherwise a deterministic pick from
+/// the catalogue, seeded by the slug itself so the same slug always lands on
+/// the same shape. Projects that share a slug share one materialized copy
+/// rather than each minting their own — see
+/// [CustomConstellationRepository.materializePreset].
+///
+/// This used to map each legacy slug to one of 20 real-astronomy shapes
+/// (Orion, Cassiopeia, ...) kept solely as migration data. Those are gone
+/// now that the library exists: a project being backfilled today gets a
+/// shape someone can recognize and re-pick, instead of a fossil nothing else
+/// in the app could produce.
+///
+/// Idempotent: skips any project that already has a
+/// [Project.customConstellationId], so it's safe to call on every app launch
+/// (see `main.dart`) and again right after seeding sample data (see
+/// `SettingsScreen._seedSampleData`) without ever creating a duplicate.
 Future<void> backfillMissingConstellations({
   required ProjectRepository projectRepository,
   required CustomConstellationRepository customConstellationRepository,
 }) async {
   for (final project in projectRepository.getAll()) {
     if (project.customConstellationId != null) continue;
-    final legacyShape = constellationShapes[project.iconSlug];
-    if (legacyShape == null) continue;
 
-    // CustomConstellation ids are millisecondsSinceEpoch — back-to-back
-    // adds in this loop could otherwise mint the same id for two different
-    // projects' migrated shapes, and getById() would then resolve to
-    // whichever one happens to come first (see star_repository_test.dart's
-    // own note on the same underlying issue).
-    await Future<void>.delayed(const Duration(milliseconds: 2));
-
-    final migrated = await customConstellationRepository.add(
-      name: project.name,
-      shape: legacyShape,
+    final materialized = await customConstellationRepository.materializePreset(
+      presetForIconSlug(project.iconSlug),
     );
     await projectRepository.assignCustomConstellation(
       projectId: project.id,
-      customConstellationId: migrated.id,
+      customConstellationId: materialized.id,
     );
   }
 }

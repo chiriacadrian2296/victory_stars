@@ -5,7 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
-import '../data/constellation_shapes_v2.dart';
+import '../data/constellation_shape.dart';
 import '../models/habit.dart';
 import '../models/life_area.dart';
 import '../models/project.dart';

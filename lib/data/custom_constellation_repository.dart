@@ -3,9 +3,10 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/custom_constellation.dart';
-import 'constellation_shapes_v2.dart';
+import 'constellation_presets.dart';
+import 'constellation_shape.dart';
 
-/// Reads and writes the user's hand-drawn constellation shapes as a single
+/// Reads and writes the user's own constellation shapes as a single
 /// JSON-encoded list under one [SharedPreferences] key, newest first —
 /// mirrors [ProjectRepository]'s shape exactly, since the same "small list,
 /// always read/written whole" reasoning applies here.
@@ -45,20 +46,64 @@ class CustomConstellationRepository {
     return null;
   }
 
+  /// The first shape saved from [presetId], or null if the library preset
+  /// has never been picked. Only ever matches an *untouched* copy — [update]
+  /// drops the tag as soon as the user edits one (see
+  /// [CustomConstellation.presetId]).
+  CustomConstellation? findByPresetId(String presetId) {
+    for (final shape in getAll()) {
+      if (shape.presetId == presetId) return shape;
+    }
+    return null;
+  }
+
+  /// The saved copy of [preset], creating it on first use. Picking the same
+  /// library shape for a second project therefore reuses the first copy
+  /// instead of stacking up identical entries named "Heart", "Heart",
+  /// "Heart" in the user's own list.
+  Future<CustomConstellation> materializePreset(
+    ConstellationPreset preset, {
+    String? languageCode,
+  }) async {
+    final existing = findByPresetId(preset.id);
+    if (existing != null) return existing;
+    return add(
+      name: preset.name.of(languageCode ?? 'en'),
+      shape: preset.shape,
+      presetId: preset.id,
+    );
+  }
+
   Future<CustomConstellation> add({
     required String name,
     required ConstellationShape shape,
+    String? presetId,
   }) async {
     final shapes = getAll();
     final created = CustomConstellation(
-      id: DateTime.now().millisecondsSinceEpoch,
+      id: _nextId(shapes),
       name: name.trim(),
       shape: shape,
       createdAt: DateTime.now(),
+      presetId: presetId,
     );
 
     await _saveAll([created, ...shapes]);
     return created;
+  }
+
+  /// Ids are millisecondsSinceEpoch, which two adds in the same millisecond
+  /// would collide on — [getById] would then resolve both projects' shapes
+  /// to whichever came first. Stepping past anything already taken makes
+  /// back-to-back adds safe without callers having to sleep between them
+  /// (which is exactly what `backfillMissingConstellations` used to do).
+  static int _nextId(List<CustomConstellation> existing) {
+    var id = DateTime.now().millisecondsSinceEpoch;
+    final taken = existing.map((s) => s.id).toSet();
+    while (taken.contains(id)) {
+      id++;
+    }
+    return id;
   }
 
   /// Replaces the name/shape of an existing custom constellation in place,
@@ -67,6 +112,10 @@ class CustomConstellationRepository {
   /// the list (unlike [add], this doesn't move it to the front — editing
   /// isn't "creating something new"). Throws if [id] doesn't match anything
   /// saved.
+  ///
+  /// Also drops any [CustomConstellation.presetId]: an edited copy is the
+  /// user's own shape now, and leaving the tag on would make the next
+  /// project that picks that library shape silently inherit these edits.
   Future<CustomConstellation> update({
     required int id,
     required String name,

@@ -7,7 +7,7 @@ import '../models/star.dart';
 import '../models/star_kind.dart';
 import '../utils/habit_stats.dart';
 import '../widgets/constellation_painter.dart';
-import 'constellation_shapes_v2.dart';
+import 'constellation_shape.dart';
 
 /// A shape's graph grows this large before overflow stars stop being woven
 /// into the constellation and start scattering instead (see

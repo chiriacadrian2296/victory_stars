@@ -264,6 +264,16 @@ class StringsEn implements AppStrings {
   String get constellationEditorHelpDontShowAgain => "Don't show this again";
   @override
   String get constellationEditorHelpClose => 'Got it';
+  @override
+  String get chooseShapeLabel => 'Constellation shape';
+  @override
+  String get shapeLibraryTitle => 'Shape library';
+  @override
+  String get pickFromLibraryShort => 'Pick a shape';
+  @override
+  String get shapeSearchHint => 'Search shapes';
+  @override
+  String get noShapeChosenHint => 'No shape chosen yet';
 
   @override
   String get newProjectEyebrow => 'NEW CONSTELLATION';

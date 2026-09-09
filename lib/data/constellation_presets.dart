@@ -1,0 +1,1529 @@
+// The app's own library of ready-made constellation shapes — 100 of them,
+// grouped into [PresetCategory]s, offered in `NewProjectScreen` so a
+// project can get a real shape immediately instead of every user having to
+// draw one from scratch in `ConstellationEditorScreen` first (drawing your
+// own is still there, and still the only way to get something the library
+// doesn't already have).
+//
+// Every shape here is authored on **the same 10x10 grid the editor snaps
+// to** (see `_gridDivisions` in `constellation_editor_screen.dart`): each
+// point is an integer `(column, row)` pair in 0..10, row 0 at the top, so
+// anything in this file is something a person could have drawn by hand in
+// the editor with the grid switched on. [_shapeFromGrid] then runs those
+// integer points through the very same [normalizeEditorPoints] the editor
+// itself applies at save time, so a preset and a hand-drawn shape land in
+// the 0..1 box by identical rules and render at identical scale next to
+// each other.
+//
+// Each preset also carries an [iconSlug]: the project badge icon that goes
+// with the shape. It's never the *same* picture — a shape and a Material
+// glyph can't be — just the same idea (a bicycle shape wears the bicycle
+// icon, a wheel shape could wear a car one). Picking a preset in
+// `NewProjectScreen` pre-fills the icon field with it; drawing your own
+// shape leaves the icon field for the user to choose, since the app has no
+// idea what they drew. See `icon_for_slug.dart`, whose slug set is exactly
+// the 100 slugs used here (area icons deliberately excluded — those stay
+// reserved for the 8 [LifeArea]s).
+//
+// Names live here rather than in [AppStrings] for the same reason
+// `seed_data.dart`'s project names do: this is translated *content* that
+// belongs with the data it names, and 111 more getters (100 shapes + 11
+// categories) x 3 languages would swamp an interface meant to hold the
+// app's UI chrome. [LocalizedName.of] resolves against the same
+// `AppStrings.languageCode` everything else keys off.
+import 'dart:ui';
+
+import '../widgets/constellation_editor_painter.dart' show normalizeEditorPoints;
+import 'constellation_shape.dart';
+
+/// One string in each of the app's three languages. A plain record rather
+/// than a class — it has no behavior beyond [of], and being a record keeps
+/// every one of the 111 literals below down to a single readable line.
+typedef LocalizedName = ({String en, String it, String ro});
+
+extension LocalizedNameX on LocalizedName {
+  /// English for any code that isn't `it`/`ro` — same fallback
+  /// `seed_data.dart`'s own `_specsFor` uses.
+  String of(String languageCode) => switch (languageCode) {
+    'it' => it,
+    'ro' => ro,
+    _ => en,
+  };
+}
+
+/// The shelves the library is divided into, in the order they're shown.
+/// Deliberately about *what a shape depicts* rather than about [LifeArea] —
+/// a bicycle can just as well be a Physical project as a Personal one, so
+/// tying the two together would only hide shapes from the people who want
+/// them.
+enum PresetCategory {
+  nature,
+  animals,
+  bodySport,
+  workStudy,
+  money,
+  home,
+  food,
+  artPlay,
+  travel,
+  people,
+  spirit,
+}
+
+extension PresetCategoryX on PresetCategory {
+  LocalizedName get name => switch (this) {
+    PresetCategory.nature => (en: 'Nature', it: 'Natura', ro: 'Natură'),
+    PresetCategory.animals => (en: 'Animals', it: 'Animali', ro: 'Animale'),
+    PresetCategory.bodySport => (
+      en: 'Body & sport',
+      it: 'Corpo e sport',
+      ro: 'Corp și sport',
+    ),
+    PresetCategory.workStudy => (
+      en: 'Work & study',
+      it: 'Lavoro e studio',
+      ro: 'Muncă și studiu',
+    ),
+    PresetCategory.money => (en: 'Money', it: 'Denaro', ro: 'Bani'),
+    PresetCategory.home => (
+      en: 'Home & everyday',
+      it: 'Casa e quotidiano',
+      ro: 'Casă și zi cu zi',
+    ),
+    PresetCategory.food => (
+      en: 'Food & drink',
+      it: 'Cibo e bevande',
+      ro: 'Mâncare și băutură',
+    ),
+    PresetCategory.artPlay => (
+      en: 'Art, music & play',
+      it: 'Arte, musica e gioco',
+      ro: 'Artă, muzică și joc',
+    ),
+    PresetCategory.travel => (
+      en: 'Travel & adventure',
+      it: 'Viaggio e avventura',
+      ro: 'Călătorie și aventură',
+    ),
+    PresetCategory.people => (
+      en: 'People & bonds',
+      it: 'Persone e legami',
+      ro: 'Oameni și legături',
+    ),
+    PresetCategory.spirit => (
+      en: 'Spirit & symbols',
+      it: 'Spirito e simboli',
+      ro: 'Spirit și simboluri',
+    ),
+  };
+}
+
+/// One ready-made shape in the library.
+///
+/// [grid]/[edges] are the authored form (integer grid points and the index
+/// pairs joining them, exactly as the editor would have produced them);
+/// [shape] is the normalized 0..1 [ConstellationShape] every consumer
+/// downstream actually wants, built once per preset on first access — cheap
+/// enough not to precompute, and this way the file stays readable as grid
+/// coordinates instead of a wall of fractions.
+class ConstellationPreset {
+  ConstellationPreset({
+    required this.id,
+    required this.category,
+    required this.iconSlug,
+    required this.name,
+    required this.grid,
+    required this.edges,
+  });
+
+  /// Stable, never translated, never shown — what a materialized copy is
+  /// tagged with (see [CustomConstellation.presetId]) so picking the same
+  /// preset for a second project reuses the first copy instead of piling up
+  /// duplicates in the user's own list.
+  final String id;
+
+  final PresetCategory category;
+
+  /// The project badge icon paired with this shape — a key into
+  /// `icon_for_slug.dart`'s own map.
+  final String iconSlug;
+
+  final LocalizedName name;
+
+  /// Integer `(column, row)` pairs on the editor's 10x10 grid, 0..10 on
+  /// both axes, row 0 at the top.
+  final List<(int, int)> grid;
+
+  /// Index pairs into [grid]. Every point is on at least one edge — a
+  /// constellation is a joined figure, not a scatter.
+  final List<(int, int)> edges;
+
+  late final ConstellationShape shape = ConstellationShape(
+    points: normalizeEditorPoints([
+      for (final (x, y) in grid) Offset(x.toDouble(), y.toDouble()),
+    ]),
+    edges: edges,
+  );
+}
+
+/// Every preset, in category order. Ids are unique, and so is every
+/// [ConstellationPreset.iconSlug] — one shape, one icon, no reuse — both
+/// asserted by `constellation_presets_test.dart`.
+final List<ConstellationPreset> constellationPresets = [
+  // ---------------------------------------------------------------- nature
+  ConstellationPreset(
+    id: 'tree',
+    category: PresetCategory.nature,
+    iconSlug: 'park',
+    name: (en: 'Tree', it: 'Albero', ro: 'Copac'),
+    grid: [(5, 10), (5, 7), (2, 7), (8, 7), (3, 4), (7, 4), (5, 1)],
+    edges: [(0, 1), (1, 2), (2, 4), (4, 6), (6, 5), (5, 3), (3, 1)],
+  ),
+  ConstellationPreset(
+    id: 'pine',
+    category: PresetCategory.nature,
+    iconSlug: 'forest',
+    name: (en: 'Pine', it: 'Pino', ro: 'Brad'),
+    grid: [
+      (5, 0), (7, 3), (6, 3), (8, 6), (7, 6), (9, 9), (6, 9),
+      (6, 10), (4, 10), (4, 9), (1, 9), (3, 6), (2, 6), (4, 3),
+      (3, 3),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8),
+      (8, 9), (9, 10), (10, 11), (11, 12), (12, 13), (13, 14),
+      (14, 0),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'flower',
+    category: PresetCategory.nature,
+    iconSlug: 'local_florist',
+    name: (en: 'Flower', it: 'Fiore', ro: 'Floare'),
+    grid: [
+      (5, 0), (7, 1), (8, 3), (7, 5), (5, 6), (3, 5), (2, 3), (3, 1),
+      (5, 2), (6, 3), (5, 4), (4, 3), (5, 8), (5, 10), (2, 7),
+      (8, 7),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 0),
+      (8, 9), (9, 10), (10, 11), (11, 8), (4, 12), (12, 13),
+      (12, 14), (12, 15),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'leaf',
+    category: PresetCategory.nature,
+    iconSlug: 'eco',
+    name: (en: 'Leaf', it: 'Foglia', ro: 'Frunză'),
+    grid: [(5, 0), (8, 4), (5, 8), (2, 4), (5, 4), (5, 10)],
+    edges: [(0, 1), (1, 2), (2, 3), (3, 0), (0, 4), (4, 2), (2, 5)],
+  ),
+  ConstellationPreset(
+    id: 'mountain',
+    category: PresetCategory.nature,
+    iconSlug: 'terrain',
+    name: (en: 'Mountain', it: 'Montagna', ro: 'Munte'),
+    grid: [(0, 10), (3, 3), (5, 6), (7, 1), (10, 10)],
+    edges: [(0, 1), (1, 2), (2, 3), (3, 4), (4, 0)],
+  ),
+  ConstellationPreset(
+    id: 'wave',
+    category: PresetCategory.nature,
+    iconSlug: 'waves',
+    name: (en: 'Wave', it: 'Onda', ro: 'Val'),
+    grid: [
+      (0, 9), (2, 8), (4, 5), (6, 2), (9, 3), (7, 5), (5, 6), (8, 8),
+      (10, 9),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (4, 7), (7, 8),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'flame',
+    category: PresetCategory.nature,
+    iconSlug: 'local_fire_department',
+    name: (en: 'Flame', it: 'Fiamma', ro: 'Flacără'),
+    grid: [
+      (5, 0), (7, 3), (6, 5), (8, 7), (6, 10), (4, 10), (2, 7),
+      (4, 5), (3, 3),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8),
+      (8, 0),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'sun',
+    category: PresetCategory.nature,
+    iconSlug: 'wb_sunny',
+    name: (en: 'Sun', it: 'Sole', ro: 'Soare'),
+    grid: [
+      (5, 3), (7, 5), (5, 7), (3, 5),
+      (5, 0), (10, 5), (5, 10), (0, 5),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 0),
+      (0, 4), (1, 5), (2, 6), (3, 7),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'crescent_moon',
+    category: PresetCategory.nature,
+    iconSlug: 'nightlight',
+    name: (en: 'Crescent moon', it: 'Luna crescente', ro: 'Lună'),
+    grid: [(6, 0), (3, 1), (1, 4), (1, 6), (3, 9), (6, 10), (4, 7), (4, 3)],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4),
+      (4, 5), (5, 6), (6, 7), (7, 0),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'rain_cloud',
+    category: PresetCategory.nature,
+    iconSlug: 'water_drop',
+    name: (en: 'Rain cloud', it: 'Nuvola di pioggia', ro: 'Nor de ploaie'),
+    grid: [
+      (2, 5), (1, 3), (3, 1), (6, 1), (8, 3), (8, 5), (5, 5), (2, 7),
+      (1, 9), (5, 7), (4, 9), (8, 7), (7, 9),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 0), (7, 8),
+      (9, 10), (11, 12),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'snowflake',
+    category: PresetCategory.nature,
+    iconSlug: 'ac_unit',
+    name: (en: 'Snowflake', it: 'Fiocco di neve', ro: 'Fulg de nea'),
+    grid: [
+      (5, 5), (5, 0), (5, 10), (1, 3), (9, 3), (1, 7), (9, 7),
+      (5, 2), (3, 1), (7, 1), (5, 8), (3, 9), (7, 9),
+    ],
+    edges: [
+      (0, 3), (0, 4), (0, 5), (0, 6),
+      (0, 7), (7, 1), (7, 8), (7, 9),
+      (0, 10), (10, 2), (10, 11), (10, 12),
+    ],
+  ),
+
+  // --------------------------------------------------------------- animals
+  ConstellationPreset(
+    id: 'dog',
+    category: PresetCategory.animals,
+    iconSlug: 'pets',
+    name: (en: 'Dog', it: 'Cane', ro: 'Câine'),
+    grid: [
+      (0, 4), (2, 2), (3, 4), (3, 6), (7, 6), (7, 3), (9, 1), (3, 9),
+      (7, 9), (1, 5),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 5), (5, 6), (0, 9), (9, 3), (3, 4), (4, 5),
+      (3, 7), (4, 8),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'bird',
+    category: PresetCategory.animals,
+    iconSlug: 'flutter_dash',
+    name: (en: 'Bird', it: 'Uccello', ro: 'Pasăre'),
+    grid: [
+      (1, 4), (3, 2), (6, 3), (9, 3), (7, 6), (4, 7), (2, 5),
+      (4, 10), (6, 10),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 0), (5, 7),
+      (4, 8),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'fish',
+    category: PresetCategory.animals,
+    iconSlug: 'set_meal',
+    name: (en: 'Fish', it: 'Pesce', ro: 'Pește'),
+    grid: [(1, 5), (3, 2), (6, 2), (8, 5), (6, 8), (3, 8), (10, 2), (10, 8)],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5),
+      (5, 0), (3, 6), (6, 7), (7, 3),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'bee',
+    category: PresetCategory.animals,
+    iconSlug: 'emoji_nature',
+    name: (en: 'Bee', it: 'Ape', ro: 'Albină'),
+    grid: [
+      (1, 5), (3, 3), (7, 3), (9, 5), (7, 7), (3, 7), (5, 3), (5, 7),
+      (3, 0), (7, 0), (0, 2),
+    ],
+    edges: [
+      (0, 1), (1, 6), (6, 2), (2, 3), (3, 4), (4, 7), (7, 5), (5, 0),
+      (6, 7), (6, 8), (6, 9), (1, 10),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'butterfly',
+    category: PresetCategory.animals,
+    iconSlug: 'filter_vintage',
+    name: (en: 'Butterfly', it: 'Farfalla', ro: 'Fluture'),
+    grid: [
+      (5, 2), (5, 5), (5, 8), (1, 0), (1, 4),
+      (9, 0), (9, 4), (2, 8), (8, 8), (3, 1), (7, 1),
+    ],
+    edges: [
+      (0, 1), (1, 2), (0, 9), (0, 10),
+      (0, 3), (3, 4), (4, 1), (0, 5), (5, 6), (6, 1),
+      (1, 7), (7, 2), (1, 8), (8, 2),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'rabbit',
+    category: PresetCategory.animals,
+    iconSlug: 'cruelty_free',
+    name: (en: 'Rabbit', it: 'Coniglio', ro: 'Iepure'),
+    grid: [
+      (3, 0), (4, 3), (6, 0), (6, 3), (2, 5), (3, 7), (6, 6), (9, 5),
+      (10, 8), (6, 10),
+    ],
+    edges: [
+      (0, 1), (2, 3), (1, 3), (1, 4), (4, 5), (5, 6), (6, 3), (6, 7),
+      (7, 8), (8, 9), (9, 5),
+    ],
+  ),
+
+  // ------------------------------------------------------------ bodySport
+  ConstellationPreset(
+    id: 'dumbbell',
+    category: PresetCategory.bodySport,
+    iconSlug: 'fitness_center',
+    name: (en: 'Dumbbell', it: 'Manubrio', ro: 'Ganteră'),
+    grid: [
+      (1, 2), (1, 8), (3, 3), (3, 7), (7, 3),
+      (7, 7), (9, 2), (9, 8), (3, 5), (7, 5),
+    ],
+    edges: [
+      (0, 1), (0, 2), (1, 3), (2, 8), (3, 8), (8, 9),
+      (9, 4), (9, 5), (4, 6), (5, 7), (6, 7),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'runner',
+    category: PresetCategory.bodySport,
+    iconSlug: 'directions_run',
+    name: (en: 'Runner', it: 'Corsa', ro: 'Alergător'),
+    grid: [
+      (7, 1), (5, 3), (5, 6), (3, 2), (1, 3), (7, 4), (9, 5), (3, 7),
+      (2, 9), (7, 8), (9, 9),
+    ],
+    edges: [
+      (0, 1), (1, 3), (3, 4), (1, 5), (5, 6), (1, 2), (2, 7), (7, 8),
+      (2, 9), (9, 10),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'bicycle',
+    category: PresetCategory.bodySport,
+    iconSlug: 'directions_bike',
+    name: (en: 'Bicycle', it: 'Bicicletta', ro: 'Bicicletă'),
+    grid: [
+      (2, 5), (4, 7), (2, 9), (0, 7), (8, 5), (10, 7), (8, 9),
+      (6, 7), (4, 2), (7, 2), (9, 1),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 0), (4, 5), (5, 6), (6, 7), (7, 4),
+      (0, 8), (8, 9), (9, 4), (0, 4), (9, 10),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'football',
+    category: PresetCategory.bodySport,
+    iconSlug: 'sports_soccer',
+    name: (en: 'Football', it: 'Pallone', ro: 'Minge de fotbal'),
+    grid: [
+      (5, 0), (9, 3), (9, 7), (5, 10), (1, 7), (1, 3),
+      (5, 3), (7, 5), (6, 7), (4, 7), (3, 5),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0),
+      (6, 7), (7, 8), (8, 9), (9, 10), (10, 6),
+      (6, 0), (7, 1), (8, 2), (9, 3), (10, 5),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'basketball_hoop',
+    category: PresetCategory.bodySport,
+    iconSlug: 'sports_basketball',
+    name: (en: 'Basketball hoop', it: 'Canestro', ro: 'Coș de baschet'),
+    grid: [
+      (2, 0), (8, 0), (8, 4), (2, 4),
+      (3, 5), (7, 5), (5, 9), (4, 7), (6, 7),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 0),
+      (3, 4), (2, 5), (4, 5),
+      (4, 7), (7, 6), (5, 8), (8, 6), (7, 8),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'swimmer',
+    category: PresetCategory.bodySport,
+    iconSlug: 'pool',
+    name: (en: 'Swimmer', it: 'Nuotatore', ro: 'Înotător'),
+    grid: [
+      (2, 3), (4, 4), (1, 1), (6, 5), (9, 4), (9, 7), (4, 1),
+      (0, 8), (3, 9), (7, 8), (10, 9),
+    ],
+    edges: [
+      (0, 1), (1, 2), (1, 6), (1, 3), (3, 4), (3, 5),
+      (7, 8), (8, 9), (9, 10),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'yoga_pose',
+    category: PresetCategory.bodySport,
+    iconSlug: 'sports_gymnastics',
+    name: (en: 'Yoga pose', it: 'Posizione yoga', ro: 'Poziție yoga'),
+    grid: [
+      (5, 0), (5, 3), (5, 6), (1, 5), (9, 5), (1, 8), (9, 8), (5, 9),
+    ],
+    edges: [
+      (0, 1), (1, 2), (1, 3), (1, 4),
+      (2, 5), (2, 6), (5, 7), (6, 7),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'boxing_glove',
+    category: PresetCategory.bodySport,
+    iconSlug: 'sports_mma',
+    name: (en: 'Boxing glove', it: 'Guantone', ro: 'Mănușă de box'),
+    grid: [(2, 3), (6, 2), (9, 4), (9, 7), (6, 9), (3, 8), (1, 6)],
+    edges: [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 0)],
+  ),
+  ConstellationPreset(
+    id: 'tennis_racket',
+    category: PresetCategory.bodySport,
+    iconSlug: 'sports_tennis',
+    name: (en: 'Tennis racket', it: 'Racchetta', ro: 'Rachetă de tenis'),
+    grid: [
+      (5, 0), (7, 1), (8, 3), (7, 5), (5, 6), (3, 5), (2, 3), (3, 1),
+      (5, 8), (4, 10), (6, 10),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 0),
+      (0, 4), (2, 6), (4, 8), (8, 9), (8, 10),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'heartbeat',
+    category: PresetCategory.bodySport,
+    iconSlug: 'monitor_heart',
+    name: (en: 'Heartbeat', it: 'Battito', ro: 'Puls'),
+    grid: [
+      (0, 5), (2, 5), (3, 2), (4, 8), (5, 5),
+      (7, 5), (8, 3), (9, 5), (10, 5),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4),
+      (4, 5), (5, 6), (6, 7), (7, 8),
+    ],
+  ),
+
+  // ------------------------------------------------------------ workStudy
+  ConstellationPreset(
+    id: 'briefcase',
+    category: PresetCategory.workStudy,
+    iconSlug: 'business_center',
+    name: (en: 'Briefcase', it: 'Valigetta', ro: 'Servietă'),
+    grid: [
+      (0, 3), (10, 3), (10, 9), (0, 9),
+      (4, 1), (6, 1), (4, 3), (6, 3),
+    ],
+    edges: [
+      (0, 6), (6, 7), (7, 1), (1, 2), (2, 3),
+      (3, 0), (6, 4), (4, 5), (5, 7),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'laptop',
+    category: PresetCategory.workStudy,
+    iconSlug: 'laptop_mac',
+    name: (en: 'Laptop', it: 'Portatile', ro: 'Laptop'),
+    grid: [(2, 1), (8, 1), (9, 6), (1, 6), (0, 8), (10, 8)],
+    edges: [(0, 1), (1, 2), (2, 3), (3, 0), (3, 4), (2, 5), (4, 5)],
+  ),
+  ConstellationPreset(
+    id: 'graduation_cap',
+    category: PresetCategory.workStudy,
+    iconSlug: 'school',
+    name: (en: 'Graduation cap', it: 'Tocco di laurea', ro: 'Tocă'),
+    grid: [(5, 1), (10, 4), (5, 7), (0, 4), (10, 8)],
+    edges: [(0, 1), (1, 2), (2, 3), (3, 0), (1, 4)],
+  ),
+  ConstellationPreset(
+    id: 'open_book',
+    category: PresetCategory.workStudy,
+    iconSlug: 'menu_book',
+    name: (en: 'Open book', it: 'Libro aperto', ro: 'Carte deschisă'),
+    grid: [(0, 3), (5, 4), (10, 3), (0, 8), (5, 9), (10, 8)],
+    edges: [(0, 1), (1, 2), (0, 3), (3, 4), (4, 5), (2, 5), (1, 4)],
+  ),
+  ConstellationPreset(
+    id: 'pencil',
+    category: PresetCategory.workStudy,
+    iconSlug: 'edit',
+    name: (en: 'Pencil', it: 'Matita', ro: 'Creion'),
+    grid: [(0, 10), (1, 7), (3, 9), (7, 1), (9, 3), (8, 0), (10, 2)],
+    edges: [
+      (0, 1), (0, 2), (1, 3), (2, 4),
+      (3, 4), (3, 5), (4, 6), (5, 6),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'gear',
+    category: PresetCategory.workStudy,
+    iconSlug: 'settings',
+    name: (en: 'Gear', it: 'Ingranaggio', ro: 'Rotiță'),
+    grid: [
+      (4, 2), (6, 2), (8, 4), (8, 6), (6, 8), (4, 8), (2, 6), (2, 4),
+      (4, 0), (6, 0), (10, 4), (10, 6), (6, 10), (4, 10), (0, 6), (0, 4),
+    ],
+    edges: [
+      (0, 8), (8, 9), (9, 1), (1, 2),
+      (2, 10), (10, 11), (11, 3), (3, 4),
+      (4, 12), (12, 13), (13, 5), (5, 6),
+      (6, 14), (14, 15), (15, 7), (7, 0),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'rising_chart',
+    category: PresetCategory.workStudy,
+    iconSlug: 'trending_up',
+    name: (en: 'Rising chart', it: 'Grafico in crescita', ro: 'Grafic'),
+    grid: [
+      (0, 8), (3, 6), (5, 7), (7, 3), (9, 1),
+      (6, 1), (9, 4), (0, 10), (10, 10),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4),
+      (4, 5), (4, 6), (0, 7), (7, 8),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'ladder',
+    category: PresetCategory.workStudy,
+    iconSlug: 'stairs',
+    name: (en: 'Ladder', it: 'Scala', ro: 'Scară'),
+    grid: [
+      (2, 0), (2, 10), (8, 0), (8, 10),
+      (2, 2), (2, 4), (2, 6), (2, 8),
+      (8, 2), (8, 4), (8, 6), (8, 8),
+    ],
+    edges: [
+      (0, 4), (4, 5), (5, 6), (6, 7), (7, 1),
+      (2, 8), (8, 9), (9, 10), (10, 11), (11, 3),
+      (4, 8), (5, 9), (6, 10), (7, 11),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'tower',
+    category: PresetCategory.workStudy,
+    iconSlug: 'corporate_fare',
+    name: (en: 'Tower', it: 'Grattacielo', ro: 'Turn'),
+    grid: [
+      (3, 10), (3, 8), (3, 5), (3, 2), (7, 2), (7, 5), (7, 8),
+      (7, 10), (5, 2), (5, 0),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 8), (8, 4), (4, 5), (5, 6), (6, 7),
+      (7, 0), (2, 5), (1, 6), (8, 9),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'clock',
+    category: PresetCategory.workStudy,
+    iconSlug: 'schedule',
+    name: (en: 'Clock', it: 'Orologio', ro: 'Ceas'),
+    grid: [
+      (5, 0), (8, 2), (10, 5), (8, 8), (5, 10),
+      (2, 8), (0, 5), (2, 2), (5, 5), (8, 4),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5),
+      (5, 6), (6, 7), (7, 0), (8, 0), (8, 9),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'lightbulb',
+    category: PresetCategory.workStudy,
+    iconSlug: 'emoji_objects',
+    name: (en: 'Lightbulb', it: 'Lampadina', ro: 'Bec'),
+    grid: [
+      (5, 0), (8, 2), (8, 5), (6, 7), (4, 7),
+      (2, 5), (2, 2), (4, 9), (6, 9),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5),
+      (5, 6), (6, 0), (4, 7), (3, 8), (7, 8),
+    ],
+  ),
+
+  // ----------------------------------------------------------------- money
+  ConstellationPreset(
+    id: 'coins',
+    category: PresetCategory.money,
+    iconSlug: 'paid',
+    name: (en: 'Coins', it: 'Monete', ro: 'Monede'),
+    grid: [
+      (2, 1), (5, 0), (8, 1), (8, 3), (5, 4), (2, 3),
+      (2, 6), (5, 5), (8, 6), (8, 8), (5, 9), (2, 8),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0),
+      (6, 7), (7, 8), (8, 9), (9, 10), (10, 11), (11, 6),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'wallet',
+    category: PresetCategory.money,
+    iconSlug: 'account_balance_wallet',
+    name: (en: 'Wallet', it: 'Portafoglio', ro: 'Portofel'),
+    grid: [
+      (0, 2), (10, 2), (10, 9), (0, 9), (0, 6), (10, 6), (5, 5),
+      (6, 6), (5, 7), (4, 6),
+    ],
+    edges: [
+      (0, 1), (1, 5), (5, 2), (2, 3), (3, 4), (4, 0), (4, 9), (7, 5),
+      (9, 6), (6, 7), (9, 8), (8, 7),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'bank',
+    category: PresetCategory.money,
+    iconSlug: 'account_balance',
+    name: (en: 'Bank', it: 'Banca', ro: 'Bancă'),
+    grid: [
+      (5, 0), (10, 3), (0, 3), (1, 3), (1, 8), (5, 3), (5, 8),
+      (9, 3), (9, 8), (0, 8), (10, 8), (0, 10), (10, 10),
+    ],
+    edges: [
+      (0, 2), (0, 1), (2, 3), (3, 5), (5, 7), (7, 1),
+      (3, 4), (5, 6), (7, 8),
+      (9, 4), (4, 6), (6, 8), (8, 10),
+      (9, 11), (10, 12), (11, 12),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'credit_card',
+    category: PresetCategory.money,
+    iconSlug: 'credit_card',
+    name: (en: 'Credit card', it: 'Carta di credito', ro: 'Card bancar'),
+    grid: [
+      (0, 2), (10, 2), (10, 8), (0, 8), (0, 4), (10, 4),
+      (2, 6), (4, 6), (5, 6), (7, 6),
+    ],
+    edges: [
+      (0, 1), (1, 5), (5, 2), (2, 3), (3, 4),
+      (4, 0), (4, 5), (6, 7), (8, 9),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'diamond',
+    category: PresetCategory.money,
+    iconSlug: 'diamond',
+    name: (en: 'Diamond', it: 'Diamante', ro: 'Diamant'),
+    grid: [(2, 2), (8, 2), (0, 4), (10, 4), (5, 10)],
+    edges: [
+      (0, 1), (0, 2), (1, 3), (2, 3),
+      (2, 4), (3, 4), (0, 4), (1, 4),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'shopping_cart',
+    category: PresetCategory.money,
+    iconSlug: 'shopping_cart',
+    name: (en: 'Shopping cart', it: 'Carrello', ro: 'Cărucior'),
+    grid: [(2, 3), (9, 3), (8, 7), (3, 7), (0, 1), (4, 9), (7, 9)],
+    edges: [(0, 1), (1, 2), (2, 3), (3, 0), (4, 0), (3, 5), (2, 6)],
+  ),
+  ConstellationPreset(
+    id: 'scales',
+    category: PresetCategory.money,
+    iconSlug: 'balance',
+    name: (en: 'Scales', it: 'Bilancia', ro: 'Balanță'),
+    grid: [
+      (5, 10), (5, 2), (1, 2), (9, 2), (0, 5),
+      (2, 5), (8, 5), (10, 5), (3, 10), (7, 10),
+    ],
+    edges: [
+      (0, 1), (1, 2), (1, 3), (2, 4), (2, 5), (4, 5),
+      (3, 6), (3, 7), (6, 7), (8, 0), (0, 9),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'key',
+    category: PresetCategory.money,
+    iconSlug: 'vpn_key',
+    name: (en: 'Key', it: 'Chiave', ro: 'Cheie'),
+    grid: [
+      (1, 4), (2, 2), (4, 2), (5, 4), (4, 6), (2, 6), (8, 4),
+      (10, 4), (8, 7), (10, 7),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0), (3, 6), (6, 7),
+      (6, 8), (7, 9),
+    ],
+  ),
+
+  // ------------------------------------------------------------------ home
+  ConstellationPreset(
+    id: 'house',
+    category: PresetCategory.home,
+    iconSlug: 'home',
+    name: (en: 'House', it: 'Casa', ro: 'Casă'),
+    grid: [
+      (1, 4), (9, 4), (9, 10), (1, 10), (5, 1),
+      (4, 10), (4, 7), (6, 7), (6, 10),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 8), (8, 7), (7, 6),
+      (6, 5), (5, 3), (3, 0), (0, 4), (4, 1),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'bed',
+    category: PresetCategory.home,
+    iconSlug: 'king_bed',
+    name: (en: 'Bed', it: 'Letto', ro: 'Pat'),
+    grid: [
+      (0, 1), (0, 6), (9, 6), (9, 4), (0, 9), (9, 9), (0, 10),
+      (9, 10), (1, 4), (4, 4), (4, 6),
+    ],
+    edges: [
+      (0, 1), (1, 10), (10, 2), (2, 3), (1, 4), (2, 5), (4, 5),
+      (4, 6), (5, 7), (1, 8), (8, 9), (9, 10),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'armchair',
+    category: PresetCategory.home,
+    iconSlug: 'chair',
+    name: (en: 'Armchair', it: 'Poltrona', ro: 'Fotoliu'),
+    grid: [
+      (2, 2), (8, 2), (2, 6), (8, 6), (0, 5), (0, 9),
+      (10, 5), (10, 9), (2, 9), (8, 9), (2, 10), (8, 10),
+    ],
+    edges: [
+      (0, 1), (0, 2), (1, 3), (2, 3),
+      (2, 4), (4, 5), (5, 8), (3, 6), (6, 7), (7, 9),
+      (8, 9), (8, 10), (9, 11),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'table_lamp',
+    category: PresetCategory.home,
+    iconSlug: 'light',
+    name: (en: 'Table lamp', it: 'Lampada', ro: 'Lampă'),
+    grid: [
+      (2, 2), (8, 2), (9, 5), (1, 5), (5, 5),
+      (5, 8), (3, 9), (7, 9), (2, 10), (8, 10),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 4), (4, 3), (3, 0),
+      (4, 5), (5, 6), (5, 7), (6, 8), (7, 9), (8, 9),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'door',
+    category: PresetCategory.home,
+    iconSlug: 'door_front_door',
+    name: (en: 'Door', it: 'Porta', ro: 'Ușă'),
+    grid: [
+      (2, 0), (8, 0), (8, 10), (2, 10),
+      (3, 2), (7, 2), (7, 6), (3, 6), (6, 8), (7, 8),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 0),
+      (4, 5), (5, 6), (6, 7), (7, 4), (8, 9),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'potted_plant',
+    category: PresetCategory.home,
+    iconSlug: 'yard',
+    name: (en: 'Potted plant', it: 'Pianta in vaso', ro: 'Plantă în ghiveci'),
+    grid: [
+      (2, 7), (8, 7), (7, 10), (3, 10), (1, 6),
+      (9, 6), (5, 6), (5, 1), (2, 3), (8, 3), (5, 4),
+    ],
+    edges: [
+      (0, 3), (3, 2), (2, 1), (1, 5), (5, 6), (6, 4), (4, 0),
+      (6, 10), (10, 8), (10, 9), (10, 7),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'umbrella',
+    category: PresetCategory.home,
+    iconSlug: 'umbrella',
+    name: (en: 'Umbrella', it: 'Ombrello', ro: 'Umbrelă'),
+    grid: [
+      (0, 5), (2, 2), (5, 1), (8, 2), (10, 5),
+      (3, 6), (5, 5), (7, 6), (5, 9), (7, 10),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (0, 5),
+      (5, 6), (6, 7), (7, 4), (6, 8), (8, 9),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'tshirt',
+    category: PresetCategory.home,
+    iconSlug: 'checkroom',
+    name: (en: 'T-shirt', it: 'Maglietta', ro: 'Tricou'),
+    grid: [
+      (3, 1), (7, 1), (5, 2), (0, 4), (2, 6),
+      (10, 4), (8, 6), (2, 10), (8, 10),
+    ],
+    edges: [
+      (0, 2), (2, 1), (0, 3), (3, 4), (4, 7),
+      (7, 8), (8, 6), (6, 5), (5, 1),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'broom',
+    category: PresetCategory.home,
+    iconSlug: 'cleaning_services',
+    name: (en: 'Broom', it: 'Scopa', ro: 'Mătură'),
+    grid: [(5, 0), (5, 6), (3, 6), (7, 6), (8, 10), (2, 10), (5, 10)],
+    edges: [
+      (0, 1), (2, 1), (1, 3), (3, 4),
+      (4, 6), (6, 5), (5, 2), (1, 6),
+    ],
+  ),
+
+  // ------------------------------------------------------------------ food
+  ConstellationPreset(
+    id: 'coffee_cup',
+    category: PresetCategory.food,
+    iconSlug: 'local_cafe',
+    name: (en: 'Coffee cup', it: 'Tazzina', ro: 'Ceașcă de cafea'),
+    grid: [
+      (2, 3), (7, 3), (7, 8), (2, 8), (7, 4), (7, 6), (9, 4), (9, 6),
+      (1, 9), (8, 9), (4, 0), (4, 2), (6, 0), (6, 2),
+    ],
+    edges: [
+      (0, 1), (1, 4), (4, 5), (5, 2), (2, 3), (3, 0), (4, 6), (6, 7),
+      (7, 5), (3, 8), (2, 9), (8, 9), (10, 11), (12, 13),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'fork_knife',
+    category: PresetCategory.food,
+    iconSlug: 'restaurant',
+    name: (en: 'Fork and knife', it: 'Forchetta e coltello', ro: 'Tacâmuri'),
+    grid: [
+      (1, 0), (2, 0), (3, 0), (2, 3), (2, 10),
+      (7, 0), (9, 2), (8, 4), (8, 10),
+    ],
+    edges: [
+      (0, 3), (1, 3), (2, 3), (3, 4),
+      (5, 6), (6, 7), (7, 5), (7, 8),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'wine_glass',
+    category: PresetCategory.food,
+    iconSlug: 'wine_bar',
+    name: (en: 'Wine glass', it: 'Calice', ro: 'Pahar de vin'),
+    grid: [(2, 1), (8, 1), (7, 4), (3, 4), (5, 6), (5, 9), (2, 10), (8, 10)],
+    edges: [
+      (0, 1), (1, 2), (2, 4), (4, 3), (3, 0),
+      (4, 5), (5, 6), (5, 7), (6, 7),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'pizza_slice',
+    category: PresetCategory.food,
+    iconSlug: 'local_pizza',
+    name: (en: 'Pizza slice', it: 'Fetta di pizza', ro: 'Felie de pizza'),
+    grid: [(5, 0), (1, 9), (9, 9), (5, 10), (5, 4), (3, 7), (7, 7)],
+    edges: [(0, 1), (0, 2), (1, 3), (3, 2), (4, 5), (5, 6), (6, 4)],
+  ),
+  ConstellationPreset(
+    id: 'cake',
+    category: PresetCategory.food,
+    iconSlug: 'cake',
+    name: (en: 'Cake', it: 'Torta', ro: 'Tort'),
+    grid: [
+      (1, 6), (9, 6), (9, 10), (1, 10),
+      (2, 3), (8, 3), (8, 6), (2, 6), (5, 3), (5, 0),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 0),
+      (4, 8), (8, 5), (5, 6), (6, 7), (7, 4), (8, 9),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'ice_cream',
+    category: PresetCategory.food,
+    iconSlug: 'icecream',
+    name: (en: 'Ice cream', it: 'Gelato', ro: 'Înghețată'),
+    grid: [(3, 5), (7, 5), (5, 10), (2, 3), (3, 1), (5, 0), (7, 1), (8, 3)],
+    edges: [
+      (0, 2), (2, 1), (0, 1), (0, 3), (3, 4), (4, 5), (5, 6), (6, 7),
+      (7, 1),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'apple',
+    category: PresetCategory.food,
+    iconSlug: 'agriculture',
+    name: (en: 'Apple', it: 'Mela', ro: 'Măr'),
+    grid: [
+      (5, 3), (8, 4), (9, 7), (6, 10),
+      (4, 10), (1, 7), (2, 4), (5, 0), (8, 1),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4),
+      (4, 5), (5, 6), (6, 0), (0, 7), (7, 8),
+    ],
+  ),
+
+  // --------------------------------------------------------------- artPlay
+  ConstellationPreset(
+    id: 'guitar',
+    category: PresetCategory.artPlay,
+    iconSlug: 'audiotrack',
+    name: (en: 'Guitar', it: 'Chitarra', ro: 'Chitară'),
+    grid: [
+      (4, 0), (6, 0), (6, 2), (4, 2), (4, 4), (7, 5), (9, 7), (8, 9),
+      (5, 10), (2, 9), (1, 7), (3, 5), (6, 4), (5, 6), (6, 7),
+      (5, 8), (4, 7),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 0), (3, 4), (2, 12), (4, 12),
+      (12, 5), (5, 6), (6, 7), (7, 8), (8, 9), (9, 10), (10, 11),
+      (11, 4), (13, 14), (14, 15), (15, 16), (16, 13),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'piano_keys',
+    category: PresetCategory.artPlay,
+    iconSlug: 'piano',
+    name: (en: 'Piano keys', it: 'Tasti del piano', ro: 'Clape de pian'),
+    grid: [
+      (0, 3), (10, 3), (10, 8), (0, 8),
+      (2, 3), (2, 8), (4, 3), (4, 8),
+      (6, 3), (6, 8), (8, 3), (8, 8),
+      (3, 3), (3, 6), (7, 3), (7, 6),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 0),
+      (4, 5), (6, 7), (8, 9), (10, 11), (12, 13), (14, 15),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'music_note',
+    category: PresetCategory.artPlay,
+    iconSlug: 'music_note',
+    name: (en: 'Music note', it: 'Nota musicale', ro: 'Notă muzicală'),
+    grid: [(2, 8), (4, 7), (5, 9), (3, 10), (5, 2), (8, 5)],
+    edges: [(0, 1), (1, 2), (2, 3), (3, 0), (2, 4), (4, 5)],
+  ),
+  ConstellationPreset(
+    id: 'microphone',
+    category: PresetCategory.artPlay,
+    iconSlug: 'mic',
+    name: (en: 'Microphone', it: 'Microfono', ro: 'Microfon'),
+    grid: [
+      (4, 0), (6, 0), (6, 5), (4, 5), (4, 2), (6, 2),
+      (5, 5), (5, 8), (3, 10), (7, 10),
+    ],
+    edges: [
+      (0, 1), (1, 5), (5, 2), (2, 6), (6, 3), (3, 4), (4, 0), (4, 5),
+      (6, 7), (7, 8), (7, 9), (8, 9),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'headphones',
+    category: PresetCategory.artPlay,
+    iconSlug: 'headphones',
+    name: (en: 'Headphones', it: 'Cuffie', ro: 'Căști'),
+    grid: [
+      (0, 4), (2, 4), (0, 8), (2, 8),
+      (8, 4), (10, 4), (8, 8), (10, 8),
+      (2, 1), (5, 0), (8, 1),
+    ],
+    edges: [
+      (0, 1), (1, 3), (3, 2), (2, 0),
+      (4, 5), (5, 7), (7, 6), (6, 4),
+      (0, 8), (8, 9), (9, 10), (10, 5),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'paintbrush',
+    category: PresetCategory.artPlay,
+    iconSlug: 'brush',
+    name: (en: 'Paintbrush', it: 'Pennello', ro: 'Pensulă'),
+    grid: [
+      (5, 0), (5, 6), (3, 6), (7, 6), (3, 8), (7, 8), (4, 10),
+      (6, 10),
+    ],
+    edges: [
+      (0, 1), (2, 1), (1, 3), (2, 4), (3, 5), (4, 5), (4, 6), (6, 7),
+      (7, 5),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'palette',
+    category: PresetCategory.artPlay,
+    iconSlug: 'palette',
+    name: (en: 'Palette', it: 'Tavolozza', ro: 'Paletă'),
+    grid: [
+      (1, 3), (4, 1), (8, 2), (10, 5), (8, 9), (4, 10), (1, 8),
+      (4, 6), (6, 7), (5, 9), (3, 8),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 0),
+      (7, 8), (8, 9), (9, 10), (10, 7),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'camera',
+    category: PresetCategory.artPlay,
+    iconSlug: 'photo_camera',
+    name: (en: 'Camera', it: 'Macchina fotografica', ro: 'Aparat foto'),
+    grid: [
+      (0, 3), (2, 3), (4, 3), (10, 3), (10, 9), (0, 9),
+      (2, 1), (4, 1), (5, 4), (8, 6), (5, 8), (2, 6),
+    ],
+    edges: [
+      (0, 1), (1, 6), (6, 7), (7, 2), (2, 3), (3, 4), (4, 5), (5, 0),
+      (8, 9), (9, 10), (10, 11), (11, 8),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'game_controller',
+    category: PresetCategory.artPlay,
+    iconSlug: 'sports_esports',
+    name: (en: 'Game controller', it: 'Controller', ro: 'Controler'),
+    grid: [
+      (0, 4), (3, 3), (7, 3), (10, 4), (9, 8), (6, 6), (4, 6), (1, 8),
+      (2, 4), (2, 6), (1, 5), (3, 5), (7, 4), (8, 5),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 0),
+      (8, 9), (10, 11), (12, 13),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'dice',
+    category: PresetCategory.artPlay,
+    iconSlug: 'casino',
+    name: (en: 'Dice', it: 'Dado', ro: 'Zar'),
+    grid: [(1, 4), (6, 4), (6, 9), (1, 9), (3, 1), (8, 1), (8, 6)],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 0),
+      (0, 4), (4, 5), (5, 1), (5, 6), (6, 2),
+    ],
+  ),
+
+  // ---------------------------------------------------------------- travel
+  ConstellationPreset(
+    id: 'airplane',
+    category: PresetCategory.travel,
+    iconSlug: 'flight',
+    name: (en: 'Airplane', it: 'Aereo', ro: 'Avion'),
+    grid: [
+      (5, 0), (6, 3), (10, 7), (6, 7), (8, 10), (5, 9), (2, 10),
+      (4, 7), (0, 7), (4, 3),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8),
+      (8, 9), (9, 0),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'sailboat',
+    category: PresetCategory.travel,
+    iconSlug: 'sailing',
+    name: (en: 'Sailboat', it: 'Barca a vela', ro: 'Velier'),
+    grid: [(1, 8), (9, 8), (7, 10), (3, 10), (5, 8), (5, 1), (8, 7), (2, 7)],
+    edges: [
+      (0, 4), (4, 1), (1, 2), (2, 3), (3, 0),
+      (4, 5), (5, 6), (6, 4), (5, 7), (7, 4),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'car',
+    category: PresetCategory.travel,
+    iconSlug: 'directions_car',
+    name: (en: 'Car', it: 'Auto', ro: 'Mașină'),
+    grid: [
+      (0, 6), (1, 4), (3, 2), (7, 2), (9, 4), (10, 6), (10, 7),
+      (0, 7), (3, 6), (5, 8), (3, 10), (1, 8), (8, 6), (10, 8),
+      (8, 10), (6, 8),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 0),
+      (8, 9), (9, 10), (10, 11), (11, 8), (12, 13), (13, 14),
+      (14, 15), (15, 12),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'tent',
+    category: PresetCategory.travel,
+    iconSlug: 'cabin',
+    name: (en: 'Tent', it: 'Tenda', ro: 'Cort'),
+    grid: [(0, 10), (5, 1), (10, 10), (3, 10), (5, 5), (7, 10), (5, 0)],
+    edges: [(0, 1), (1, 2), (2, 5), (5, 4), (4, 3), (3, 0), (1, 6)],
+  ),
+  ConstellationPreset(
+    id: 'compass',
+    category: PresetCategory.travel,
+    iconSlug: 'explore',
+    name: (en: 'Compass', it: 'Bussola', ro: 'Busolă'),
+    grid: [
+      (5, 0), (8, 2), (10, 5), (8, 8), (5, 10), (2, 8), (0, 5), (2, 2),
+      (7, 3), (6, 6), (3, 7), (4, 4),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 0),
+      (8, 9), (9, 10), (10, 11), (11, 8),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'backpack',
+    category: PresetCategory.travel,
+    iconSlug: 'backpack',
+    name: (en: 'Backpack', it: 'Zaino', ro: 'Rucsac'),
+    grid: [
+      (2, 3), (4, 3), (6, 3), (8, 3), (8, 6), (8, 10), (2, 10), (2, 6),
+      (4, 1), (6, 1), (4, 7), (6, 7), (6, 9), (4, 9),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 0),
+      (7, 4), (1, 8), (8, 9), (9, 2),
+      (10, 11), (11, 12), (12, 13), (13, 10),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'map_pin',
+    category: PresetCategory.travel,
+    iconSlug: 'place',
+    name: (en: 'Map pin', it: 'Segnaposto', ro: 'Reper pe hartă'),
+    grid: [
+      (5, 10), (8, 5), (8, 3), (5, 1), (2, 3), (2, 5),
+      (5, 2), (6, 4), (5, 5), (4, 4),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0),
+      (6, 7), (7, 8), (8, 9), (9, 6),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'anchor',
+    category: PresetCategory.travel,
+    iconSlug: 'anchor',
+    name: (en: 'Anchor', it: 'Ancora', ro: 'Ancoră'),
+    grid: [
+      (5, 0), (4, 1), (5, 2), (6, 1), (5, 8), (2, 3), (8, 3), (2, 8),
+      (1, 5), (8, 8), (9, 5),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 0), (2, 4), (5, 6), (4, 7), (7, 8),
+      (4, 9), (9, 10),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'rocket',
+    category: PresetCategory.travel,
+    iconSlug: 'rocket_launch',
+    name: (en: 'Rocket', it: 'Razzo', ro: 'Rachetă'),
+    grid: [
+      (5, 0), (3, 3), (7, 3), (3, 8), (7, 8),
+      (1, 10), (9, 10), (5, 10), (4, 4), (6, 4), (6, 6), (4, 6),
+    ],
+    edges: [
+      (0, 2), (2, 4), (4, 6), (6, 7), (7, 5), (5, 3), (3, 1), (1, 0),
+      (8, 9), (9, 10), (10, 11), (11, 8),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'suitcase',
+    category: PresetCategory.travel,
+    iconSlug: 'luggage',
+    name: (en: 'Suitcase', it: 'Valigia', ro: 'Valiză'),
+    grid: [
+      (1, 3), (9, 3), (9, 9), (1, 9), (4, 1), (6, 1), (4, 3), (6, 3),
+      (3, 3), (3, 9), (7, 3), (7, 9),
+    ],
+    edges: [
+      (0, 6), (6, 7), (7, 1), (1, 2), (2, 3), (3, 0),
+      (6, 4), (4, 5), (5, 7), (8, 9), (10, 11),
+    ],
+  ),
+
+  // ---------------------------------------------------------------- people
+  ConstellationPreset(
+    id: 'heart',
+    category: PresetCategory.people,
+    iconSlug: 'favorite',
+    name: (en: 'Heart', it: 'Cuore', ro: 'Inimă'),
+    grid: [(5, 10), (9, 6), (9, 3), (7, 1), (5, 3), (3, 1), (1, 3), (1, 6)],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4),
+      (4, 5), (5, 6), (6, 7), (7, 0),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'two_people',
+    category: PresetCategory.people,
+    iconSlug: 'people',
+    name: (en: 'Two people', it: 'Due persone', ro: 'Doi oameni'),
+    grid: [
+      (3, 1), (3, 5), (2, 9), (4, 9), (1, 4), (5, 4),
+      (7, 1), (7, 5), (6, 9), (8, 9), (9, 4),
+    ],
+    edges: [
+      (0, 1), (1, 2), (1, 3), (1, 4), (1, 5),
+      (6, 7), (7, 8), (7, 9), (7, 5), (7, 10),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'handshake',
+    category: PresetCategory.people,
+    iconSlug: 'handshake',
+    name: (en: 'Handshake', it: 'Stretta di mano', ro: 'Strângere de mână'),
+    grid: [(0, 2), (4, 5), (0, 6), (10, 2), (6, 5), (10, 6), (5, 4), (5, 7)],
+    edges: [
+      (0, 1), (1, 2), (3, 4), (4, 5),
+      (1, 6), (6, 4), (1, 7), (7, 4),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'speech_bubble',
+    category: PresetCategory.people,
+    iconSlug: 'chat_bubble',
+    name: (en: 'Speech bubble', it: 'Fumetto', ro: 'Bulă de dialog'),
+    grid: [(1, 1), (9, 1), (9, 6), (4, 6), (3, 9), (3, 6)],
+    edges: [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0)],
+  ),
+  ConstellationPreset(
+    id: 'gift',
+    category: PresetCategory.people,
+    iconSlug: 'redeem',
+    name: (en: 'Gift', it: 'Regalo', ro: 'Cadou'),
+    grid: [
+      (1, 4), (9, 4), (9, 10), (1, 10), (5, 4), (5, 10),
+      (1, 7), (9, 7), (3, 1), (7, 1),
+    ],
+    edges: [
+      (0, 4), (4, 1), (1, 7), (7, 2), (2, 5), (5, 3), (3, 6), (6, 0),
+      (4, 5), (6, 7), (4, 8), (4, 9), (8, 9),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'family',
+    category: PresetCategory.people,
+    iconSlug: 'family_restroom',
+    name: (en: 'Family', it: 'Famiglia', ro: 'Familie'),
+    grid: [
+      (2, 1), (2, 5), (1, 9), (3, 9), (0, 4),
+      (5, 4), (5, 6), (4, 9), (6, 9),
+      (8, 1), (8, 5), (7, 9), (9, 9), (10, 4),
+    ],
+    edges: [
+      (0, 1), (1, 2), (1, 3), (1, 4), (1, 5),
+      (5, 6), (6, 7), (6, 8),
+      (9, 10), (10, 11), (10, 12), (10, 13), (10, 5),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'toast',
+    category: PresetCategory.people,
+    iconSlug: 'celebration',
+    name: (en: 'Toast', it: 'Brindisi', ro: 'Toast'),
+    grid: [
+      (0, 2), (4, 1), (2, 5), (2, 9), (1, 10), (3, 10),
+      (10, 2), (6, 1), (8, 5), (8, 9), (7, 10), (9, 10),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 0), (2, 3), (3, 4), (3, 5),
+      (6, 7), (7, 8), (8, 6), (8, 9), (9, 10), (9, 11),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'envelope',
+    category: PresetCategory.people,
+    iconSlug: 'mail',
+    name: (en: 'Envelope', it: 'Busta', ro: 'Plic'),
+    grid: [(0, 3), (10, 3), (10, 8), (0, 8), (5, 6)],
+    edges: [(0, 1), (1, 2), (2, 3), (3, 0), (0, 4), (4, 1)],
+  ),
+  ConstellationPreset(
+    id: 'megaphone',
+    category: PresetCategory.people,
+    iconSlug: 'campaign',
+    name: (en: 'Megaphone', it: 'Megafono', ro: 'Megafon'),
+    grid: [(2, 4), (8, 1), (8, 8), (2, 6), (5, 7), (5, 10)],
+    edges: [(0, 1), (1, 2), (2, 4), (4, 3), (3, 0), (4, 5)],
+  ),
+
+  // ---------------------------------------------------------------- spirit
+  ConstellationPreset(
+    id: 'candle',
+    category: PresetCategory.spirit,
+    iconSlug: 'wb_incandescent',
+    name: (en: 'Candle', it: 'Candela', ro: 'Lumânare'),
+    grid: [
+      (4, 3), (6, 3), (4, 8), (6, 8),
+      (5, 0), (7, 2), (3, 2), (2, 9), (8, 9),
+    ],
+    edges: [
+      (0, 1), (0, 2), (1, 3), (2, 3),
+      (4, 5), (5, 6), (6, 4), (2, 7), (3, 8), (7, 8),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'lotus',
+    category: PresetCategory.spirit,
+    iconSlug: 'spa',
+    name: (en: 'Lotus', it: 'Loto', ro: 'Lotus'),
+    grid: [(5, 9), (5, 1), (2, 3), (8, 3), (0, 6), (10, 6), (1, 10), (9, 10)],
+    edges: [
+      (0, 1), (0, 2), (0, 3), (0, 4), (0, 5),
+      (4, 2), (2, 1), (1, 3), (3, 5), (0, 6), (0, 7),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'temple',
+    category: PresetCategory.spirit,
+    iconSlug: 'temple_buddhist',
+    name: (en: 'Temple', it: 'Tempio', ro: 'Templu'),
+    grid: [
+      (5, 0), (1, 3), (9, 3), (3, 3), (7, 3),
+      (3, 6), (7, 6), (0, 6), (10, 6), (2, 10), (8, 10),
+    ],
+    edges: [
+      (0, 1), (0, 2), (1, 2), (3, 5), (4, 6),
+      (5, 7), (7, 8), (8, 6), (5, 9), (6, 10), (9, 10),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'cross',
+    category: PresetCategory.spirit,
+    iconSlug: 'church',
+    name: (en: 'Cross', it: 'Croce', ro: 'Cruce'),
+    grid: [
+      (4, 0), (6, 0), (6, 3), (9, 3), (9, 5), (6, 5),
+      (6, 10), (4, 10), (4, 5), (1, 5), (1, 3), (4, 3),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6),
+      (6, 7), (7, 8), (8, 9), (9, 10), (10, 11), (11, 0),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'crescent_star',
+    category: PresetCategory.spirit,
+    iconSlug: 'mosque',
+    name: (en: 'Crescent and star', it: 'Mezzaluna e stella', ro: 'Semilună'),
+    grid: [
+      (5, 0), (2, 1), (0, 4), (0, 6), (2, 9), (5, 10), (3, 7), (3, 3),
+      (8, 2), (10, 4), (9, 7), (7, 7), (6, 4),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 0),
+      (8, 10), (10, 12), (12, 9), (9, 11), (11, 8),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'star_of_david',
+    category: PresetCategory.spirit,
+    iconSlug: 'synagogue',
+    name: (en: 'Star of David', it: 'Stella di David', ro: 'Steaua lui David'),
+    grid: [(5, 0), (9, 7), (1, 7), (5, 10), (1, 3), (9, 3)],
+    edges: [(0, 1), (1, 2), (2, 0), (3, 4), (4, 5), (5, 3)],
+  ),
+  ConstellationPreset(
+    id: 'praying_hands',
+    category: PresetCategory.spirit,
+    iconSlug: 'front_hand',
+    name: (en: 'Praying hands', it: 'Mani giunte', ro: 'Mâini împreunate'),
+    grid: [
+      (5, 0), (3, 3), (2, 7), (3, 10),
+      (7, 3), (8, 7), (7, 10), (5, 10),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (0, 4),
+      (4, 5), (5, 6), (3, 7), (7, 6), (0, 7),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'eye',
+    category: PresetCategory.spirit,
+    iconSlug: 'visibility',
+    name: (en: 'Eye', it: 'Occhio', ro: 'Ochi'),
+    grid: [
+      (0, 5), (3, 2), (7, 2), (10, 5), (7, 8), (3, 8),
+      (5, 3), (7, 5), (5, 7), (3, 5),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0),
+      (6, 7), (7, 8), (8, 9), (9, 6),
+    ],
+  ),
+  ConstellationPreset(
+    id: 'star',
+    category: PresetCategory.spirit,
+    iconSlug: 'star',
+    name: (en: 'Star', it: 'Stella', ro: 'Stea'),
+    grid: [
+      (5, 0), (6, 4), (10, 4), (7, 6), (8, 10),
+      (5, 8), (2, 10), (3, 6), (0, 4), (4, 4),
+    ],
+    edges: [
+      (0, 1), (1, 2), (2, 3), (3, 4), (4, 5),
+      (5, 6), (6, 7), (7, 8), (8, 9), (9, 0),
+    ],
+  ),
+];
+
+/// Every preset that belongs to [category], in catalogue order — what the
+/// library picker's per-category sections are built from.
+List<ConstellationPreset> presetsIn(PresetCategory category) =>
+    constellationPresets.where((p) => p.category == category).toList();
+
+/// The preset with this [ConstellationPreset.id], or null if it names one
+/// that no longer exists — a saved [CustomConstellation] keeps its own copy
+/// of the points, so a retired id only ever costs the "this came from the
+/// library" tag, never the shape itself.
+ConstellationPreset? presetById(String? id) {
+  if (id == null) return null;
+  for (final preset in constellationPresets) {
+    if (preset.id == id) return preset;
+  }
+  return null;
+}
+
+/// The preset paired with [iconSlug] — every icon in `icon_for_slug.dart`
+/// belongs to exactly one preset — falling back to a deterministic pick for
+/// a slug the catalogue doesn't know (an icon saved by an older version of
+/// the app). Never null: the caller, `backfillMissingConstellations`, has to
+/// come away with a shape either way.
+///
+/// The fallback hashes the slug rather than picking at random or always
+/// landing on the first entry, so two projects badged with the same retired
+/// icon still agree on their shape, run after run.
+ConstellationPreset presetForIconSlug(String iconSlug) {
+  for (final preset in constellationPresets) {
+    if (preset.iconSlug == iconSlug) return preset;
+  }
+  var hash = 0;
+  for (final unit in iconSlug.codeUnits) {
+    hash = (hash * 31 + unit) & 0x7fffffff;
+  }
+  return constellationPresets[hash % constellationPresets.length];
+}

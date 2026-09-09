@@ -38,12 +38,16 @@ import '../widgets/sky_supernova.dart';
 import 'admire_stars_screen.dart';
 import 'area_detail_screen.dart';
 import 'constellation_screen.dart';
+import 'friends_screen.dart';
 import 'sky_search_screen.dart';
+import 'metaphor_screen.dart';
 import 'pulsar_reader_screen.dart';
 import 'new_project_screen.dart';
 import 'settings_screen.dart';
+import 'shooting_stars_screen.dart';
 import 'star_form_screen.dart';
 import 'star_reader_screen.dart';
+import 'stats_screen.dart';
 import 'visions_screen.dart';
 
 /// Shared by the Grid switch pill and [_ZoomSlider] at the bottom of the
@@ -140,19 +144,29 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   SkyCamera? _dragStartCamera;
   (double, double, double)? _dragAnchorDirection;
 
-  /// Debug aid, off by default — see [NebulaBackground.showGrid].
-  bool _showGrid = false;
-
   /// Whether each sky-overlay control is currently shown at all — not to
-  /// be confused with [_showGrid] (that one toggles the grid *content*
-  /// drawn on the sky itself; these toggle the little UI controls
-  /// sitting on top of it). All on by default; see [_showUiControlsMenu]
-  /// for the menu that flips them, opened via its own dedicated button —
-  /// which, deliberately, isn't itself one of the three controls this
-  /// list can hide, or there'd be no way back in once it was off.
-  bool _showGridControl = true;
-  bool _showZoomControl = true;
-  bool _showRotationControl = true;
+  /// be confused with [SettingsController.showGrid] (that one toggles the
+  /// grid *content* drawn on the sky itself, and is a real persisted
+  /// setting now, editable from Settings; these toggle the little UI
+  /// controls sitting on top of it). Defaulted off for now — a request to
+  /// preview the sky with none of its navigation-helper chrome showing —
+  /// not a removal: flip these back to `true` to restore them, and
+  /// [_showUiControlsMenu] (still fully intact) still flips them at
+  /// runtime once its own button is showing again.
+  bool _showGridControl = false;
+  bool _showZoomControl = false;
+  bool _showRotationControl = false;
+
+  /// Same "preview it clean" request as the three above, for the overlay
+  /// buttons that never had a toggle of their own: the search pill, the
+  /// tune/settings button that opens [_showUiControlsMenu], and — once
+  /// the star FAB (see [_MenuStarButton]) gave the menu a second way in —
+  /// the drawer button itself too. `static const` rather than instance
+  /// state — these aren't meant to be flipped at runtime, only reverted
+  /// here in code.
+  static const bool _showSearchButton = false;
+  static const bool _showUiControlsButton = false;
+  static const bool _showDrawerButton = false;
 
   /// Drives the "take me there" fly-to animation — a single controller
   /// reused across flights rather than rebuilt per tap, so a second tap
@@ -494,6 +508,38 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     );
   }
 
+  void _openStatistics() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => StatsScreen(
+          starRepository: widget.starRepository,
+          projectRepository: widget.projectRepository,
+          habitRepository: widget.habitRepository,
+          habitCompletionRepository: widget.habitCompletionRepository,
+          customConstellationRepository: widget.customConstellationRepository,
+        ),
+      ),
+    );
+  }
+
+  void _openShootingStars() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ShootingStarsScreen()),
+    );
+  }
+
+  void _openFriends() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const FriendsScreen()),
+    );
+  }
+
+  void _openMetaphor() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const MetaphorScreen()),
+    );
+  }
+
   Future<void> _openSettings() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -510,6 +556,45 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
       ),
     );
     _refresh();
+  }
+
+  /// The FAB's own way into the same menu the drawer opens — same content
+  /// ([SkyMenuContent], same callbacks), just as a modal sheet from the
+  /// bottom instead of a panel from the side. An alternative entry point
+  /// being tried alongside the drawer, not a replacement for it — both
+  /// stay live so the two can be compared.
+  void _openMenuModal() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      // Explicit, not just relying on the default: with a scrollable
+      // ListView as the sheet's own content, a swipe-down starting over
+      // it can otherwise get claimed by the list's own scroll gesture
+      // before the sheet's drag-to-dismiss ever sees it. The drag handle
+      // gives a small always-available strip that's never part of the
+      // list, so a downward swipe from there closes the sheet reliably
+      // regardless of the list's own scroll position.
+      enableDrag: true,
+      showDragHandle: true,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+      ),
+      builder: (_) => SafeArea(
+        child: SkyMenuContent(
+          onLightAStar: _openStarForm,
+          onNewConstellation: _openNewConstellation,
+          onVisions: _openVisions,
+          onShootingStars: _openShootingStars,
+          onSearch: _openSearch,
+          onStatistics: _openStatistics,
+          onAdmire: _openAdmire,
+          onFriends: _openFriends,
+          onSettings: _openSettings,
+          onMetaphor: _openMetaphor,
+          detailed: true,
+        ),
+      ),
+    );
   }
 
   /// Opens the search/filter popup (three levels of the same sky, minus a
@@ -908,9 +993,13 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
         onLightAStar: _openStarForm,
         onNewConstellation: _openNewConstellation,
         onVisions: _openVisions,
+        onShootingStars: _openShootingStars,
         onSearch: _openSearch,
+        onStatistics: _openStatistics,
         onAdmire: _openAdmire,
+        onFriends: _openFriends,
         onSettings: _openSettings,
+        onMetaphor: _openMetaphor,
       ),
       body: Listener(
         onPointerSignal: _handlePointerSignal,
@@ -925,7 +1014,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
               NebulaBackground(
                 camera: _camera,
                 zoom: _zoom,
-                showGrid: _showGrid,
+                showGrid: widget.settings.showGrid,
               ),
               // A decorative sigil behind each supernova — see
               // sky_area_sigils.dart. Painted before SkySupernova so that
@@ -956,7 +1045,9 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
               // The way into everything that isn't the sky itself — same
               // disc/navy/gold styling as every other overlay control.
               // There's no nav bar left for it to duplicate: this button
-              // *is* the app's navigation.
+              // *is* the app's navigation (or was, before the star FAB —
+              // see [_showDrawerButton]).
+              if (_showDrawerButton)
               Positioned(
                 top: 0,
                 left: 0,
@@ -996,6 +1087,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
               // every other control uses — top-center and the most
               // prominent thing here on purpose, since it's the fastest way
               // off "wander and hope" navigation into the search popup.
+              if (_showSearchButton)
               Positioned(
                 top: 0,
                 left: 0,
@@ -1060,6 +1152,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
               // Always visible regardless of the three toggles below — it's
               // the only way back to turning them on again, so it can't be
               // one of the things it itself hides.
+              if (_showUiControlsButton)
               Positioned(
                 top: 0,
                 right: 0,
@@ -1149,9 +1242,11 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
                                       Transform.scale(
                                         scale: 0.8,
                                         child: Switch(
-                                          value: _showGrid,
-                                          onChanged: (value) =>
-                                              setState(() => _showGrid = value),
+                                          value: widget.settings.showGrid,
+                                          onChanged: (value) {
+                                            widget.settings.setShowGrid(value);
+                                            setState(() {});
+                                          },
                                         ),
                                       ),
                                     ],
@@ -1199,12 +1294,245 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ),
+              // The star FAB — an alternative way into the same menu the
+              // drawer opens (see [_openMenuModal]), tried alongside the
+              // drawer rather than replacing it. Deliberately not a disc/
+              // chrome control like every other overlay button here: no
+              // filled background, just a glowing gold ring around a
+              // white glyph — as close to [SkySupernova]'s own "white
+              // glyph inside a gold ring, glowing outward" look as a
+              // plain widget (no shader) can get, so it reads as one
+              // more thing burning up there rather than as UI sitting on
+              // top of it.
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Center(
+                      child: _MenuStarButton(onTap: _openMenuModal),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
       ),
     );
   }
+}
+
+/// The FAB's own dedicated supernova — the same glow [SkySupernova] draws
+/// for each life area (see `shaders/menu_star_button.frag`, a stripped
+/// copy of `shaders/sky_supernova.frag` with the 3D camera projection
+/// removed, since this one never moves: it always sits fixed right behind
+/// the menu button, no area icon, no rotating sigil, nothing else that
+/// belongs to a real supernova on the sky). [Icons.star] (the plain solid
+/// star) sits on top, blended into the glow with [BlendMode.overlay] (see
+/// [_MenuStarSupernovaPainter.paint]) rather than pasted flat on top of
+/// it — [Icons.stars] was tried alongside it too, but turned out to *be*
+/// a disc with a star-shaped hole cut out rather than a separate glyph,
+/// so it's hidden now.
+class _MenuStarButton extends StatefulWidget {
+  const _MenuStarButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  State<_MenuStarButton> createState() => _MenuStarButtonState();
+}
+
+class _MenuStarButtonState extends State<_MenuStarButton>
+    with SingleTickerProviderStateMixin {
+  // 2/3 of the previous (95) pass, rounded.
+  static const _iconSize = 64.0;
+  static const _tapTargetSize = 110.0;
+  // Big enough that the shader's own glow/spikes fade out naturally well
+  // before this canvas's own edge, rather than clipping hard against a
+  // boundary that's part of the visible glow.
+  static const _glowCanvasSize = _iconSize * 6;
+  // The shader's own ring sits at a fixed 0.09 (world units, not pixels).
+  // iconSize/(2*0.09) alone puts its diameter at exactly the icon's own
+  // — the *0.85 pulls it in a little further, so the ring's own radius
+  // (not diameter) lands right at the icon's edge instead of sitting
+  // just outside it.
+  static const _scale = _iconSize / (2 * 0.09) * 0.85;
+
+  ui.FragmentShader? _shader;
+  late final Ticker _ticker;
+  Duration _elapsed = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = createTicker((elapsed) => setState(() => _elapsed = elapsed))
+      ..start();
+    _loadShader();
+  }
+
+  Future<void> _loadShader() async {
+    final program = await ui.FragmentProgram.fromAsset(
+      'shaders/menu_star_button.frag',
+    );
+    if (!mounted) return;
+    setState(() => _shader = program.fragmentShader());
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    _shader?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final shader = _shader;
+
+    return Material(
+      color: Colors.transparent,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: widget.onTap,
+        child: SizedBox(
+          width: _tapTargetSize,
+          height: _tapTargetSize,
+          child: Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              if (shader != null)
+                IgnorePointer(
+                  child: SizedBox(
+                    width: _glowCanvasSize,
+                    height: _glowCanvasSize,
+                    child: CustomPaint(
+                      painter: _MenuStarSupernovaPainter(
+                        shader: shader,
+                        time:
+                            _elapsed.inMicroseconds /
+                            Duration.microsecondsPerSecond,
+                        scale: _scale,
+                        iconSize: _iconSize,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MenuStarSupernovaPainter extends CustomPainter {
+  const _MenuStarSupernovaPainter({
+    required this.shader,
+    required this.time,
+    required this.scale,
+    required this.iconSize,
+  });
+
+  final ui.FragmentShader shader;
+  final double time;
+  final double scale;
+  final double iconSize;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    shader
+      ..setFloat(0, size.width)
+      ..setFloat(1, size.height)
+      ..setFloat(2, time)
+      ..setFloat(3, scale);
+
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()
+        ..shader = shader
+        ..blendMode = BlendMode.plus,
+    );
+
+    // The same "rotating decoration" [SkySupernova._paintOutlineIcon]
+    // draws behind each life area's own icon: a blurred gradient stroke
+    // of the glyph's own outline, spun around its center by an angle
+    // that grows with [time] — a rotating *gradient*, not a rotating
+    // shape, so the highlight travels around the star without the star
+    // itself turning. What actually pulses here isn't brightness (see
+    // [supernovaGlow]'s own much subtler breathing `pulse`, still there
+    // underneath) but which edge of the glyph is lit.
+    const glowGradientColors = [Color(0xFFFFEFA0), Color(0xFFF0C078)];
+    void paintRotatingGlow() {
+      final text = String.fromCharCode(Icons.star.codePoint);
+      final center = Offset(size.width, size.height) / 2;
+      final glowAngle = time * 2.2;
+      final glowAxis =
+          Offset(math.cos(glowAngle), math.sin(glowAngle)) * (iconSize / 2);
+      final glowShader = ui.Gradient.linear(
+        center - glowAxis,
+        center + glowAxis,
+        glowGradientColors,
+      );
+      final glowPainter = TextPainter(textDirection: TextDirection.ltr)
+        ..text = TextSpan(
+          text: text,
+          style: TextStyle(
+            fontSize: iconSize,
+            fontFamily: Icons.star.fontFamily,
+            package: Icons.star.fontPackage,
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = iconSize * 0.08
+              ..shader = glowShader
+              ..maskFilter = MaskFilter.blur(BlurStyle.normal, iconSize * 0.04),
+          ),
+        )
+        ..layout();
+      final topLeft =
+          center - Offset(glowPainter.width, glowPainter.height) / 2;
+      glowPainter.paint(canvas, topLeft);
+    }
+
+    // [Icons.stars] turned out to *be* a disc — a filled circle with a
+    // star-shaped hole cut out, no separate star glyph inside it — so it
+    // added nothing on top of this glow and stays hidden. Only
+    // [Icons.star] (the plain solid star) is drawn, blended with the
+    // glow via [BlendMode.overlay] rather than pasted flat on top of it.
+    void paintIcon(IconData icon, double opacity) {
+      final text = String.fromCharCode(icon.codePoint);
+      final iconPainter = TextPainter(textDirection: TextDirection.ltr)
+        ..text = TextSpan(
+          text: text,
+          style: TextStyle(
+            fontSize: iconSize,
+            fontFamily: icon.fontFamily,
+            package: icon.fontPackage,
+            foreground: Paint()
+              ..color = Colors.white.withValues(alpha: opacity)
+              ..blendMode = BlendMode.overlay,
+          ),
+        )
+        ..layout();
+      final topLeft =
+          Offset(size.width, size.height) / 2 -
+          Offset(iconPainter.width, iconPainter.height) / 2;
+      iconPainter.paint(canvas, topLeft);
+    }
+
+    paintRotatingGlow();
+    paintIcon(Icons.star, 0.8);
+  }
+
+  @override
+  bool shouldRepaint(covariant _MenuStarSupernovaPainter oldDelegate) =>
+      oldDelegate.time != time ||
+      oldDelegate.scale != scale ||
+      oldDelegate.iconSize != iconSize;
 }
 
 /// A two-finger rotate gesture (see `_handleScaleUpdate`) is touch-only —

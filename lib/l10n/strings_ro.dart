@@ -50,17 +50,104 @@ class StringsRo implements AppStrings {
   @override
   String get openMenuAction => 'Meniu';
   @override
-  String get menuLightAStar => 'Aprinde o stea';
+  String get menuActivitySection => 'Activitate';
   @override
-  String get menuNewConstellation => 'Constelație nouă';
+  String get menuLightYourSky => 'Aprinde-ți Cerul';
   @override
-  String get menuVisions => 'Viziunile tale';
+  String get menuLightAStar => 'Aprinde O Stea';
   @override
-  String get menuAdmire => 'Admiră-ți stelele';
+  String get menuNewConstellation => 'Constelație Nouă';
   @override
-  String get menuSearch => 'Caută pe cer';
+  String get lightYourSkyChooserTitle => 'Ce ai vrea să creezi?';
+  @override
+  String get menuImagineYourDreams => 'Imaginează-ți Visurile';
+  @override
+  String get menuShootingStars => 'Stele Căzătoare';
+  @override
+  String get menuDataSection => 'Date';
+  @override
+  String get menuSearch => 'Caută Stele';
+  @override
+  String get menuStatistics => 'Statistici';
+  @override
+  String get menuCrisisSection => 'Criză';
+  @override
+  String get menuFindYourLight => 'Găsește-ți Lumina';
+  @override
+  String get socialSection => 'Social';
+  @override
+  String get menuFriends => 'Prieteni';
   @override
   String get menuSettings => 'Setări';
+  @override
+  String get menuInfoSection => 'Info';
+  @override
+  String get menuMetaphor => 'Metaforă';
+  @override
+  String get menuOnboarding => 'Onboarding';
+
+  @override
+  String get menuLightYourSkyDescription =>
+      'Aprinde o stea sau desenează o constelație nouă.';
+  @override
+  String get menuImagineYourDreamsDescription =>
+      'Revezi ce lucrezi să obții, arie cu arie.';
+  @override
+  String get menuShootingStarsDescription =>
+      'O dorință cu limită de timp — în curând.';
+  @override
+  String get menuFindYourLightDescription =>
+      'Pentru când ești în întuneric și ai nevoie de puțină lumină.';
+  @override
+  String get menuSearchDescription =>
+      'Găsește orice stea, constelație sau supernovă.';
+  @override
+  String get menuStatisticsDescription =>
+      'Steaua de azi, calendarul tău și numerele tale de-a lungul timpului.';
+  @override
+  String get menuFriendsDescription =>
+      'Constelații comune și victorii sărbătorite împreună — în curând.';
+  @override
+  String get menuMetaphorDescription =>
+      'Ce înseamnă fiecare cuvânt din cer.';
+  @override
+  String get menuSettingsDescription =>
+      'Limbă, mementouri și tot ce ține de contul tău.';
+
+  @override
+  String get comingSoonBadge => 'ÎN CURÂND';
+  @override
+  String get shootingStarsBody =>
+      'O dorință pusă în clipa în care o zărești — de urmărit înainte să se '
+      'stingă. Stelele căzătoare sunt încă în lucru: în curând vei putea să '
+      'îți dai o mică provocare cu limită de timp și să o prinzi pe cer '
+      'înainte să se închidă fereastra.';
+  @override
+  String get friendsBody =>
+      'Constelații comune, mesaje și sărbătorirea împreună a victoriilor '
+      'celuilalt — latura socială a cerului urmează să vină.';
+
+  @override
+  String get profileSection => 'Profil & Cont';
+  @override
+  String get profilePlaceholderBody =>
+      'Autentificarea, poza ta de profil, o scurtă descriere despre tine și '
+      'lista ta de prieteni vor avea loc aici.';
+  @override
+  String get customizationSection => 'Personalizare';
+  @override
+  String get customizationPlaceholderBody =>
+      'În curând vei putea alege tu fonturile și stilul grafic — deocamdată '
+      'aplicația le alege pentru tine.';
+  @override
+  String get passkeySection => 'Passkey';
+  @override
+  String get passkeyPlaceholderBody =>
+      'Autentificarea fără parolă, cu o passkey, este pe drum.';
+  @override
+  String get socialPlaceholderBody =>
+      'Setările despre cum apari prietenilor vor avea loc aici de îndată ce '
+      'latura socială a aplicației va exista.';
 
   @override
   String get statsEyebrow => 'NUMERELE TALE';
@@ -527,8 +614,6 @@ class StringsRo implements AppStrings {
   String get visionEmptyLabel => 'Nicio viziune scrisă încă';
 
   @override
-  String get guideOpenAction => 'Metafora';
-  @override
   String get guideEyebrow => 'CUM FUNCȚIONEAZĂ CERUL TĂU';
   @override
   String get guideTitle => 'Metafora';
@@ -640,6 +725,11 @@ class StringsRo implements AppStrings {
   String get reminderToggleLabel => 'Amintește-mi să aprind o stea';
   @override
   String get reminderTimeLabel => 'Ora mementoului';
+
+  @override
+  String get skyGridSection => 'Grila cerului';
+  @override
+  String get skyGridToggleLabel => 'Arată grila de coordonate pe cer';
   @override
   String get notificationPermissionDenied =>
       'Notificările sunt dezactivate pentru această aplicație în setările telefonului.';
@@ -753,8 +843,6 @@ class StringsRo implements AppStrings {
   String get onboardingGetStartedAction => 'Începe';
   @override
   String get onboardingSkipTooltip => 'Sari peste';
-  @override
-  String get replayOnboardingAction => 'Revezi onboarding-ul';
 }
 
 const _fullMonths = [

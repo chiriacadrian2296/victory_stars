@@ -50,17 +50,104 @@ class StringsIt implements AppStrings {
   @override
   String get openMenuAction => 'Menu';
   @override
-  String get menuLightAStar => 'Accendi una stella';
+  String get menuActivitySection => 'Attività';
   @override
-  String get menuNewConstellation => 'Nuova costellazione';
+  String get menuLightYourSky => 'Accendi Il Tuo Cielo';
   @override
-  String get menuVisions => 'Le tue visioni';
+  String get menuLightAStar => 'Accendi Una Stella';
   @override
-  String get menuAdmire => 'Ammira le tue stelle';
+  String get menuNewConstellation => 'Nuova Costellazione';
   @override
-  String get menuSearch => 'Cerca nel cielo';
+  String get lightYourSkyChooserTitle => 'Cosa vuoi creare?';
+  @override
+  String get menuImagineYourDreams => 'Immagina I Tuoi Sogni';
+  @override
+  String get menuShootingStars => 'Stelle Cadenti';
+  @override
+  String get menuDataSection => 'Dati';
+  @override
+  String get menuSearch => 'Cerca Stelle';
+  @override
+  String get menuStatistics => 'Statistiche';
+  @override
+  String get menuCrisisSection => 'Crisi';
+  @override
+  String get menuFindYourLight => 'Trova La Tua Luce';
+  @override
+  String get socialSection => 'Social';
+  @override
+  String get menuFriends => 'Amici';
   @override
   String get menuSettings => 'Impostazioni';
+  @override
+  String get menuInfoSection => 'Info';
+  @override
+  String get menuMetaphor => 'Metafora';
+  @override
+  String get menuOnboarding => 'Onboarding';
+
+  @override
+  String get menuLightYourSkyDescription =>
+      'Accendi una stella o disegna una nuova costellazione.';
+  @override
+  String get menuImagineYourDreamsDescription =>
+      'Rivedi ciò per cui stai lavorando, area per area.';
+  @override
+  String get menuShootingStarsDescription =>
+      'Un desiderio a tempo — presto disponibile.';
+  @override
+  String get menuFindYourLightDescription =>
+      "Per quando sei nel buio e hai bisogno di un po' di luce.";
+  @override
+  String get menuSearchDescription =>
+      'Trova qualsiasi stella, costellazione o supernova.';
+  @override
+  String get menuStatisticsDescription =>
+      'La stella di oggi, il tuo calendario e i tuoi numeri complessivi.';
+  @override
+  String get menuFriendsDescription =>
+      'Costellazioni condivise e vittorie festeggiate insieme — presto disponibile.';
+  @override
+  String get menuMetaphorDescription =>
+      'Cosa significa ogni parola del cielo.';
+  @override
+  String get menuSettingsDescription =>
+      'Lingua, promemoria e tutto ciò che riguarda il tuo account.';
+
+  @override
+  String get comingSoonBadge => 'PRESTO DISPONIBILE';
+  @override
+  String get shootingStarsBody =>
+      "Un desiderio che esprimi nell'istante in cui la vedi — da rincorrere "
+      'prima che si spenga. Le stelle cadenti sono ancora in lavorazione: '
+      'presto potrai darti una piccola sfida a tempo e coglierla nel cielo '
+      'prima che la finestra si chiuda.';
+  @override
+  String get friendsBody =>
+      'Costellazioni in comune, messaggi e festeggiare insieme le vittorie '
+      "dell'altro — il lato social del cielo arriverà presto.";
+
+  @override
+  String get profileSection => 'Profilo & Account';
+  @override
+  String get profilePlaceholderBody =>
+      'Accesso, la tua foto profilo, una breve descrizione di te e la tua '
+      'lista amici troveranno posto qui.';
+  @override
+  String get customizationSection => 'Personalizzazione';
+  @override
+  String get customizationPlaceholderBody =>
+      "Presto potrai scegliere tu font e stile grafico — per ora è l'app a "
+      'sceglierli per te.';
+  @override
+  String get passkeySection => 'Passkey';
+  @override
+  String get passkeyPlaceholderBody =>
+      "L'accesso senza password tramite passkey è in arrivo.";
+  @override
+  String get socialPlaceholderBody =>
+      'Le impostazioni su come appari agli amici troveranno posto qui non '
+      "appena il lato social dell'app esisterà.";
 
   @override
   String get statsEyebrow => 'I TUOI NUMERI';
@@ -529,8 +616,6 @@ class StringsIt implements AppStrings {
   String get visionEmptyLabel => 'Nessuna visione scritta';
 
   @override
-  String get guideOpenAction => 'La metafora';
-  @override
   String get guideEyebrow => 'COME FUNZIONA IL TUO CIELO';
   @override
   String get guideTitle => 'La metafora';
@@ -643,6 +728,11 @@ class StringsIt implements AppStrings {
   String get reminderToggleLabel => 'Ricordami di accendere una stella';
   @override
   String get reminderTimeLabel => 'Orario del promemoria';
+
+  @override
+  String get skyGridSection => 'Griglia del cielo';
+  @override
+  String get skyGridToggleLabel => 'Mostra la griglia di coordinate sul cielo';
   @override
   String get notificationPermissionDenied =>
       'Le notifiche sono disattivate per questa app nelle impostazioni del telefono.';
@@ -758,8 +848,6 @@ class StringsIt implements AppStrings {
   String get onboardingGetStartedAction => 'Inizia';
   @override
   String get onboardingSkipTooltip => 'Salta';
-  @override
-  String get replayOnboardingAction => 'Rivedi onboarding';
 }
 
 const _fullMonths = [

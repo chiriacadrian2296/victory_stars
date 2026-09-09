@@ -6,6 +6,7 @@ import '../data/star_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../models/life_area.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_fonts.dart';
 import '../theme/app_style.dart';
 import '../utils/star_stats.dart';
 import '../widgets/area_tag.dart';
@@ -241,6 +242,7 @@ class _StatBlock extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
+              fontFamily: kFontMono,
               fontSize: 26,
               fontWeight: FontWeight.w700,
               color: colors.gold,

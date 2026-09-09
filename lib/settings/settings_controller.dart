@@ -11,7 +11,8 @@ class SettingsController extends ChangeNotifier {
       : locale = _repository.locale,
         reminderEnabled = _repository.reminderEnabled,
         reminderHour = _repository.reminderHour,
-        reminderMinute = _repository.reminderMinute;
+        reminderMinute = _repository.reminderMinute,
+        showGrid = _repository.showGrid;
 
   final SettingsRepository _repository;
 
@@ -24,6 +25,7 @@ class SettingsController extends ChangeNotifier {
   bool reminderEnabled;
   int reminderHour;
   int reminderMinute;
+  bool showGrid;
 
   Future<void> setLocale(String code) async {
     if (code == locale) return;
@@ -37,6 +39,13 @@ class SettingsController extends ChangeNotifier {
     reminderHour = hour;
     reminderMinute = minute;
     await _repository.setReminder(enabled: enabled, hour: hour, minute: minute);
+    notifyListeners();
+  }
+
+  Future<void> setShowGrid(bool value) async {
+    if (value == showGrid) return;
+    showGrid = value;
+    await _repository.setShowGrid(value);
     notifyListeners();
   }
 }

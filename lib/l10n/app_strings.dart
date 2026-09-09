@@ -27,14 +27,61 @@ abstract class AppStrings {
   String get areaPhilanthropicDescription;
 
   // The Sky's own side menu — the app has exactly one screen now (the
-  // Sky), and everything else opens from there.
+  // Sky), and everything else opens from there. Grouped into sections;
+  // [menuLightAStar]/[menuNewConstellation] no longer sit directly in the
+  // menu themselves — they're the two choices offered by
+  // [lightYourSkyChooserTitle]'s sheet, which [menuLightYourSky] opens.
   String get openMenuAction;
+  String get menuActivitySection;
+  String get menuLightYourSky;
   String get menuLightAStar;
   String get menuNewConstellation;
-  String get menuVisions;
-  String get menuAdmire;
+  String get lightYourSkyChooserTitle;
+  String get menuImagineYourDreams;
+  String get menuShootingStars;
+  String get menuDataSection;
   String get menuSearch;
+  String get menuStatistics;
+  String get menuCrisisSection;
+  String get menuFindYourLight;
+  String get socialSection;
+  String get menuFriends;
   String get menuSettings;
+  String get menuInfoSection;
+  String get menuMetaphor;
+  String get menuOnboarding;
+
+  // One-line captions shown under each menu entry, but only in the modal
+  // variant of the menu ([SkyMenuContent]'s `detailed: true`) — the
+  // drawer stays as compact as it already was tuned to be.
+  String get menuLightYourSkyDescription;
+  String get menuImagineYourDreamsDescription;
+  String get menuShootingStarsDescription;
+  String get menuFindYourLightDescription;
+  String get menuSearchDescription;
+  String get menuStatisticsDescription;
+  String get menuFriendsDescription;
+  String get menuMetaphorDescription;
+  String get menuSettingsDescription;
+
+  // Placeholder screens — features sketched into the menu ahead of the
+  // real thing existing yet. [comingSoonBadge] is the shared eyebrow for
+  // all of them; each screen pairs it with its own menu label as a title
+  // and its own body text.
+  String get comingSoonBadge;
+  String get shootingStarsBody;
+  String get friendsBody;
+
+  // Settings — placeholder sections, sketched the same way (see above),
+  // but as panels within the Settings page rather than screens of their
+  // own; [socialSection] above doubles as this one's header too.
+  String get profileSection;
+  String get profilePlaceholderBody;
+  String get customizationSection;
+  String get customizationPlaceholderBody;
+  String get passkeySection;
+  String get passkeyPlaceholderBody;
+  String get socialPlaceholderBody;
 
   // Statistics tab
   String get statsEyebrow;
@@ -312,8 +359,8 @@ abstract class AppStrings {
   String get visionEmptyLabel;
 
   // The metaphor guide — one page explaining every level of the sky and how
-  // they nest, openable any time from Settings' debug tools.
-  String get guideOpenAction;
+  // they nest, openable any time from the menu's Info section
+  // ([menuMetaphor]).
   String get guideEyebrow;
   String get guideTitle;
   String get guideIntroBody;
@@ -356,6 +403,8 @@ abstract class AppStrings {
   String get reminderSection;
   String get reminderToggleLabel;
   String get reminderTimeLabel;
+  String get skyGridSection;
+  String get skyGridToggleLabel;
   String get notificationPermissionDenied;
   String get testNotificationButton;
   String get reminderNotificationTitle;
@@ -400,5 +449,4 @@ abstract class AppStrings {
   String get onboardingNextAction;
   String get onboardingGetStartedAction;
   String get onboardingSkipTooltip;
-  String get replayOnboardingAction;
 }

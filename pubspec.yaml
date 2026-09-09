@@ -38,6 +38,23 @@ flutter:
     - shaders/sky_wisps.frag
     - shaders/sky_black_hole.frag
     - shaders/sky_supernova.frag
+    - shaders/menu_star_button.frag
+  fonts:
+    - family: Gloock
+      fonts:
+        - asset: assets/fonts/Gloock-Regular.ttf
+    - family: Newsreader
+      fonts:
+        - asset: assets/fonts/Newsreader-Italic.ttf
+          style: italic
+    - family: Instrument Sans
+      fonts:
+        - asset: assets/fonts/InstrumentSans-Variable.ttf
+        - asset: assets/fonts/InstrumentSans-Italic-Variable.ttf
+          style: italic
+    - family: Fragment Mono
+      fonts:
+        - asset: assets/fonts/FragmentMono-Regular.ttf
 
 flutter_launcher_icons:
   image_path: "assets/icon/app_icon.png"

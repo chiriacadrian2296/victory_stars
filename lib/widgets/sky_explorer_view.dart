@@ -929,7 +929,7 @@ class _StatChip extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 13, color: colors.goldDim),
+        Icon(icon, size: 13, color: colors.accentDim),
         const SizedBox(width: 5),
         Text(text, style: TextStyle(fontSize: 12.5, color: colors.muted)),
       ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
+import 'app_fonts.dart';
 import 'app_style.dart';
 
 /// The app's one and only theme — night sky, gold stars. There's no light
@@ -41,9 +42,14 @@ ThemeData buildAppTheme() {
       onSurface: palette.text,
       error: palette.danger,
     ),
+    // Instrument Sans is the app's one default typeface — every widget that
+    // doesn't ask for [kFontStarTitle], [kFontBranding] or [kFontMono] by
+    // name (see app_fonts.dart) renders in this without having to say so.
+    fontFamily: kFontBody,
     textTheme: ThemeData(brightness: brightness).textTheme.apply(
           bodyColor: palette.text,
           displayColor: palette.text,
+          fontFamily: kFontBody,
         ),
     // The empty/focused halves of the field rule (see [FieldState]); the
     // filled half needs to know whether there's text in the box, so it

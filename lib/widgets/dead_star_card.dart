@@ -6,6 +6,7 @@ import '../models/project.dart';
 import '../models/star.dart';
 import '../models/star_kind.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_fonts.dart';
 import '../theme/app_style.dart';
 import '../utils/date_format.dart';
 import 'area_tag.dart';
@@ -141,8 +142,10 @@ class DeadStarCard extends StatelessWidget {
                   title,
                   textAlign: TextAlign.center,
                   style: TextStyle(
+                    fontFamily: kFontStarTitle,
+                    fontStyle: FontStyle.italic,
                     fontWeight: FontWeight.w600,
-                    fontSize: 19,
+                    fontSize: 25,
                     color: colors.muted,
                   ),
                 ),

@@ -15,6 +15,7 @@ import '../models/project.dart';
 import '../models/star.dart';
 import '../models/star_kind.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_fonts.dart';
 import '../utils/date_format.dart';
 import '../widgets/area_tag.dart';
 import '../widgets/intensity_bolts.dart';
@@ -497,6 +498,8 @@ class _StarContent extends StatelessWidget {
           star.title,
           textAlign: TextAlign.center,
           style: TextStyle(
+            fontFamily: kFontStarTitle,
+            fontStyle: FontStyle.italic,
             fontSize: 34,
             fontWeight: FontWeight.w600,
             height: 1.35,
@@ -582,7 +585,11 @@ class _ShareableLitStarCard extends StatelessWidget {
                   const SizedBox(height: 28),
                   Text(
                     formatDisplayDateTime(star.achievedDate!, strings),
-                    style: TextStyle(fontSize: 15, color: colors.crisisMuted),
+                    style: TextStyle(
+                      fontFamily: kFontMono,
+                      fontSize: 15,
+                      color: colors.crisisMuted,
+                    ),
                   ),
                   if (project != null) ...[
                     const SizedBox(height: 16),
@@ -600,6 +607,8 @@ class _ShareableLitStarCard extends StatelessWidget {
                     star.title,
                     textAlign: TextAlign.center,
                     style: TextStyle(
+                      fontFamily: kFontStarTitle,
+                      fontStyle: FontStyle.italic,
                       fontSize: 34,
                       fontWeight: FontWeight.w600,
                       height: 1.35,

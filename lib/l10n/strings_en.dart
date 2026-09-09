@@ -50,17 +50,102 @@ class StringsEn implements AppStrings {
   @override
   String get openMenuAction => 'Menu';
   @override
-  String get menuLightAStar => 'Light a star';
+  String get menuActivitySection => 'Activity';
   @override
-  String get menuNewConstellation => 'New constellation';
+  String get menuLightYourSky => 'Light Your Sky';
   @override
-  String get menuVisions => 'Your visions';
+  String get menuLightAStar => 'Light A Star';
   @override
-  String get menuAdmire => 'Admire your stars';
+  String get menuNewConstellation => 'New Constellation';
   @override
-  String get menuSearch => 'Search the sky';
+  String get lightYourSkyChooserTitle => 'What would you like to create?';
+  @override
+  String get menuImagineYourDreams => 'Imagine Your Dreams';
+  @override
+  String get menuShootingStars => 'Shooting Stars';
+  @override
+  String get menuDataSection => 'Data';
+  @override
+  String get menuSearch => 'Search Stars';
+  @override
+  String get menuStatistics => 'Statistics';
+  @override
+  String get menuCrisisSection => 'Crisis';
+  @override
+  String get menuFindYourLight => 'Find Your Light';
+  @override
+  String get socialSection => 'Social';
+  @override
+  String get menuFriends => 'Friends';
   @override
   String get menuSettings => 'Settings';
+  @override
+  String get menuInfoSection => 'Info';
+  @override
+  String get menuMetaphor => 'Metaphor';
+  @override
+  String get menuOnboarding => 'Onboarding';
+
+  @override
+  String get menuLightYourSkyDescription =>
+      'Light a star or draw a new constellation.';
+  @override
+  String get menuImagineYourDreamsDescription =>
+      "Revisit what you're working toward, area by area.";
+  @override
+  String get menuShootingStarsDescription => 'A wish, timed — coming soon.';
+  @override
+  String get menuFindYourLightDescription =>
+      "For when you're in the dark and need some light.";
+  @override
+  String get menuSearchDescription =>
+      'Find any star, constellation, or supernova.';
+  @override
+  String get menuStatisticsDescription =>
+      "Today's star, your calendar, and your all-time numbers.";
+  @override
+  String get menuFriendsDescription =>
+      "Shared constellations and celebrating wins together — coming soon.";
+  @override
+  String get menuMetaphorDescription => 'What every word in the sky means.';
+  @override
+  String get menuSettingsDescription =>
+      'Language, reminders, and everything about your account.';
+
+  @override
+  String get comingSoonBadge => 'COMING SOON';
+  @override
+  String get shootingStarsBody =>
+      'A wish you make the moment you spot it — then chase before it '
+      "burns out. Shooting stars are still taking shape; soon you'll be "
+      'able to set yourself a small, timed challenge and catch it in the '
+      'sky before your window closes.';
+  @override
+  String get friendsBody =>
+      "Shared constellations, messages, and celebrating each other's wins "
+      'together — the social side of the sky is still ahead.';
+
+  @override
+  String get profileSection => 'Profile & Account';
+  @override
+  String get profilePlaceholderBody =>
+      'Sign-in, your profile picture, a short description of yourself, '
+      'and your friends list will live here.';
+  @override
+  String get customizationSection => 'Customization';
+  @override
+  String get customizationPlaceholderBody =>
+      'Choosing your own fonts and graphic style is coming — for now the '
+      'app picks them for you.';
+  @override
+  String get passkeySection => 'Passkey';
+  @override
+  String get passkeyPlaceholderBody =>
+      'Passwordless sign-in with a passkey is on the way.';
+  @override
+  String get socialPlaceholderBody =>
+      'Settings for how you appear to friends will live here once the '
+      'social side of the app exists.';
 
   @override
   String get statsEyebrow => 'YOUR NUMBERS';
@@ -522,8 +607,6 @@ class StringsEn implements AppStrings {
   String get visionEmptyLabel => 'No vision written yet';
 
   @override
-  String get guideOpenAction => 'The metaphor';
-  @override
   String get guideEyebrow => 'HOW YOUR SKY WORKS';
   @override
   String get guideTitle => 'The metaphor';
@@ -634,6 +717,11 @@ class StringsEn implements AppStrings {
   String get reminderToggleLabel => 'Remind me to light a star';
   @override
   String get reminderTimeLabel => 'Reminder time';
+
+  @override
+  String get skyGridSection => 'Sky grid';
+  @override
+  String get skyGridToggleLabel => 'Show coordinate grid on the sky';
   @override
   String get notificationPermissionDenied =>
       'Notifications are turned off for this app in your phone settings.';
@@ -746,8 +834,6 @@ class StringsEn implements AppStrings {
   String get onboardingGetStartedAction => 'Get started';
   @override
   String get onboardingSkipTooltip => 'Skip';
-  @override
-  String get replayOnboardingAction => 'Replay onboarding';
 }
 
 const _fullMonths = [

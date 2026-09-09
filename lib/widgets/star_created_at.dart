@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/strings_scope.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_fonts.dart';
 import '../utils/date_format.dart';
 
 /// When this card's underlying star/habit was created — the one date every
@@ -30,7 +31,11 @@ class StarCreatedAt extends StatelessWidget {
               const SizedBox(width: 5),
               Text(
                 formatDisplayDate(createdAt, strings),
-                style: TextStyle(fontSize: 12, color: colors.muted),
+                style: TextStyle(
+                  fontFamily: kFontMono,
+                  fontSize: 12,
+                  color: colors.muted,
+                ),
               ),
             ],
           ),
@@ -42,7 +47,11 @@ class StarCreatedAt extends StatelessWidget {
               const SizedBox(width: 5),
               Text(
                 formatDisplayTime(createdAt),
-                style: TextStyle(fontSize: 12, color: colors.muted),
+                style: TextStyle(
+                  fontFamily: kFontMono,
+                  fontSize: 12,
+                  color: colors.muted,
+                ),
               ),
             ],
           ),

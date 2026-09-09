@@ -6,6 +6,7 @@ import '../l10n/strings_scope.dart';
 import '../models/life_area.dart';
 import '../models/star.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_fonts.dart';
 import '../theme/app_style.dart';
 import '../utils/date_format.dart';
 import '../utils/star_stats.dart';
@@ -312,6 +313,7 @@ class _StatDetailScaffold extends StatelessWidget {
                         Text(
                           value,
                           style: TextStyle(
+                            fontFamily: kFontMono,
                             fontSize: 52,
                             fontWeight: FontWeight.w700,
                             height: 1,
@@ -325,7 +327,7 @@ class _StatDetailScaffold extends StatelessWidget {
                             fontSize: 12,
                             letterSpacing: 2,
                             fontWeight: FontWeight.w600,
-                            color: colors.goldDim,
+                            color: colors.accentDim,
                           ),
                         ),
                         const SizedBox(height: 28),
@@ -414,6 +416,7 @@ class _DetailRow extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
+              fontFamily: kFontMono,
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: colors.text,

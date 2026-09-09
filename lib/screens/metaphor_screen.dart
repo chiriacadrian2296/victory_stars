@@ -19,7 +19,7 @@ import '../widgets/star_glyph.dart';
 /// meaning, a short explanation, examples, and a picture of the real thing
 /// as the app actually draws it.
 ///
-/// Reachable any time from Settings' debug tools. Deliberately a reference
+/// Reachable any time from the menu's Info section. Deliberately a reference
 /// you can come back to rather than a tutorial you sit through once —
 /// that's what onboarding is for, and this is the page onboarding is a
 /// summary of.
@@ -226,7 +226,7 @@ class _LevelSection extends StatelessWidget {
               fontSize: 11,
               letterSpacing: 1.2,
               fontWeight: FontWeight.w600,
-              color: colors.goldDim,
+              color: colors.accentDim,
             ),
           ),
           const SizedBox(height: 4),

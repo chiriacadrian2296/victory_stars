@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -14,19 +13,23 @@ import '../l10n/strings_scope.dart';
 import '../notifications/reminder_service.dart';
 import '../settings/settings_controller.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_fonts.dart';
 import '../theme/app_style.dart';
 import '../widgets/responsive_content.dart';
-import 'home_screen.dart';
-import 'metaphor_screen.dart';
 import 'onboarding_screen.dart';
-import 'stats_screen.dart';
 
-/// Settings, opened from the Sky's own side menu: language, the daily
-/// reminder notification, a debug-only tools section (seed/reset data,
-/// replay onboarding, the metaphor guide, and the two screens the Sky
-/// replaced — visible only in debug builds, via `kDebugMode`), and a short
-/// "about" block. Reads/writes through [SettingsController], which persists
-/// each change immediately.
+/// Settings, opened from the Sky's own side menu — the drawer carries only
+/// one entry for it, everything else here is a section of this one page.
+/// Profile & Account, Customization, Passkey and Social are all sketched
+/// in ahead of the systems behind them existing (see [_PlaceholderPanel]);
+/// Language and the daily reminder are the two that actually work today.
+/// A short "about" card (name, version, tagline) closes out the page's own
+/// content, with a dev tools section (seed/reset data, onboarding replay
+/// — shown in every build, not just debug ones) beneath it. The metaphor guide
+/// and onboarding replay live in the menu's own Info section instead —
+/// places to *go*, unlike "about", which is a fact about the app rather
+/// than a page with anything to do on it. Reads/writes through
+/// [SettingsController], which persists each change immediately.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
     super.key,
@@ -92,6 +95,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       await widget.reminderService.cancel();
     }
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _setShowGrid(bool value) async {
+    await widget.settings.setShowGrid(value);
     if (mounted) setState(() {});
   }
 
@@ -245,7 +253,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           fontSize: 12,
                           letterSpacing: 2,
                           fontWeight: FontWeight.w600,
-                          color: colors.goldDim,
+                          color: colors.accentDim,
                         ),
                       ),
                     ],
@@ -258,6 +266,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       fontWeight: FontWeight.w700,
                       color: colors.text,
                     ),
+                  ),
+                  const SizedBox(height: 28),
+
+                  _SectionLabel(strings.profileSection),
+                  const SizedBox(height: 10),
+                  _PlaceholderPanel(
+                    icon: Icons.person_outline,
+                    body: strings.profilePlaceholderBody,
                   ),
                   const SizedBox(height: 28),
 
@@ -347,129 +363,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ),
-                  // The metaphor guide, on its own above the debug block:
-                  // it's for the user, not for development, and it's the
-                  // one page that explains what every word in the app
-                  // means.
                   const SizedBox(height: 28),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _push(const MetaphorScreen()),
-                      icon: const Icon(Icons.auto_stories_outlined),
-                      label: Text(strings.guideOpenAction),
+
+                  _SectionLabel(strings.skyGridSection),
+                  const SizedBox(height: 4),
+                  Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(kRadiusCard),
+                    child: Container(
+                      decoration: panelDecoration(colors),
+                      child: SwitchListTile(
+                        value: widget.settings.showGrid,
+                        onChanged: _setShowGrid,
+                        title: Text(
+                          strings.skyGridToggleLabel,
+                          style: TextStyle(color: colors.text, fontSize: 14),
+                        ),
+                      ),
                     ),
                   ),
-                  // Dev-only tooling (seed/reset data, replay onboarding,
-                  // and the two screens the Sky replaced) — gated on
-                  // kDebugMode (not a runtime setting), header included, so
-                  // the whole section disappears from release builds
-                  // automatically instead of needing to be stripped out by
-                  // hand before shipping.
-                  if (kDebugMode) ...[
-                    const SizedBox(height: 28),
-                    _SectionLabel(strings.dataSection),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 4,
-                      children: [
-                        TextButton.icon(
-                          onPressed: _seedSampleData,
-                          icon: Icon(
-                            Icons.science_outlined,
-                            size: 16,
-                            color: colors.muted,
-                          ),
-                          label: Text(
-                            strings.seedSampleData,
-                            style: TextStyle(
-                              color: colors.muted,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                        TextButton.icon(
-                          onPressed: _resetAllData,
-                          icon: Icon(
-                            Icons.delete_outline,
-                            size: 16,
-                            color: colors.danger,
-                          ),
-                          label: Text(
-                            strings.resetAllData,
-                            style: TextStyle(
-                              color: colors.danger,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                        TextButton.icon(
-                          onPressed: () => _push(const OnboardingScreen()),
-                          icon: Icon(
-                            Icons.auto_stories_outlined,
-                            size: 16,
-                            color: colors.muted,
-                          ),
-                          label: Text(
-                            strings.replayOnboardingAction,
-                            style: TextStyle(
-                              color: colors.muted,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                        // The dashboard and the statistics page are no
-                        // longer part of navigation (the Sky is the only
-                        // screen), but they're kept whole — these two are
-                        // the only way left to look at them.
-                        TextButton.icon(
-                          onPressed: () => _push(
-                            HomeScreen(
-                              starRepository: widget.starRepository,
-                              projectRepository: widget.projectRepository,
-                              habitRepository: widget.habitRepository,
-                              habitCompletionRepository:
-                                  widget.habitCompletionRepository,
-                              customConstellationRepository:
-                                  widget.customConstellationRepository,
-                            ),
-                          ),
-                          icon: Icon(
-                            Icons.insights_outlined,
-                            size: 16,
-                            color: colors.muted,
-                          ),
-                          label: Text(
-                            strings.homeTitle,
-                            style: TextStyle(
-                              color: colors.muted,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                        TextButton.icon(
-                          onPressed: () => _push(
-                            StatsScreen(
-                              starRepository: widget.starRepository,
-                              projectRepository: widget.projectRepository,
-                            ),
-                          ),
-                          icon: Icon(
-                            Icons.bar_chart_outlined,
-                            size: 16,
-                            color: colors.muted,
-                          ),
-                          label: Text(
-                            strings.statsTitle,
-                            style: TextStyle(
-                              color: colors.muted,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  const SizedBox(height: 28),
+
+                  _SectionLabel(strings.customizationSection),
+                  const SizedBox(height: 10),
+                  _PlaceholderPanel(
+                    icon: Icons.palette_outlined,
+                    body: strings.customizationPlaceholderBody,
+                  ),
+                  const SizedBox(height: 28),
+
+                  _SectionLabel(strings.passkeySection),
+                  const SizedBox(height: 10),
+                  _PlaceholderPanel(
+                    icon: Icons.key_outlined,
+                    body: strings.passkeyPlaceholderBody,
+                  ),
+                  const SizedBox(height: 28),
+
+                  _SectionLabel(strings.socialSection),
+                  const SizedBox(height: 10),
+                  _PlaceholderPanel(
+                    icon: Icons.groups_outlined,
+                    body: strings.socialPlaceholderBody,
+                  ),
                   const SizedBox(height: 28),
 
                   _SectionLabel(strings.aboutSection),
@@ -488,8 +424,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               'Victory Stars',
                               style: TextStyle(
                                 color: colors.text,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 16,
+                                fontFamily: kFontBranding,
+                                fontWeight: FontWeight.w400,
+                                fontSize: 18,
                               ),
                             ),
                             if (version != null) ...[
@@ -516,6 +453,82 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       );
                     },
                   ),
+                  // Dev tooling (seed/reset data) — shown in every build,
+                  // debug and release alike, so it stays available for
+                  // hands-on testing on a release install too, not just in
+                  // a debug build. Each button carries its own panel
+                  // background (see [_debugButtonStyle]) so it reads as
+                  // tappable rather than as a stray line of text; each is
+                  // [Expanded] so together they fill the row edge to edge
+                  // instead of leaving empty space beside them.
+                  ...[
+                    const SizedBox(height: 28),
+                    _SectionLabel(strings.dataSection),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton.icon(
+                            onPressed: _seedSampleData,
+                            style: _debugButtonStyle(colors, colors.muted),
+                            icon: Icon(
+                              Icons.science_outlined,
+                              size: 16,
+                              color: colors.muted,
+                            ),
+                            label: Text(
+                              strings.seedSampleData,
+                              style: TextStyle(
+                                color: colors.muted,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextButton.icon(
+                            onPressed: _resetAllData,
+                            style: _debugButtonStyle(colors, colors.danger),
+                            icon: Icon(
+                              Icons.delete_outline,
+                              size: 16,
+                              color: colors.danger,
+                            ),
+                            label: Text(
+                              strings.resetAllData,
+                              style: TextStyle(
+                                color: colors.danger,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // Onboarding replay lived in the menu's own Info
+                    // section briefly; moved back here — a dev/QA aid for
+                    // checking the flow still works, not something a
+                    // regular user goes looking for on purpose.
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton.icon(
+                        onPressed: () =>
+                            _push(const OnboardingScreen()),
+                        style: _debugButtonStyle(colors, colors.muted),
+                        icon: Icon(
+                          Icons.play_circle_outline,
+                          size: 16,
+                          color: colors.muted,
+                        ),
+                        label: Text(
+                          strings.menuOnboarding,
+                          style: TextStyle(color: colors.muted, fontSize: 12),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -539,6 +552,62 @@ class _SectionLabel extends StatelessWidget {
         fontSize: 13,
         fontWeight: FontWeight.w600,
         color: context.colors.muted,
+      ),
+    );
+  }
+}
+
+/// A debug-tools button's own panel background — same nightPanel/nightBorder
+/// language every other field/tile in the app uses, so these read as
+/// tappable buttons rather than as a stray, unstyled line of text sitting
+/// on the page. [foreground] carries through as the button's own text/icon
+/// color (set independently at each call site), so only the background and
+/// border are decided here.
+ButtonStyle _debugButtonStyle(AppColors colors, Color foreground) {
+  return TextButton.styleFrom(
+    foregroundColor: foreground,
+    backgroundColor: colors.nightPanel,
+    side: BorderSide(color: colors.nightBorder),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(kRadiusField),
+    ),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+  );
+}
+
+/// A settings section sketched in ahead of the system behind it existing —
+/// Profile & Account, Customization, Passkey and Social all render as one
+/// of these today: an icon and a line explaining what will live here once
+/// it's built, in the same panel language as every working section around
+/// it, so a placeholder reads as "not yet" rather than as a mistake.
+class _PlaceholderPanel extends StatelessWidget {
+  const _PlaceholderPanel({required this.icon, required this.body});
+
+  final IconData icon;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: panelDecoration(colors),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: colors.muted, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              body,
+              style: TextStyle(
+                color: colors.muted,
+                fontSize: 13,
+                height: 1.45,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

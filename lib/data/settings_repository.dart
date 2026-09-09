@@ -11,6 +11,7 @@ class SettingsRepository {
   static const _reminderEnabledKey = 'settings.reminderEnabled';
   static const _reminderHourKey = 'settings.reminderHour';
   static const _reminderMinuteKey = 'settings.reminderMinute';
+  static const _showGridKey = 'settings.showGrid';
 
   final SharedPreferences _prefs;
 
@@ -36,4 +37,11 @@ class SettingsRepository {
     await _prefs.setInt(_reminderHourKey, hour);
     await _prefs.setInt(_reminderMinuteKey, minute);
   }
+
+  /// Whether the Sky's own coordinate grid is drawn over the nebula
+  /// background — off by default, same as it always started before this
+  /// became a real setting.
+  bool get showGrid => _prefs.getBool(_showGridKey) ?? false;
+
+  Future<void> setShowGrid(bool value) => _prefs.setBool(_showGridKey, value);
 }

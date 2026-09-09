@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_fonts.dart';
 
 /// The one fact unique to a star's kind — a photo, a target date, a death
 /// date, or a streak — shown centered between the description and the
@@ -47,7 +48,10 @@ class StarExtraBadge extends StatelessWidget {
           ),
           if (value != null) ...[
             const SizedBox(width: 6),
-            Text(value!, style: TextStyle(fontSize: 14, color: color)),
+            Text(
+              value!,
+              style: TextStyle(fontSize: 14, fontFamily: kFontMono, color: color),
+            ),
           ],
         ],
       ),

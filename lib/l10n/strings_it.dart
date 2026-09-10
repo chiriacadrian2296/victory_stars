@@ -330,9 +330,13 @@ class StringsIt implements AppStrings {
   @override
   String get constellationNameHint => 'Es. Il mio percorso';
   @override
-  String get yourConstellationsLabel => 'Le tue costellazioni';
-  @override
   String get constellationEditorGridToggleLabel => 'Griglia';
+  @override
+  String get constellationEditorMirrorToggleLabel => 'Specchio';
+  @override
+  String get constellationEditorMirrorAxisVerticalLabel => 'Verticale';
+  @override
+  String get constellationEditorMirrorAxisHorizontalLabel => 'Orizzontale';
   @override
   String get constellationEditorHelpAction => 'Come funziona';
   @override
@@ -366,6 +370,14 @@ class StringsIt implements AppStrings {
   String get shapeSearchHint => 'Cerca una forma';
   @override
   String get noShapeChosenHint => 'Nessuna forma scelta';
+  @override
+  String get shapeLibraryTabLabel => 'Libreria';
+  @override
+  String get yourShapesTabLabel => 'Le tue forme';
+  @override
+  String get noCustomShapesYetHint => 'Non hai ancora disegnato nessuna forma';
+  @override
+  String get editSelectedShapeAction => 'Modifica questa forma';
 
   @override
   String get newProjectEyebrow => 'NUOVA COSTELLAZIONE';

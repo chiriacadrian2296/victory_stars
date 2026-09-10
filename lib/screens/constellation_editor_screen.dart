@@ -36,10 +36,24 @@ class ConstellationEditorScreen extends StatefulWidget {
     super.key,
     required this.customConstellationRepository,
     this.existing,
-  });
+    this.initialShape,
+  }) : assert(
+         existing == null || initialShape == null,
+         'Pass at most one of existing/initialShape — existing already '
+         'carries its own shape to start from.',
+       );
 
   final CustomConstellationRepository customConstellationRepository;
   final CustomConstellation? existing;
+
+  /// Starts the canvas pre-filled with these points/edges, same as
+  /// [existing] would, but *without* tying [_save] to updating some
+  /// already-saved constellation — saving still creates a brand new one,
+  /// same as a blank canvas would. What a preset picked from the shape
+  /// library opens with: the user can go on to reshape it freely, and it
+  /// only ever becomes a real, owned [CustomConstellation] at that save,
+  /// never the moment they merely opened the editor to look at it.
+  final ConstellationShape? initialShape;
 
   @override
   State<ConstellationEditorScreen> createState() =>
@@ -57,9 +71,10 @@ class ConstellationEditorScreen extends StatefulWidget {
 const int _maxEditorPoints = 25;
 
 class _EditorSnapshot {
-  const _EditorSnapshot(this.points, this.edges);
+  const _EditorSnapshot(this.points, this.edges, this.mirrorOf);
   final List<Offset> points;
   final List<(int, int)> edges;
+  final List<int?> mirrorOf;
 }
 
 class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
@@ -75,10 +90,38 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
   /// front.
   final List<Offset> _points = [];
   final List<(int, int)> _edges = [];
+  /// Parallel to [_points]: [_mirrorOf]\[i\] is the index of point i's
+  /// mirror partner (see [_mirrorEnabled]), itself if it sits exactly on
+  /// the mirror axis, or null if it has none — either mirror mode was off
+  /// when it was placed, or it came from [widget.existing]. Kept in
+  /// lockstep with [_points] through every add/move/delete, and part of
+  /// [_EditorSnapshot] so undo/redo restores the pairing too, not just the
+  /// points/edges.
+  final List<int?> _mirrorOf = [];
   int? _armedIndex;
   int? _draggingIndex;
   final List<_EditorSnapshot> _undoStack = [];
   final List<_EditorSnapshot> _redoStack = [];
+
+  /// Draw once, mirrored automatically on the other side of an axis
+  /// through the canvas's own center — every placed/moved/deleted point,
+  /// and every connection between two mirrored points, happens on both
+  /// sides at once. Off by default: a plain, un-mirrored canvas, same as
+  /// before this existed.
+  bool _mirrorEnabled = false;
+
+  /// true = the mirror axis is the vertical center line (left/right
+  /// symmetry, flips the x coordinate); false = the horizontal center
+  /// line (top/bottom symmetry, flips y).
+  bool _mirrorVertical = true;
+
+  /// How close a point's own reflection has to be to itself (in the same
+  /// 0..1 relative space [_points] uses) before it's treated as sitting
+  /// exactly on the mirror axis — see [_addPointMaybeMirrored]. Small
+  /// enough it only catches a deliberately-near-center tap/drag, not
+  /// anything that merely happens to be somewhere in the middle third of
+  /// the canvas.
+  static const _mirrorAxisEpsilon = 0.02;
 
   /// The on-screen canvas's actual pixel size, refreshed every build (see
   /// the `LayoutBuilder` in [build]) — needed to convert between the
@@ -118,10 +161,13 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
   @override
   void initState() {
     super.initState();
-    final existing = widget.existing;
-    if (existing != null) {
-      _points.addAll(existing.shape.points);
-      _edges.addAll(existing.shape.edges);
+    final startingShape = widget.existing?.shape ?? widget.initialShape;
+    if (startingShape != null) {
+      _points.addAll(startingShape.points);
+      _edges.addAll(startingShape.edges);
+      // No known pairing for a shape drawn before mirror mode existed —
+      // mirroring only ever applies to points placed *while* it's on.
+      _mirrorOf.addAll(List<int?>.filled(_points.length, null));
     }
     _maybeAutoShowHelp();
   }
@@ -260,7 +306,7 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
   }
 
   _EditorSnapshot _currentSnapshot() =>
-      _EditorSnapshot(List.of(_points), List.of(_edges));
+      _EditorSnapshot(List.of(_points), List.of(_edges), List.of(_mirrorOf));
 
   void _pushUndoSnapshot() {
     _undoStack.add(_currentSnapshot());
@@ -281,6 +327,9 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
       _edges
         ..clear()
         ..addAll(last.edges);
+      _mirrorOf
+        ..clear()
+        ..addAll(last.mirrorOf);
       _armedIndex = null;
       _draggingIndex = null;
     });
@@ -297,6 +346,9 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
       _edges
         ..clear()
         ..addAll(next.edges);
+      _mirrorOf
+        ..clear()
+        ..addAll(next.mirrorOf);
       _armedIndex = null;
       _draggingIndex = null;
     });
@@ -312,6 +364,70 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
     } else {
       _edges.add((a, b));
     }
+  }
+
+  /// [relative]'s reflection across whichever mirror axis is active (see
+  /// [_mirrorVertical]) — a vertical axis (the canvas's own vertical
+  /// center line) mirrors left/right, flipping x; a horizontal one mirrors
+  /// top/bottom, flipping y.
+  Offset _mirrorAcrossAxis(Offset relative) {
+    return _mirrorVertical
+        ? Offset(1.0 - relative.dx, relative.dy)
+        : Offset(relative.dx, 1.0 - relative.dy);
+  }
+
+  /// Adds [relative] to [_points] — as a single, self-mirrored point if it
+  /// sits within [_mirrorAxisEpsilon] of its own reflection (snapped
+  /// exactly onto the axis, so it doesn't drift off it), or as a mirrored
+  /// pair otherwise. Only called while [_mirrorEnabled]; the plain
+  /// single-point add ([_handleTap]'s own `_points.add` when mirroring is
+  /// off) still handles the unmirrored case directly.
+  void _addPointMaybeMirrored(Offset relative) {
+    final reflected = _mirrorAcrossAxis(relative);
+    if ((relative - reflected).distance < _mirrorAxisEpsilon) {
+      final onAxis = _mirrorVertical
+          ? Offset(0.5, relative.dy)
+          : Offset(relative.dx, 0.5);
+      _points.add(onAxis);
+      _mirrorOf.add(_points.length - 1);
+      return;
+    }
+    _points.add(relative);
+    final index = _points.length - 1;
+    _points.add(reflected);
+    final mirrorIndex = _points.length - 1;
+    _mirrorOf.add(mirrorIndex);
+    _mirrorOf.add(index);
+  }
+
+  /// If both [a] and [b] have a known mirror partner (see [_mirrorOf]) and
+  /// that mirrored edge isn't just [a]-[b] itself (which happens when they
+  /// *are* each other's mirror pair, or both sit self-mirrored on the
+  /// axis), toggles the equivalent edge between those two partners too —
+  /// called right after [_toggleEdge] itself, from [_handleTap], only
+  /// while [_mirrorEnabled].
+  void _mirrorToggleEdgeIfNeeded(int a, int b) {
+    final mirrorA = a < _mirrorOf.length ? _mirrorOf[a] : null;
+    final mirrorB = b < _mirrorOf.length ? _mirrorOf[b] : null;
+    if (mirrorA == null || mirrorB == null) return;
+    final sameEdge =
+        (mirrorA == a && mirrorB == b) || (mirrorA == b && mirrorB == a);
+    if (sameEdge) return;
+    _toggleEdge(mirrorA, mirrorB);
+  }
+
+  /// [removeEditorPoint]'s own index-shifting logic, applied to
+  /// [_mirrorOf] instead of edges: drops the entry for the removed point
+  /// and shifts every remaining reference above it down by one, so
+  /// mirror pairing stays valid the same way edge endpoints do.
+  List<int?> _removeMirrorEntry(List<int?> mirrorOf, int index) {
+    final result = <int?>[];
+    for (var i = 0; i < mirrorOf.length; i++) {
+      if (i == index) continue;
+      final value = mirrorOf[i];
+      result.add(value == null ? null : (value > index ? value - 1 : value));
+    }
+    return result;
   }
 
   void _handlePointerDown(PointerDownEvent event) {
@@ -334,11 +450,24 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
       _draggingIndex = downIndex;
       _pushUndoSnapshot();
     }
-    setState(
-      () => _points[downIndex] = _toRelative(
-        _snapIfGridEnabled(event.localPosition),
-      ),
-    );
+    setState(() {
+      final relative = _toRelative(_snapIfGridEnabled(event.localPosition));
+      _points[downIndex] = relative;
+      if (!_mirrorEnabled) return;
+      final mirrorIndex = downIndex < _mirrorOf.length
+          ? _mirrorOf[downIndex]
+          : null;
+      if (mirrorIndex == null) return;
+      // A self-mirrored point (sitting on the axis) stays pinned to it
+      // while dragging, rather than drifting off; anything else moves its
+      // separate partner to the reflected position instead.
+      _points[downIndex == mirrorIndex ? downIndex : mirrorIndex] =
+          downIndex == mirrorIndex
+          ? (_mirrorVertical
+                ? Offset(0.5, relative.dy)
+                : Offset(relative.dx, 0.5))
+          : _mirrorAcrossAxis(relative);
+    });
   }
 
   void _handlePointerUp(PointerUpEvent event) {
@@ -362,10 +491,24 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
   /// and avoiding a second, possibly-different hit test at release.
   void _handleTap(int? tapped, Offset position) {
     if (tapped == null) {
-      if (_points.length >= _maxEditorPoints) return;
+      final relative = _toRelative(_snapIfGridEnabled(position));
+      // Mirroring can add two points at once — checked against the cap
+      // up front (using the same "would it land on the axis" test
+      // [_addPointMaybeMirrored] itself does) rather than after the fact,
+      // so a single add never sneaks one point past [_maxEditorPoints].
+      final wouldAddTwo =
+          _mirrorEnabled &&
+          (relative - _mirrorAcrossAxis(relative)).distance >=
+              _mirrorAxisEpsilon;
+      if (_points.length + (wouldAddTwo ? 2 : 1) > _maxEditorPoints) return;
       _pushUndoSnapshot();
       setState(() {
-        _points.add(_toRelative(_snapIfGridEnabled(position)));
+        if (_mirrorEnabled) {
+          _addPointMaybeMirrored(relative);
+        } else {
+          _points.add(relative);
+          _mirrorOf.add(null);
+        }
         _armedIndex = null;
       });
       return;
@@ -384,6 +527,7 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
     _pushUndoSnapshot();
     setState(() {
       _toggleEdge(armed, tapped);
+      if (_mirrorEnabled) _mirrorToggleEdgeIfNeeded(armed, tapped);
       _armedIndex = tapped;
     });
   }
@@ -393,8 +537,39 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
     if (index == null) return;
 
     _pushUndoSnapshot();
+    final mirrorIndex = _mirrorEnabled && index < _mirrorOf.length
+        ? _mirrorOf[index]
+        : null;
+    if (mirrorIndex != null && mirrorIndex != index) {
+      // Remove the larger index first so removing it can't shift the
+      // smaller one out from under itself.
+      final first = math.max(index, mirrorIndex);
+      final second = math.min(index, mirrorIndex);
+      var (points, edges) = removeEditorPoint(_points, _edges, first);
+      var mirrorOf = _removeMirrorEntry(_mirrorOf, first);
+      (points, edges) = removeEditorPoint(points, edges, second);
+      mirrorOf = _removeMirrorEntry(mirrorOf, second);
+      setState(() {
+        _points
+          ..clear()
+          ..addAll(points);
+        _edges
+          ..clear()
+          ..addAll(edges);
+        _mirrorOf
+          ..clear()
+          ..addAll(mirrorOf);
+        _armedIndex = null;
+      });
+      return;
+    }
+
     final (newPoints, newEdges) = removeEditorPoint(_points, _edges, index);
+    final newMirrorOf = _removeMirrorEntry(_mirrorOf, index);
     setState(() {
+      _mirrorOf
+        ..clear()
+        ..addAll(newMirrorOf);
       _points
         ..clear()
         ..addAll(newPoints);
@@ -415,13 +590,17 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
   }
 
   /// True once the canvas differs from whatever it started as — an empty
-  /// canvas when creating a new shape, or [widget.existing]'s own saved
-  /// points/edges when editing one. Compared against those originals
-  /// directly rather than a separate "dirty" flag, so undo/redo back to the
-  /// exact starting state also correctly clears this.
+  /// canvas when creating a brand new shape, or [widget.existing]'s /
+  /// [widget.initialShape]'s own points/edges otherwise (a preset's own
+  /// shape counts here exactly like an already-saved one would: opening
+  /// the editor on it and leaving without changing anything isn't a
+  /// "change" worth confirming discarding). Compared against those
+  /// originals directly rather than a separate "dirty" flag, so undo/redo
+  /// back to the exact starting state also correctly clears this.
   bool get _hasUnsavedChanges {
-    final initialPoints = widget.existing?.shape.points ?? const <Offset>[];
-    final initialEdges = widget.existing?.shape.edges ?? const <(int, int)>[];
+    final startingShape = widget.existing?.shape ?? widget.initialShape;
+    final initialPoints = startingShape?.points ?? const <Offset>[];
+    final initialEdges = startingShape?.edges ?? const <(int, int)>[];
     return !listEquals(_points, initialPoints) || !listEquals(_edges, initialEdges);
   }
 
@@ -534,29 +713,66 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
                       ),
                     ),
                   ),
-                  Tooltip(
-                    message: strings.constellationEditorGridToggleLabel,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.grid_on, size: 18, color: colors.muted),
-                        Transform.scale(
-                          scale: 0.8,
-                          child: Switch(
-                            value: _gridEnabled,
-                            onChanged: (value) =>
-                                setState(() => _gridEnabled = value),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                   IconButton(
                     onPressed: _showHelp,
                     icon: Icon(Icons.help_outline, color: colors.muted),
                     tooltip: strings.constellationEditorHelpAction,
                   ),
                 ],
+              ),
+              // Grid/Mirror/Axis, right under the app bar and hugging the
+              // canvas below it — the grid toggle used to live in the app
+              // bar on its own; moved here to sit with the two new mirror
+              // controls instead of splitting canvas-related settings
+              // across two different places on screen. Kept *above* the
+              // canvas rather than between it and the undo/redo/delete
+              // row: that spot pushed the canvas's own centering off,
+              // since it ate into the same [Expanded] region the canvas
+              // itself centers within — up here, it's just one more
+              // fixed-height header row (like the app bar already was),
+              // and the canvas goes right back to centering in whatever
+              // space is left below it, same as before this row existed.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _EditorToggle(
+                      icon: Icons.grid_on,
+                      label: strings.constellationEditorGridToggleLabel,
+                      value: _gridEnabled,
+                      onChanged: (value) =>
+                          setState(() => _gridEnabled = value),
+                    ),
+                    const SizedBox(width: 20),
+                    _EditorToggle(
+                      icon: Icons.flip,
+                      label: strings.constellationEditorMirrorToggleLabel,
+                      value: _mirrorEnabled,
+                      onChanged: (value) =>
+                          setState(() => _mirrorEnabled = value),
+                    ),
+                    const SizedBox(width: 20),
+                    _EditorToggle(
+                      // The icon itself shows which axis is active —
+                      // horizontal arrows for a vertical (left/right)
+                      // axis, vertical arrows for a horizontal
+                      // (top/bottom) one — rather than a fixed icon next
+                      // to a switch whose two positions would otherwise
+                      // look identical at a glance.
+                      icon: _mirrorVertical
+                          ? Icons.swap_horiz
+                          : Icons.swap_vert,
+                      label: _mirrorVertical
+                          ? strings.constellationEditorMirrorAxisVerticalLabel
+                          : strings
+                                .constellationEditorMirrorAxisHorizontalLabel,
+                      value: _mirrorVertical,
+                      onChanged: (value) =>
+                          setState(() => _mirrorVertical = value),
+                    ),
+                  ],
+                ),
               ),
               Expanded(
                 // The canvas is a square capped to whichever of the
@@ -638,6 +854,16 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
                                                 ),
                                               ),
                                             ),
+                                          if (_mirrorEnabled)
+                                            Positioned.fill(
+                                              child: CustomPaint(
+                                                painter: _MirrorAxisPainter(
+                                                  vertical: _mirrorVertical,
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.5),
+                                                ),
+                                              ),
+                                            ),
                                           if (_points.isEmpty)
                                             Center(
                                               child: Padding(
@@ -665,7 +891,7 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
                                                     _draggingIndex,
                                                 pointColor: colors.text,
                                                 highlightColor: colors.gold,
-                                                lineColor: colors.gold
+                                                lineColor: Colors.white
                                                     .withValues(alpha: 0.5),
                                               ),
                                             ),
@@ -772,6 +998,81 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
       child: scaffold,
     );
   }
+}
+
+/// One icon+switch pair in the Grid/Mirror/Axis row above the canvas, with
+/// its own small caption underneath — same compact "small icon beside a
+/// scaled-down [Switch]" shape the grid toggle already used in the app
+/// bar, factored out now that there are three of these side by side
+/// instead of one, plus a visible [label] (the grid toggle's own tooltip
+/// was easy to miss; a caption that's just always there isn't).
+class _EditorToggle extends StatelessWidget {
+  const _EditorToggle({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: colors.muted),
+            Transform.scale(
+              scale: 0.8,
+              child: Switch(value: value, onChanged: onChanged),
+            ),
+          ],
+        ),
+        Text(
+          label,
+          style: TextStyle(fontSize: 11, color: colors.muted),
+        ),
+      ],
+    );
+  }
+}
+
+/// The line marking where [_ConstellationEditorScreenState._mirrorEnabled]
+/// splits the canvas in two — the exact vertical or horizontal center
+/// line, matching [_ConstellationEditorScreenState._mirrorAcrossAxis]'s own
+/// reflection (a point exactly on this line reflects to itself). Purely a
+/// visual reference, the same role [_GridPainter] plays for
+/// [_snapIfGridEnabled]'s own grid.
+class _MirrorAxisPainter extends CustomPainter {
+  const _MirrorAxisPainter({required this.vertical, required this.color});
+
+  final bool vertical;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5;
+    if (vertical) {
+      final x = size.width / 2;
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    } else {
+      final y = size.height / 2;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MirrorAxisPainter oldDelegate) =>
+      vertical != oldDelegate.vertical || color != oldDelegate.color;
 }
 
 /// A small gold pill button for the undo/delete actions below the canvas —

@@ -328,9 +328,13 @@ class StringsEn implements AppStrings {
   @override
   String get constellationNameHint => 'E.g. My own path';
   @override
-  String get yourConstellationsLabel => 'Your constellations';
-  @override
   String get constellationEditorGridToggleLabel => 'Grid';
+  @override
+  String get constellationEditorMirrorToggleLabel => 'Mirror';
+  @override
+  String get constellationEditorMirrorAxisVerticalLabel => 'Vertical';
+  @override
+  String get constellationEditorMirrorAxisHorizontalLabel => 'Horizontal';
   @override
   String get constellationEditorHelpAction => 'How this works';
   @override
@@ -363,6 +367,14 @@ class StringsEn implements AppStrings {
   String get shapeSearchHint => 'Search shapes';
   @override
   String get noShapeChosenHint => 'No shape chosen yet';
+  @override
+  String get shapeLibraryTabLabel => 'Library';
+  @override
+  String get yourShapesTabLabel => 'Your shapes';
+  @override
+  String get noCustomShapesYetHint => "You haven't drawn any shapes yet";
+  @override
+  String get editSelectedShapeAction => 'Edit this shape';
 
   @override
   String get newProjectEyebrow => 'NEW CONSTELLATION';

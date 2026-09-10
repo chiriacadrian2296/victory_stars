@@ -330,9 +330,13 @@ class StringsRo implements AppStrings {
   @override
   String get constellationNameHint => 'Ex. Drumul meu';
   @override
-  String get yourConstellationsLabel => 'Constelațiile tale';
-  @override
   String get constellationEditorGridToggleLabel => 'Grilă';
+  @override
+  String get constellationEditorMirrorToggleLabel => 'Oglindă';
+  @override
+  String get constellationEditorMirrorAxisVerticalLabel => 'Verticală';
+  @override
+  String get constellationEditorMirrorAxisHorizontalLabel => 'Orizontală';
   @override
   String get constellationEditorHelpAction => 'Cum funcționează';
   @override
@@ -366,6 +370,14 @@ class StringsRo implements AppStrings {
   String get shapeSearchHint => 'Caută o formă';
   @override
   String get noShapeChosenHint => 'Nicio formă aleasă';
+  @override
+  String get shapeLibraryTabLabel => 'Bibliotecă';
+  @override
+  String get yourShapesTabLabel => 'Formele tale';
+  @override
+  String get noCustomShapesYetHint => 'Nu ai desenat încă nicio formă';
+  @override
+  String get editSelectedShapeAction => 'Editează această formă';
 
   @override
   String get newProjectEyebrow => 'CONSTELAȚIE NOUĂ';

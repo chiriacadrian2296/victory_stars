@@ -187,8 +187,10 @@ abstract class AppStrings {
   String get saveConstellationAction;
   String get nameYourConstellationTitle;
   String get constellationNameHint;
-  String get yourConstellationsLabel;
   String get constellationEditorGridToggleLabel;
+  String get constellationEditorMirrorToggleLabel;
+  String get constellationEditorMirrorAxisVerticalLabel;
+  String get constellationEditorMirrorAxisHorizontalLabel;
   String get constellationEditorHelpAction;
   String get constellationEditorHelpTitle;
   String get constellationEditorHelpAddPoint;
@@ -207,6 +209,15 @@ abstract class AppStrings {
   String get pickFromLibraryShort;
   String get shapeSearchHint;
   String get noShapeChosenHint;
+
+  /// The picker sheet's own two tabs — every ready-made shape vs. the
+  /// ones this user has already drawn/saved themselves (formerly a
+  /// separate "Your constellations" section on the form itself, folded
+  /// into this same sheet).
+  String get shapeLibraryTabLabel;
+  String get yourShapesTabLabel;
+  String get noCustomShapesYetHint;
+  String get editSelectedShapeAction;
 
   // New project
   String get newProjectEyebrow;

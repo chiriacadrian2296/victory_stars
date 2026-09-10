@@ -199,80 +199,183 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
     return [...suggested, ...rest];
   }
 
-  /// Opens the editor to draw a brand new shape, or — when [existing] is
-  /// given (tapping a saved tile's edit pencil) — to revise one already
-  /// saved. Either way, whatever comes back becomes the current selection:
-  /// after drawing a new one there's nothing else it could sensibly select,
-  /// and after editing an existing one the user almost certainly wants
-  /// their just-revised version applied to this project rather than having
-  /// to tap it again.
-  Future<void> _openConstellationEditor({CustomConstellation? existing}) async {
+  /// Opens the editor on a brand new, blank canvas ([existing] and
+  /// [initialShape] both null — the "Draw your own" button), on a shape
+  /// already owned by this user ([existing] — from [_editSelectedShape]),
+  /// or pre-filled with a preset's own points/edges but *not* tied to
+  /// updating anything ([initialShape] — also [_editSelectedShape], when
+  /// the currently selected shape came from the library instead). Either
+  /// way, whatever comes back becomes the current selection: there's
+  /// nothing else a fresh save could sensibly select, and after revising
+  /// an existing one the user almost certainly wants their just-revised
+  /// version applied to this project rather than having to pick it again.
+  Future<void> _openConstellationEditor({
+    CustomConstellation? existing,
+    ConstellationShape? initialShape,
+  }) async {
     final saved = await Navigator.of(context).push<CustomConstellation>(
       MaterialPageRoute(
         builder: (_) => ConstellationEditorScreen(
           customConstellationRepository: widget.customConstellationRepository,
           existing: existing,
+          initialShape: initialShape,
         ),
       ),
     );
     if (saved != null && mounted) _selectCustom(saved);
   }
 
-  /// The ready-made shape library — one scrolling sheet, grouped by
-  /// [PresetCategory] with a search box across all 100 names, reusing the
-  /// same picker sheet the area and icon fields already use.
+  /// Reopens the editor on whatever shape is currently selected — a
+  /// preset opens pre-filled but un-owned (see [_openConstellationEditor]'s
+  /// own `initialShape`, so idly looking at it and backing out never
+  /// leaves a stray copy behind), an already-owned shape opens for a real
+  /// in-place revision, and nothing selected yet just opens a blank
+  /// canvas — the single place editing happens now, from
+  /// [_SelectedShapePreview] itself, rather than a pencil on every tile
+  /// in a whole list of them.
+  Future<void> _editSelectedShape() {
+    final custom = _selectedCustomConstellation;
+    if (custom != null) return _openConstellationEditor(existing: custom);
+    final preset = _selectedPreset;
+    if (preset != null) {
+      return _openConstellationEditor(initialShape: preset.shape);
+    }
+    return _openConstellationEditor();
+  }
+
+  /// The shape picker sheet — presets ([constellationPresets], grouped by
+  /// [PresetCategory]) and this user's own already-saved shapes, switched
+  /// between by [_ShapePickerTabs] rather than living in two separate
+  /// places on the form (a saved shape used to have its own "Your
+  /// constellations" section below, each tile with its own edit pencil —
+  /// see [_editSelectedShape] for where that moved to instead). One
+  /// combined, searchable sheet either way, reusing the same picker shell
+  /// the area and icon fields already use.
   Future<void> _openLibrary() async {
     final strings = context.strings;
     final language = strings.languageCode;
-    final picked = await _showSearchablePicker<ConstellationPreset>(
+    final customs = widget.customConstellationRepository.getAll();
+    final items = <_ShapePickerChoice>[
+      for (final preset in constellationPresets) _PresetChoice(preset),
+      for (final custom in customs) _CustomChoice(custom),
+    ];
+    final currentSelection = _selectedPreset != null
+        ? _PresetChoice(_selectedPreset!)
+        : _selectedCustomConstellation != null
+        ? _CustomChoice(_selectedCustomConstellation!)
+        : null;
+
+    final picked = await _showSearchablePicker<_ShapePickerChoice>(
       context: context,
       title: strings.shapeLibraryTitle,
       searchHint: strings.shapeSearchHint,
-      items: constellationPresets,
-      matches: (preset, query) =>
+      items: items,
+      matches: (choice, query) => switch (choice) {
+        _PresetChoice(:final preset) =>
           preset.name.of(language).toLowerCase().contains(query) ||
-          preset.category.name.of(language).toLowerCase().contains(query),
-      initialSelection: _selectedPreset,
+              preset.category.name.of(language).toLowerCase().contains(query),
+        _CustomChoice(:final custom) =>
+          custom.name.toLowerCase().contains(query),
+      },
+      initialSelection: currentSelection,
       bodyBuilder: (context, filtered, selected, onSelect) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Categories keep their catalogue order, and one with nothing
-            // left after a search simply doesn't appear — no empty headings.
-            for (final category in PresetCategory.values)
-              if (filtered.any((p) => p.category == category)) ...[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(2, 12, 2, 8),
-                  child: Text(
-                    category.name.of(language),
-                    style: TextStyle(
-                      fontSize: 12,
-                      letterSpacing: 1.2,
-                      fontWeight: FontWeight.w600,
-                      color: context.colors.gold,
+        return _ShapePickerTabs(
+          // Opens on whichever tab already holds the current selection —
+          // no reason to land on the library if what's picked right now
+          // is one of this user's own shapes.
+          initialTab: currentSelection is _CustomChoice
+              ? _ShapePickerTab.yourShapes
+              : _ShapePickerTab.library,
+          libraryBuilder: (context) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Categories keep their catalogue order, and one with
+              // nothing left after a search simply doesn't appear — no
+              // empty headings.
+              for (final category in PresetCategory.values)
+                if (filtered.any(
+                  (c) => c is _PresetChoice && c.preset.category == category,
+                )) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(2, 12, 2, 8),
+                    child: Text(
+                      category.name.of(language),
+                      style: TextStyle(
+                        fontSize: 12,
+                        letterSpacing: 1.2,
+                        fontWeight: FontWeight.w600,
+                        color: context.colors.gold,
+                      ),
                     ),
                   ),
+                  Builder(
+                    builder: (context) {
+                      final categoryItems = filtered
+                          .whereType<_PresetChoice>()
+                          .where((c) => c.preset.category == category)
+                          .toList();
+                      return _StretchedTileWrap(
+                        minTileWidth: _shapeTileMinSide,
+                        itemCount: categoryItems.length,
+                        itemBuilder: (context, index, tileWidth) {
+                          final preset = categoryItems[index].preset;
+                          return _ShapeTile(
+                            shape: preset.shape,
+                            label: preset.name.of(language),
+                            selected:
+                                selected is _PresetChoice &&
+                                selected.preset.id == preset.id,
+                            onTap: () => onSelect(_PresetChoice(preset)),
+                            side: tileWidth,
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+            ],
+          ),
+          yourShapesBuilder: (context) {
+            final customItems = filtered.whereType<_CustomChoice>().toList();
+            if (customItems.isEmpty) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: Text(
+                    strings.noCustomShapesYetHint,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: context.colors.muted, fontSize: 14),
+                  ),
                 ),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final preset
-                        in filtered.where((p) => p.category == category))
-                      _ShapeTile(
-                        shape: preset.shape,
-                        label: preset.name.of(language),
-                        selected: selected?.id == preset.id,
-                        onTap: () => onSelect(preset),
-                      ),
-                  ],
-                ),
-              ],
-          ],
+              );
+            }
+            return _StretchedTileWrap(
+              minTileWidth: _constellationPreviewSide,
+              itemCount: customItems.length,
+              itemBuilder: (context, index, tileWidth) {
+                final custom = customItems[index].custom;
+                return _ShapeTile(
+                  shape: custom.shape,
+                  label: custom.name,
+                  selected:
+                      selected is _CustomChoice &&
+                      selected.custom.id == custom.id,
+                  onTap: () => onSelect(_CustomChoice(custom)),
+                  side: tileWidth,
+                );
+              },
+            );
+          },
         );
       },
     );
-    if (picked != null && mounted) _selectPreset(picked);
+    if (picked == null || !mounted) return;
+    switch (picked) {
+      case _PresetChoice(:final preset):
+        _selectPreset(preset);
+      case _CustomChoice(:final custom):
+        _selectCustom(custom);
+    }
   }
 
   Future<void> _openAreaPicker() async {
@@ -489,6 +592,7 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
                       shape: _selectedShape,
                       label: _selectedShapeName(strings),
                       emptyHint: strings.noShapeChosenHint,
+                      onEdit: _editSelectedShape,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -510,31 +614,6 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
                     ),
                   ],
                 ),
-                if (widget.customConstellationRepository
-                    .getAll()
-                    .isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  Divider(color: colors.nightBorder, height: 1),
-                  const SizedBox(height: 16),
-                  AppFieldLabel(strings.yourConstellationsLabel),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final custom
-                          in widget.customConstellationRepository.getAll())
-                        _CustomConstellationOption(
-                          constellation: custom,
-                          selected:
-                              _selectedCustomConstellation?.id == custom.id,
-                          onTap: () => _selectCustom(custom),
-                          onEdit: () =>
-                              _openConstellationEditor(existing: custom),
-                        ),
-                    ],
-                  ),
-                ],
                 const SizedBox(height: 28),
                 Center(
                   child: ValueListenableBuilder<TextEditingValue>(
@@ -699,16 +778,123 @@ class _ShapeThumbnail extends StatelessWidget {
   }
 }
 
-/// One shape in the library sheet: its thumbnail over its name, selectable.
-/// No edit pencil, unlike [_CustomConstellationOption] — a library shape
-/// belongs to the app, not to this user. Editing one means picking it and
-/// then reopening the saved copy it becomes.
+/// One entry in the shape picker sheet — either a ready-made
+/// [ConstellationPreset] or one of this user's own saved
+/// [CustomConstellation]s — wrapped in a common type so
+/// `_NewProjectScreenState._openLibrary`'s single searchable sheet (see
+/// [_ShapePickerTabs]) can hold both kinds of item without the picker
+/// shell itself needing to know shapes come from two different places.
+sealed class _ShapePickerChoice {
+  const _ShapePickerChoice();
+}
+
+class _PresetChoice extends _ShapePickerChoice {
+  const _PresetChoice(this.preset);
+  final ConstellationPreset preset;
+}
+
+class _CustomChoice extends _ShapePickerChoice {
+  const _CustomChoice(this.custom);
+  final CustomConstellation custom;
+}
+
+enum _ShapePickerTab { library, yourShapes }
+
+/// The shape picker sheet's own body: a small segmented switch between
+/// [_ShapePickerTab.library] (every ready-made [ConstellationPreset]) and
+/// [_ShapePickerTab.yourShapes] (this user's own saved ones) — a local
+/// [StatefulWidget] rather than plumbing the active tab up through
+/// `_NewProjectScreenState` itself, since which tab is showing is purely
+/// this sheet's own transient UI state, gone the moment it closes either
+/// way.
+class _ShapePickerTabs extends StatefulWidget {
+  const _ShapePickerTabs({
+    required this.initialTab,
+    required this.libraryBuilder,
+    required this.yourShapesBuilder,
+  });
+
+  final _ShapePickerTab initialTab;
+  final WidgetBuilder libraryBuilder;
+  final WidgetBuilder yourShapesBuilder;
+
+  @override
+  State<_ShapePickerTabs> createState() => _ShapePickerTabsState();
+}
+
+class _ShapePickerTabsState extends State<_ShapePickerTabs> {
+  late _ShapePickerTab _tab = widget.initialTab;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final strings = context.strings;
+
+    Widget tabButton(_ShapePickerTab tab, String label) {
+      final active = _tab == tab;
+      return Expanded(
+        child: Material(
+          color: active ? colors.gold : Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(kRadiusField),
+            side: BorderSide(color: colors.nightBorder),
+          ),
+          child: InkWell(
+            onTap: () => setState(() => _tab = tab),
+            borderRadius: BorderRadius.circular(kRadiusField),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: active ? colors.onGold : colors.muted,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            tabButton(_ShapePickerTab.library, strings.shapeLibraryTabLabel),
+            const SizedBox(width: 8),
+            tabButton(
+              _ShapePickerTab.yourShapes,
+              strings.yourShapesTabLabel,
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        switch (_tab) {
+          _ShapePickerTab.library => widget.libraryBuilder(context),
+          _ShapePickerTab.yourShapes => widget.yourShapesBuilder(context),
+        },
+      ],
+    );
+  }
+}
+
+/// One shape in the picker sheet: its thumbnail over its name, selectable —
+/// used for both a ready-made [ConstellationPreset] and one of this user's
+/// own saved shapes alike (see [_ShapePickerChoice]), since a tile looks
+/// and behaves identically either way now — no per-tile edit pencil any
+/// more; see `_NewProjectScreenState._editSelectedShape` for where editing
+/// moved to instead.
 class _ShapeTile extends StatelessWidget {
   const _ShapeTile({
     required this.shape,
     required this.label,
     required this.selected,
     required this.onTap,
+    required this.side,
   });
 
   final ConstellationShape shape;
@@ -716,16 +902,18 @@ class _ShapeTile extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  /// Smaller than [_constellationPreviewSide]: a hundred of these scroll past
-  /// in one sheet, so they're sized to fit three or four across a phone
-  /// rather than to be studied one at a time.
-  static const _side = 88.0;
+  /// Computed per row by [_ShapeTileRow] so a row of these always spans
+  /// the sheet's full width (rather than the smaller of a fixed size —
+  /// [_minSide] is just the floor it won't shrink past), sized to fit
+  /// three or four across a phone rather than to be studied one at a
+  /// time.
+  final double side;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     return SizedBox(
-      width: _side,
+      width: side,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -733,11 +921,11 @@ class _ShapeTile extends StatelessWidget {
             onTap: onTap,
             borderRadius: BorderRadius.circular(kRadiusField),
             child: Container(
-              width: _side,
-              height: _side,
+              width: side,
+              height: side,
               clipBehavior: Clip.antiAlias,
               decoration: selectableDecoration(colors, selected: selected),
-              child: _ShapeThumbnail(shape: shape, side: _side),
+              child: _ShapeThumbnail(shape: shape, side: side),
             ),
           ),
           const SizedBox(height: 4),
@@ -760,19 +948,28 @@ class _ShapeTile extends StatelessWidget {
 }
 
 /// The shape currently chosen for the project being created — whichever
-/// source it came from — or a placeholder while there isn't one. Not
-/// tappable: it reflects a choice rather than offering one, which is what
-/// the two [_ShapeSourceButton]s beside it are for.
+/// source it came from — or a placeholder while there isn't one. Once
+/// there *is* one, tapping it (or its small pencil badge) opens it back
+/// up in the editor to revise it — the one place editing happens now,
+/// whether the shape started as a from-scratch drawing, a preset, or an
+/// already-saved one of this user's own (see
+/// `_NewProjectScreenState._editSelectedShape`); every custom
+/// constellation tile used to carry its own edit pencil, one per tile —
+/// this badge is the single one left. Still not tappable while empty:
+/// [_ShapeSourceButton]s beside it are the two ways to actually get a
+/// shape in the first place.
 class _SelectedShapePreview extends StatelessWidget {
   const _SelectedShapePreview({
     required this.shape,
     required this.label,
     required this.emptyHint,
+    required this.onEdit,
   });
 
   final ConstellationShape? shape;
   final String? label;
   final String emptyHint;
+  final VoidCallback onEdit;
 
   static const _side = _constellationPreviewSide;
 
@@ -785,20 +982,52 @@ class _SelectedShapePreview extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: _side,
-            height: _side,
-            clipBehavior: Clip.antiAlias,
-            decoration: selectableDecoration(colors, selected: chosen != null),
-            child: chosen == null
-                ? Center(
-                    child: Icon(
-                      Icons.auto_awesome_outlined,
-                      color: colors.muted,
-                      size: 28,
+          Stack(
+            children: [
+              InkWell(
+                onTap: chosen == null ? null : onEdit,
+                borderRadius: BorderRadius.circular(kRadiusField),
+                child: Container(
+                  width: _side,
+                  height: _side,
+                  clipBehavior: Clip.antiAlias,
+                  decoration: selectableDecoration(
+                    colors,
+                    selected: chosen != null,
+                  ),
+                  child: chosen == null
+                      ? Center(
+                          child: Icon(
+                            Icons.auto_awesome_outlined,
+                            color: colors.muted,
+                            size: 28,
+                          ),
+                        )
+                      : _ShapeThumbnail(shape: chosen, side: _side),
+                ),
+              ),
+              if (chosen != null)
+                Positioned(
+                  right: 2,
+                  top: 2,
+                  child: Material(
+                    color: colors.night.withValues(alpha: 0.75),
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      onTap: onEdit,
+                      customBorder: const CircleBorder(),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Icon(
+                          Icons.edit,
+                          size: 18,
+                          color: colors.gold,
+                        ),
+                      ),
                     ),
-                  )
-                : _ShapeThumbnail(shape: chosen, side: _side),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 4),
           Text(
@@ -860,94 +1089,57 @@ class _ShapeSourceButton extends StatelessWidget {
 /// overlapping, which is what happened at the previous, much smaller size.
 const double _constellationPreviewSide = 108.0;
 
-/// A live preview (via [ConstellationEditorPainter]) of one of the user's
-/// own previously-saved shapes, so a returning user can reuse or pick among
-/// prior hand-drawn constellations instead of only ever drawing fresh ones.
-///
-/// Points are mapped into an inset drawable area, not the full tile —
-/// `ConstellationEditorPainter` draws each star as a fixed-radius circle
-/// (see its `_pointRadius`/`_ringRadius`), so a point sitting exactly at the
-/// shape's own 0..1 edge would otherwise have its circle clipped by the
-/// tile's border at small sizes. [_inset] reserves enough margin for that,
-/// and `clipBehavior: Clip.antiAlias` on the [Container] is a second,
-/// belt-and-suspenders guard against any point spilling past the tile.
-class _CustomConstellationOption extends StatelessWidget {
-  const _CustomConstellationOption({
-    required this.constellation,
-    required this.selected,
-    required this.onTap,
-    required this.onEdit,
+/// The floor [_StretchedTileWrap] won't shrink a [_ShapeTile] below — a
+/// hundred shapes scroll past in one sheet, so they're sized to fit three
+/// or four across a phone rather than to be studied one at a time (unlike
+/// [_constellationPreviewSide], tuned for a single, larger preview).
+const double _shapeTileMinSide = 88.0;
+
+/// Lays out [itemCount] equal-width tiles (built by [itemBuilder], given
+/// each one's computed width) in rows that always span the *full*
+/// available width — unlike a plain [Wrap] of fixed-size tiles, which
+/// leaves whatever doesn't divide evenly as dead space on the right of
+/// each row instead of growing the tiles to use it. Column count is
+/// picked once (the most that fit at [minTileWidth] or wider), then every
+/// tile in every row is stretched to that exact per-column width — the
+/// same "these should fill the row, not just sit near [minTileWidth]"
+/// idea a [GridView] gets for free from its own cross-axis extent, without
+/// needing a fixed aspect ratio (unlike a [GridView] cell, one of these
+/// tiles is free to size its own height — a thumbnail plus a one- or
+/// two-line label underneath — to whatever it actually needs).
+class _StretchedTileWrap extends StatelessWidget {
+  const _StretchedTileWrap({
+    required this.itemCount,
+    required this.minTileWidth,
+    required this.itemBuilder,
   });
 
-  final CustomConstellation constellation;
-  final bool selected;
-  final VoidCallback onTap;
+  final int itemCount;
+  final double minTileWidth;
+  final Widget Function(BuildContext context, int index, double tileWidth)
+  itemBuilder;
 
-  /// Opens this shape back up in the editor to revise it — a small pencil
-  /// button in the tile's corner, distinct from [onTap] (which just selects
-  /// it for the project being created).
-  final VoidCallback onEdit;
-
-  static const _side = _constellationPreviewSide;
+  static const _spacing = 8.0;
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _buildTile(colors),
-        const SizedBox(height: 4),
-        SizedBox(
-          width: _side,
-          child: Text(
-            constellation.name,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 11,
-              color: selected ? colors.gold : colors.muted,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTile(AppColors colors) {
-    return Stack(
-      children: [
-        InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(kRadiusField),
-          child: Container(
-            width: _side,
-            height: _side,
-            clipBehavior: Clip.antiAlias,
-            decoration: selectableDecoration(colors, selected: selected),
-            child: _ShapeThumbnail(shape: constellation.shape, side: _side),
-          ),
-        ),
-        Positioned(
-          right: 2,
-          top: 2,
-          child: Material(
-            color: colors.night.withValues(alpha: 0.75),
-            shape: const CircleBorder(),
-            child: InkWell(
-              onTap: onEdit,
-              customBorder: const CircleBorder(),
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Icon(Icons.edit, size: 18, color: colors.gold),
-              ),
-            ),
-          ),
-        ),
-      ],
+    if (itemCount == 0) return const SizedBox.shrink();
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        final columns = ((maxWidth + _spacing) / (minTileWidth + _spacing))
+            .floor()
+            .clamp(1, itemCount);
+        final tileWidth = (maxWidth - _spacing * (columns - 1)) / columns;
+        return Wrap(
+          spacing: _spacing,
+          runSpacing: _spacing,
+          children: [
+            for (var i = 0; i < itemCount; i++)
+              itemBuilder(context, i, tileWidth),
+          ],
+        );
+      },
     );
   }
 }

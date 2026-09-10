@@ -53,26 +53,24 @@ vec3 supernovaGlow(vec2 uv, vec3 midColor, vec3 outerColor, float maxRadius, flo
   // brightness harder than a small, always-on control should.
   float pulse = 0.955 + 0.045 * sin(uTime * 0.6);
 
-  // Strength eased back down again — brought up toward sky_supernova.frag's
-  // own 0.9/1.1 at one point, but that read as too bright for a control
-  // that just sits there idle the vast majority of the time (see
-  // [nearGlow]'s own note); pulled back in below halfway between that
-  // pass and the first, too-washed-out one (0.5/0.55). [glow]'s own reach
-  // is still pulled way in (rate 3.0 -> 18.0): it's the soft background
-  // disc behind everything else here, and at the old, much slower decay
-  // it kept glowing well past `ringRadius`, past where a "glow around the
-  // ring" should still read as tucked behind it.
-  float glow = exp(-dist * 18.0) * 0.4;
+  // Brought back up again — dimmed twice before (most recently to
+  // 0.4/1.05) for reading too bright next to a press, but that turned out
+  // too washed-out at rest, which is what this control spends the vast
+  // majority of its time doing. Sits above even the once-tried
+  // sky_supernova.frag-matching 0.9/1.1 now, not just back to it. [glow]'s
+  // own reach is still pulled way in (rate 3.0 -> 18.0): it's the soft
+  // background disc behind everything else here, and at the old, much
+  // slower decay it kept glowing well past `ringRadius`, past where a
+  // "glow around the ring" should still read as tucked behind it.
+  float glow = exp(-dist * 18.0) * 0.55;
   // The button's one central glow — purely a function of [dist], so it
   // never traces any shape (not the star's outline, not the ring): a
   // soft blob sitting underneath both, lighting them from below, the
   // same role sky_supernova.frag's own glow/nearGlow pair plays for the
   // real supernovas. This is the resting/idle glow, seen the vast
-  // majority of the time the button just sits there unpressed — eased
-  // down again along with [glow] above, so idle reads noticeably dimmer
-  // than a press (see [chargeGlow], untouched) rather than nearly as
-  // bright as one.
-  float nearGlow = exp(-dist * 22.0) * 1.05;
+  // majority of the time the button just sits there unpressed — brought
+  // back up along with [glow] above, see its own note.
+  float nearGlow = exp(-dist * 22.0) * 1.4;
 
   // The ring itself moved to Dart, painted *after* the icon (see
   // `_MenuStarSupernovaPainter.paint`'s own paintRing) instead of being

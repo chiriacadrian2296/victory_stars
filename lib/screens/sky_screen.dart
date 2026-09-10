@@ -1949,18 +1949,45 @@ class _MenuStarButtonState extends State<_MenuStarButton>
               // asking for it to *disappear* "molto velocemente"
               // specifically, not necessarily appear that fast too.
               duration: Duration(milliseconds: _showHoldHint ? 200 : 120),
-              child: Text(
-                context.strings.menuButtonHoldHint.toUpperCase(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.1,
-                  shadows: [
-                    Shadow(color: Color(0xFF6E8CD8), blurRadius: 6),
-                    Shadow(color: Color(0xFF6E8CD8), blurRadius: 14),
-                  ],
-                ),
+              child: Builder(
+                builder: (context) {
+                  final label = context.strings.menuButtonHoldHint
+                      .toUpperCase();
+                  // Same language as the button itself now — a thin navy
+                  // border (`Colors.white` glow's counterpart to the
+                  // button's own navy disc border) and a white glow
+                  // behind it (was blue) instead of the app's usual
+                  // accent, to read as lit by the same light as the
+                  // button it's floating above.
+                  const style = TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.1,
+                  );
+                  return Stack(
+                    children: [
+                      Text(
+                        label,
+                        style: style.copyWith(
+                          foreground: Paint()
+                            ..style = PaintingStyle.stroke
+                            ..strokeWidth = 3
+                            ..color = const Color(0xFF0D1220),
+                        ),
+                      ),
+                      Text(
+                        label,
+                        style: style.copyWith(
+                          color: Colors.white,
+                          shadows: const [
+                            Shadow(color: Colors.white, blurRadius: 2),
+                            Shadow(color: Colors.white, blurRadius: 4),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -2262,26 +2289,48 @@ class _MenuStarSupernovaPainter extends CustomPainter {
         image.height.toDouble(),
       );
 
-      // 1. The crisp logo first, clipped to a circle (the source PNG is a
-      // full square, transparent outside its own navy border — left
-      // unclipped, that square's corners would show). [BlendMode.softLight]
-      // instead of plain normal compositing: lets the glow drawn earlier on
-      // this same canvas modulate the logo's whites/darks rather than just
-      // sitting flatly on top of it.
       canvas.save();
       canvas.clipPath(Path()..addOval(rect));
+
+      // 1. A fully opaque base pass, plain normal compositing — this is
+      // what actually makes the button occlude whatever's behind it
+      // (a stray constellation, a real supernova sharing the same screen
+      // spot — see the Sky's own report of one crossing right through the
+      // disc). [BlendMode.softLight] alone (tried first, below) is a
+      // blend *formula*, not a solid paint, so it never fully replaces
+      // the destination even at full source alpha — it was letting
+      // background content show through the disc's own footprint no
+      // matter how opaque the source pixels were.
       canvas.drawImageRect(
         image,
         src,
         rect,
         Paint()
           ..color = Colors.white.withValues(alpha: logoOpacity)
+          ..blendMode = BlendMode.srcOver
+          ..filterQuality = FilterQuality.high,
+      );
+
+      // 2. The same image again, [BlendMode.softLight] this time, layered
+      // on top of the now-opaque base above purely for flavor — lets the
+      // glow drawn earlier on this same canvas modulate the logo's
+      // whites/darks a little rather than sitting perfectly flat, without
+      // reopening the occlusion hole pass 1 exists to close (a blend pass
+      // drawn *after* an opaque base can only combine with that base's
+      // own already-solid result, never reach back to whatever pass 1
+      // already painted over).
+      canvas.drawImageRect(
+        image,
+        src,
+        rect,
+        Paint()
+          ..color = Colors.white.withValues(alpha: logoOpacity * 0.6)
           ..blendMode = BlendMode.softLight
           ..filterQuality = FilterQuality.high,
       );
       canvas.restore();
 
-      // 2. A soft, blurred, additive bloom drawn *after* the crisp logo —
+      // 3. A soft, blurred, additive bloom drawn *after* the crisp logo —
       // it has to come last, or the crisp pass above (opaque, covering
       // almost this entire canvas) just paints straight over it and hides
       // it entirely. Deliberately unclipped, so the star's own light
@@ -2300,6 +2349,55 @@ class _MenuStarSupernovaPainter extends CustomPainter {
           ..imageFilter = ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8)
           ..filterQuality = FilterQuality.high,
       );
+
+      // 4. A small, tight white glow right on the star itself, on top of
+      // everything else — the same idea as the shader's own glow further
+      // behind (see [supernovaGlow]'s `glow`/`nearGlow`), just white
+      // instead of blue, with a much smaller idle reach, and now actually
+      // animated the same way that one is instead of sitting static:
+      // [pulse] mirrors `supernovaGlow`'s own breathing exactly (same
+      // formula, same period), and [charge] grows and brightens it right
+      // alongside `chargeGlow` as the button is held, rather than only the
+      // glow behind it reacting to a press.
+      final pulse = 0.955 + 0.045 * math.sin(time * 0.6);
+      // Shrunk again (0.16 -> 0.10) for the idle diameter.
+      final starGlowRadius = logoSize * 0.10 * (1 + charge * 1.8);
+      // A hot, near-full-white core (rather than fading from the very
+      // center) that holds through roughly a third of the radius before
+      // easing out — a softer, more gradual falloff than the old straight
+      // two-stop fade, while actually reading as *more* intense right at
+      // the center, not less.
+      final starGlowCoreAlpha = (1.0 * pulse + charge * 0.2).clamp(0.0, 1.0);
+      final starGlowPaint = Paint()
+        ..shader = ui.Gradient.radial(
+          center,
+          starGlowRadius,
+          [
+            Colors.white.withValues(alpha: starGlowCoreAlpha),
+            Colors.white.withValues(alpha: starGlowCoreAlpha * 0.55),
+            Colors.white.withValues(alpha: starGlowCoreAlpha * 0.22),
+            Colors.white.withValues(alpha: 0.0),
+          ],
+          [0.0, 0.35, 0.7, 1.0],
+        )
+        ..blendMode = BlendMode.softLight
+        // The actual fix for "reads as a hard-edged disc, not a glow" —
+        // a plain radial gradient still has a genuinely *geometric* edge
+        // right at [starGlowRadius] (alpha hits exactly 0 exactly there,
+        // however many gradient stops lead up to it), and doubling the
+        // draw (tried first, to read as more intense) only made that
+        // edge more visible, not less. A blur is what actually removes
+        // it — it softens the whole falloff into something with no sharp
+        // boundary left to see at all, rather than a smoother-but-still-
+        // sharply-bounded version of the same disc.
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, starGlowRadius * 0.5);
+      // Drawn twice for extra strength — safe to compound now that
+      // [maskFilter] is what's actually softening the edge (unlike the
+      // earlier attempt, before the blur existed, where doubling a
+      // hard-edged gradient was exactly what made it read as a solid
+      // disc): two soft-edged passes just make a brighter soft glow.
+      canvas.drawCircle(center, starGlowRadius, starGlowPaint);
+      canvas.drawCircle(center, starGlowRadius, starGlowPaint);
     }
 
     if (showStarAndRing) {

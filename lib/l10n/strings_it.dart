@@ -50,6 +50,10 @@ class StringsIt implements AppStrings {
   @override
   String get openMenuAction => 'Menu';
   @override
+  String get menuButtonHoldHint => 'Tieni premuto per aprire';
+  @override
+  String get menuSearchSection => 'Cerca';
+  @override
   String get menuActivitySection => 'Attività';
   @override
   String get menuLightYourSky => 'Accendi Il Tuo Cielo';
@@ -709,6 +713,11 @@ class StringsIt implements AppStrings {
   @override
   String get shareStarError =>
       'Non è stato possibile condividere questa stella. Riprova?';
+
+  @override
+  String get starQuickLookViewAction => 'Visualizza';
+  @override
+  String get starQuickLookEditAction => 'Modifica';
 
   @override
   String get settingsEyebrow => 'IMPOSTAZIONI';

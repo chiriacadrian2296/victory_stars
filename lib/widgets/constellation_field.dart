@@ -590,6 +590,19 @@ double zoomPercent(double zoom) {
       100;
 }
 
+/// The inverse of [zoomPercent] — the raw [zoom] that reads as [percent] on
+/// its 0..100 scale. Lets a caller pin a zoom *level* (e.g. `NebulaScreen`'s
+/// own "tap a constellation, land exactly at the zoom stars become
+/// individually tappable at" pairing) to the same percent scale
+/// [zoomPercent] already reports everywhere else, rather than a raw zoom
+/// number that means nothing on its own.
+double zoomFromPercent(double percent) {
+  final logZoom =
+      math.log(minZoomWithoutRepeats) +
+      percent / 100 * (math.log(kSkyMaxZoom) - math.log(minZoomWithoutRepeats));
+  return math.exp(logZoom);
+}
+
 /// How far [camera] has rolled away from "level" (its own zero-roll,
 /// [SkyCamera.lookingAt]-style orientation) at wherever it's currently
 /// looking — a compass-style reading independent of which way it's
@@ -719,16 +732,21 @@ _ConstellationTransform? _projectConstellationTransform(
 
 /// Where [screenPos] lands in [constellation]'s own local pixel space
 /// (see [_projectConstellationTransform]), or null if it falls outside
-/// that constellation's on-screen footprint (or the constellation isn't
-/// visible at all right now) — shared by [hitTestField] (which goes on to
-/// check for a specific star there) and [hitTestConstellations] (which
-/// only needs to know the footprint itself was hit).
+/// that constellation's on-screen footprint — using [margin] (of a
+/// *half*-width around its nominal 0..1 shape) as the cutoff — or the
+/// constellation isn't visible at all right now. Shared by [hitTestField]
+/// (which goes on to check for a specific star there, so wants
+/// [_starFieldMargin]'s generous reach) and [hitTestConstellations] (which
+/// only needs to know the footprint itself was hit, so wants
+/// [_constellationFootprintMargin]'s tighter one instead — see both their
+/// own doc comments for why they're no longer the same number).
 (Offset localTap, double localSizePx)? _localFieldTap(
   PlacedConstellation constellation,
   Offset screenPos,
   SkyCamera camera,
   double zoom,
   Size screenSize,
+  double margin,
 ) {
   final transform = _projectConstellationTransform(
     constellation.worldPosition,
@@ -752,16 +770,72 @@ _ConstellationTransform? _projectConstellationTransform(
   final w = (relative.dx * transform.up.dy - transform.up.dx * relative.dy) / det;
   final h = (transform.right.dx * relative.dy - relative.dx * transform.right.dy) / det;
 
-  // Wider than the shape's own 0..1 footprint since overflow/habit stars
-  // can sit up to radius 1.0 from center — 0.8 (of a *half*-width) keeps
-  // them tappable without bloating the box enough to start overlapping
-  // tidy neighbors. The same margin doubles as "close enough to the
-  // constellation" for [hitTestConstellations].
-  if (w.abs() > 0.8 || h.abs() > 0.8) return null;
+  if (w.abs() > margin || h.abs() > margin) return null;
 
   final localSizePx = (transform.right.distance + transform.up.distance) / 2;
   return (Offset((w + 0.5) * localSizePx, (h + 0.5) * localSizePx), localSizePx);
 }
+
+/// Where [star] itself currently sits on the sky sphere, in
+/// (azimuthTurns, elevationTurns) — unlike [constellation]'s own
+/// [PlacedConstellation.worldPosition] (the constellation's shared
+/// anchor, the same for every star in it), this is [star]'s own
+/// sub-position within the shape, via the same local transform
+/// [_localFieldTap] inverts for hit-testing. Needed so flying the camera
+/// to a *specific tapped star* (see `SkyScreen._openStarQuickLook`)
+/// actually lands on that star rather than just "somewhere in its
+/// constellation" — which is all [SkyStarTarget] ever promised (see its
+/// own doc comment), fine for a search result but not for "the exact
+/// star I just tapped, wherever it sits in the shape."
+///
+/// Null if [constellation] isn't on-screen at all right now under
+/// [camera]/[zoom]/[screenSize] (matches [_localFieldTap]'s own null
+/// case) — shouldn't happen right after tapping a star in it, but there's
+/// no sensible position to hand back if it somehow does.
+Offset? starWorldPosition(
+  PlacedConstellation constellation,
+  ConstellationStar star,
+  SkyCamera camera,
+  double zoom,
+  Size screenSize,
+) {
+  final transform = _projectConstellationTransform(
+    constellation.worldPosition,
+    camera,
+    zoom,
+    screenSize,
+    kSkyConstellationAngularSpan,
+  );
+  if (transform == null) return null;
+
+  // [star.position] is normalized 0..1 with (0.5, 0.5) at the
+  // constellation's own center (see [_toCanvas]/[hitTestStar]) — the same
+  // convention [_localFieldTap] maps screen taps into, inverted here.
+  final localOffset = star.position - const Offset(0.5, 0.5);
+  final starScreen =
+      transform.center +
+      transform.right * localOffset.dx +
+      transform.up * localOffset.dy;
+
+  final direction = screenToDirection(starScreen, camera, zoom, screenSize);
+  final elevationTurns = math.asin(direction.$2.clamp(-1.0, 1.0)) / _twoPi;
+  final azimuthTurns = math.atan2(direction.$3, direction.$1) / _twoPi;
+  return Offset(azimuthTurns, elevationTurns);
+}
+
+/// [_localFieldTap]'s margin for [hitTestField] — wider than the shape's
+/// own 0..1 footprint since overflow/habit stars can sit up to radius 1.0
+/// from center, and this margin has to reach them too or they'd never be
+/// tappable at all.
+const double _starFieldMargin = 0.8;
+
+/// [_localFieldTap]'s margin for [hitTestConstellations] — its own,
+/// tighter number rather than reusing [_starFieldMargin]: that one has to
+/// reach all the way out to an off-center habit star, but a tap that far
+/// from a constellation's actual shape doesn't read as "on" it any more,
+/// which is exactly what made a tap noticeably beside a constellation
+/// still open it.
+const double _constellationFootprintMargin = 0.55;
 
 /// Finds whichever constellation (if any) has a star under [screenPos] —
 /// checks each constellation whose own on-screen footprint could plausibly
@@ -775,7 +849,14 @@ _ConstellationTransform? _projectConstellationTransform(
   Size screenSize,
 ) {
   for (final constellation in placed) {
-    final local = _localFieldTap(constellation, screenPos, camera, zoom, screenSize);
+    final local = _localFieldTap(
+      constellation,
+      screenPos,
+      camera,
+      zoom,
+      screenSize,
+      _starFieldMargin,
+    );
     if (local == null) continue;
     final (localTap, localSizePx) = local;
     final star = hitTestStar(
@@ -803,7 +884,15 @@ PlacedConstellation? hitTestConstellations(
   Size screenSize,
 ) {
   for (final constellation in placed) {
-    if (_localFieldTap(constellation, screenPos, camera, zoom, screenSize) != null) {
+    if (_localFieldTap(
+          constellation,
+          screenPos,
+          camera,
+          zoom,
+          screenSize,
+          _constellationFootprintMargin,
+        ) !=
+        null) {
       return constellation;
     }
   }

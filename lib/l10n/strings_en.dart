@@ -50,6 +50,10 @@ class StringsEn implements AppStrings {
   @override
   String get openMenuAction => 'Menu';
   @override
+  String get menuButtonHoldHint => 'Hold to open';
+  @override
+  String get menuSearchSection => 'Search';
+  @override
   String get menuActivitySection => 'Activity';
   @override
   String get menuLightYourSky => 'Light Your Sky';
@@ -698,6 +702,11 @@ class StringsEn implements AppStrings {
   String get shareStarLabel => 'Share this Star';
   @override
   String get shareStarError => "Couldn't share that star. Try again?";
+
+  @override
+  String get starQuickLookViewAction => 'View';
+  @override
+  String get starQuickLookEditAction => 'Edit';
 
   @override
   String get settingsEyebrow => 'SETTINGS';

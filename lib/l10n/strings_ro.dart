@@ -50,6 +50,10 @@ class StringsRo implements AppStrings {
   @override
   String get openMenuAction => 'Meniu';
   @override
+  String get menuButtonHoldHint => 'Ține apăsat pentru a deschide';
+  @override
+  String get menuSearchSection => 'Căutare';
+  @override
   String get menuActivitySection => 'Activitate';
   @override
   String get menuLightYourSky => 'Aprinde-ți Cerul';
@@ -706,6 +710,11 @@ class StringsRo implements AppStrings {
   @override
   String get shareStarError =>
       'Nu am putut distribui această stea. Încerci din nou?';
+
+  @override
+  String get starQuickLookViewAction => 'Vizualizează';
+  @override
+  String get starQuickLookEditAction => 'Editează';
 
   @override
   String get settingsEyebrow => 'SETĂRI';

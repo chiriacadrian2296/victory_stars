@@ -31,6 +31,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icon/app_icon_ring_centered.png
+    - assets/icon/app_icon_ring_centered_white.png
   shaders:
     - shaders/nebula_particles.frag
     - shaders/constellation_flare.frag

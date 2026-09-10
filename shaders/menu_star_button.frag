@@ -11,6 +11,11 @@ uniform float uTime;
 // pixel radius the caller wants (see `_MenuStarButton`: sized to match
 // the icon drawn on top of this).
 uniform float uScale;
+// 0 at rest, ramping to 1 over the short wait between a tap and the menu
+// actually opening (see `_MenuStarButtonState`'s own charge controller)
+// — driven by an [AnimationController], not [uTime], since it needs to
+// start from an arbitrary point in that continuous cycle on every tap.
+uniform float uCharge;
 
 out vec4 fragColor;
 
@@ -38,7 +43,7 @@ float uniRay(vec2 v, float angle, float baseW, float taperRate, float falloffRat
 // behind the menu button — so it has no camera to project through in the
 // first place; [uv] here is just this canvas's own centered, scaled 2D
 // coordinate.
-vec3 supernovaGlow(vec2 uv, vec3 midColor, vec3 outerColor, float maxRadius) {
+vec3 supernovaGlow(vec2 uv, vec3 midColor, vec3 outerColor, float maxRadius, float charge) {
   float dist = length(uv);
 
   // A touch gentler than sky_supernova.frag's own 0.94/0.06 — that pulse
@@ -48,41 +53,34 @@ vec3 supernovaGlow(vec2 uv, vec3 midColor, vec3 outerColor, float maxRadius) {
   // brightness harder than a small, always-on control should.
   float pulse = 0.955 + 0.045 * sin(uTime * 0.6);
 
-  // Strength brought back up from this button's first, too-washed-out
-  // pass (0.5/0.55) toward sky_supernova.frag's own 0.9/1.1 — not all
-  // the way, since the icon sitting right on top of this glow (unlike
-  // the open sky around a real supernova) still needs the ring to read
-  // as its own distinct thing rather than melting into one blob. [glow]'s
-  // own reach is pulled way in too (rate 3.0 -> 18.0): it's the soft
-  // background disc behind everything else here, and at the old, much
-  // slower decay it kept glowing well past `ringRadius`, past where a
-  // "glow around the ring" should still read as tucked behind it.
-  float glow = exp(-dist * 18.0) * 0.7;
-  // [nearGlow] is the star's own center glow — pushed hard past even
-  // sky_supernova.frag's own 1.1, since asked for outright strong rather
-  // than "brought back toward the original" — eased down just a hair
-  // from that first strong pass.
-  float nearGlow = exp(-dist * 22.0) * 1.9;
+  // Strength eased back down again — brought up toward sky_supernova.frag's
+  // own 0.9/1.1 at one point, but that read as too bright for a control
+  // that just sits there idle the vast majority of the time (see
+  // [nearGlow]'s own note); pulled back in below halfway between that
+  // pass and the first, too-washed-out one (0.5/0.55). [glow]'s own reach
+  // is still pulled way in (rate 3.0 -> 18.0): it's the soft background
+  // disc behind everything else here, and at the old, much slower decay
+  // it kept glowing well past `ringRadius`, past where a "glow around the
+  // ring" should still read as tucked behind it.
+  float glow = exp(-dist * 18.0) * 0.4;
+  // The button's one central glow — purely a function of [dist], so it
+  // never traces any shape (not the star's outline, not the ring): a
+  // soft blob sitting underneath both, lighting them from below, the
+  // same role sky_supernova.frag's own glow/nearGlow pair plays for the
+  // real supernovas. This is the resting/idle glow, seen the vast
+  // majority of the time the button just sits there unpressed — eased
+  // down again along with [glow] above, so idle reads noticeably dimmer
+  // than a press (see [chargeGlow], untouched) rather than nearly as
+  // bright as one.
+  float nearGlow = exp(-dist * 22.0) * 1.05;
 
-  // Thinned from 0.014, and now white rather than the shared gold —
-  // [ring] gets its own weight in the colorCore mix below instead of
-  // just adding brightness under whatever color [glow]/[spikes] mixed
-  // to, the same way the real supernovas' own outer ring (the fixed
-  // one, drawn in Dart — see `SkySupernova._paintOutlineIcon`'s
-  // [outlinePainter] — while the glow *inside* it is what spins) reads
-  // as a bright white band around a warmer glow rather than a gold one.
-  // Strong enough on its own, and added to [brightness] below *after*
-  // [pulse] rather than as part of the sum [pulse] scales, to read as a
-  // full, steady line rather than something that breathes with
-  // everything else behind it — pulled back from fully opaque (1.6) to
-  // 80%, matching [Icons.star]'s own opacity right on top of it.
-  float ringRadius = 0.09;
-  float ring = smoothstep(0.008, 0.0, abs(dist - ringRadius)) * 1.28;
-  // A softer halo just around [ring] itself — wider and dimmer than the
-  // crisp line, warm rather than forced white (it skips the colorCore
-  // mix below, same as [glow]) — so the ring reads as glowing, not just
-  // as a hard-edged stroke.
-  float ringGlow = exp(-abs(dist - ringRadius) * 35.0) * 0.5;
+  // The ring itself moved to Dart, painted *after* the icon (see
+  // `_MenuStarSupernovaPainter.paint`'s own paintRing) instead of being
+  // part of this additive glow drawn first: at 0.09 world units its own
+  // radius sits well inside the icon's, so drawn here it was the icon
+  // sitting on top of the ring rather than the other way around.
+  float ring = 0.0;
+  float ringGlow = 0.0;
 
   // [Icons.star]'s glyph isn't drawn around the exact center of its own
   // em-square: measuring its actual path (a regular pentagram fits its
@@ -111,21 +109,54 @@ vec3 supernovaGlow(vec2 uv, vec3 midColor, vec3 outerColor, float maxRadius) {
   // main rays' own taper is steeper still on top of that, so they thin
   // out faster toward their own tips instead of holding a near-constant
   // width.
+  //
+  // Disabled for now, just to see the button with no rays at all — the
+  // loop's left in place rather than deleted, both values one line away
+  // from coming right back.
   float spikes = 0.0;
-  for (int k = 0; k < 5; k++) {
-    float outerAngle = -1.5707963 + float(k) * 1.2566371;
-    float innerAngle = outerAngle + 0.6283185;
-    spikes += uniRay(rayUv, innerAngle, 0.005, 17.0, 100.0) * 1.4;
-    spikes += uniRay(rayUv, outerAngle, 0.0025, 24.0, 150.0) * 0.4;
-  }
+  // for (int k = 0; k < 5; k++) {
+  //   float outerAngle = -1.5707963 + float(k) * 1.2566371;
+  //   float innerAngle = outerAngle + 0.6283185;
+  //   spikes += uniRay(rayUv, innerAngle, 0.005, 17.0, 100.0) * 1.4;
+  //   spikes += uniRay(rayUv, outerAngle, 0.0025, 24.0, 150.0) * 0.4;
+  // }
 
-  float starMetric = sqrt(abs(uv.x)) + sqrt(abs(uv.y));
-  float core = smoothstep(0.22, 0.0, starMetric);
+  // [core] was the same small four-point star-shaped blob
+  // sky_supernova.frag draws at its own center — disabled, since unlike
+  // [nearGlow] it isn't purely radial (it's a 4-point diamond, built
+  // from uv.x/uv.y directly), so it's still a shape of its own layered
+  // on top of the star's.
+  // `float starMetric = sqrt(abs(uv.x)) + sqrt(abs(uv.y));`
+  // `float core = smoothstep(0.22, 0.0, starMetric);`
+  float core = 0.0;
+
+  // A second, separate glow that only exists while the button is being
+  // held down (see `_MenuStarButtonState`'s own charge controller — a
+  // press doesn't open the menu immediately, it has to be held instead,
+  // so there's something to see growing under the finger the whole
+  // time it's down). Both wider and brighter as [charge] ramps 0 -> 1 —
+  // an actual growing glow, not just a brightening one.
+  //
+  // This glow's own *reach* is roughly 1/chargeRate (where exp(-dist *
+  // chargeRate) drops to a fixed fraction) — so interpolating chargeRate
+  // itself linearly (mix(40.0, 2.0, charge), tried first) made the
+  // reach 1/mix(40,2,charge), which barely grows for most of the hold
+  // and then balloons in the last moment as the rate bottoms out — a
+  // sudden jump right at the end, not a smooth grow. Interpolating the
+  // *radius* linearly instead (chargeRadius below) and deriving the
+  // rate from that keeps the actual on-screen growth even across the
+  // whole charge.
+  // Max-charge radius pulled in to half of what it was (1/4.0, was
+  // 1/2.0) — still noticeably bigger than the resting glow, just not
+  // as large as it had grown to.
+  float chargeRadius = mix(1.0 / 40.0, 1.0 / 4.0, charge);
+  float chargeRate = 1.0 / chargeRadius;
+  float chargeGlow = exp(-dist * chargeRate) * charge * 1.4;
 
   float brightness = (
       core * 2.2 +
       spikes +
-      glow + nearGlow + ringGlow
+      glow + nearGlow + ringGlow + chargeGlow
     ) * pulse + ring;
 
   // A safety net regardless of how [glow]/[spikes] above happen to be
@@ -136,12 +167,33 @@ vec3 supernovaGlow(vec2 uv, vec3 midColor, vec3 outerColor, float maxRadius) {
   // button instead of a glow fading into nothing. Ramping brightness
   // down to exactly 0 before [dist] reaches the canvas edge (in these
   // same world units) removes that edge rather than just hiding it
-  // better.
-  brightness *= 1.0 - smoothstep(maxRadius * 0.6, maxRadius, dist);
+  // better. Starts even earlier now (0.18, was then 0.35, was 0.6): at
+  // full charge, [chargeGlow] is still quite bright right where a
+  // narrower window would begin, so the same amount of brightness had
+  // to drop to 0 over too short a span — a visible edge where the glow
+  // stopped, not the long, soft fade this is supposed to be. Starting
+  // the taper earlier spreads that same drop over more of the canvas
+  // instead.
+  brightness *= 1.0 - smoothstep(maxRadius * 0.18, maxRadius, dist);
 
-  vec3 colorCore = vec3(1.0, 0.98, 0.9);
+  // colorCore is pale, not pure white — mixing toward it as brightness
+  // climbs is what keeps a genuinely bright spot reading as "glowing
+  // hot" (whiter) rather than just a more saturated version of the same
+  // blue; [chargeGlow] is in this mix for the same reason [nearGlow]
+  // already was — without it, the held-button glow stayed fully
+  // saturated blue right up until individual color channels clipped on
+  // their own, which read as harsh rather than bright. Cool/neutral now
+  // (was warm — 1.0/0.98/0.9 — left over from when this whole glow was
+  // still gold): whitening *toward warm* is what a hot ember does, but
+  // this glow is blue, and mixing blue toward a warm target just turned
+  // it an odd purple on the way rather than paling cleanly.
+  vec3 colorCore = vec3(0.95, 0.97, 1.0);
   vec3 color = mix(outerColor, midColor, smoothstep(0.0, 0.25, glow + spikes * 0.3));
-  color = mix(color, colorCore, clamp(core * 1.5 + nearGlow * 0.3 + ring * 0.96, 0.0, 1.0));
+  color = mix(
+    color,
+    colorCore,
+    clamp(core * 1.5 + nearGlow * 0.3 + ring * 0.96 + chargeGlow * 0.35, 0.0, 1.0)
+  );
 
   return color * brightness;
 }
@@ -150,12 +202,21 @@ void main() {
   vec2 centered = FlutterFragCoord().xy - uResolution * 0.5;
   vec2 uv = centered / uScale;
 
-  vec3 midColor = vec3(1.0, 0.78, 0.4);
-  vec3 outerColor = vec3(0.85, 0.5, 0.15);
+  // Blue here instead of the shared gold every other glow in the app uses
+  // (sky_supernova.frag included) — same two-stop mid/outer structure,
+  // just a cooler hue. Built directly from the menu drawer's own
+  // background (colors.nightPanel, #161D30 — see app_theme.dart's
+  // drawerTheme) rather than a hue picked in isolation: outerColor *is*
+  // that background color, midColor is the same color lifted toward
+  // white for the glow's brighter center, so both the logo (see
+  // assets/icon/app_icon_ring_centered_white.png, recolored to this same
+  // nightPanel) and this glow read as made of the menu's own material.
+  vec3 midColor = vec3(0.589, 0.601, 0.635);
+  vec3 outerColor = vec3(0.086, 0.114, 0.188);
   // Canvas is square (uResolution.x == uResolution.y), in the same
   // world units as [uv] — the radius the glow must fade to 0 within.
   float maxRadius = uResolution.x * 0.5 / uScale;
 
-  vec3 total = supernovaGlow(uv, midColor, outerColor, maxRadius);
+  vec3 total = supernovaGlow(uv, midColor, outerColor, maxRadius, uCharge);
   fragColor = vec4(total, 1.0);
 }

@@ -16,6 +16,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_fonts.dart';
 import '../theme/app_style.dart';
 import '../widgets/responsive_content.dart';
+import 'menu_button_gallery_screen.dart';
 import 'onboarding_screen.dart';
 
 /// Settings, opened from the Sky's own side menu — the drawer carries only
@@ -524,6 +525,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         label: Text(
                           strings.menuOnboarding,
+                          style: TextStyle(color: colors.muted, fontSize: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Side-by-side comparison of the Sky's menu FAB with
+                    // its logo drawn in different blend modes/opacities —
+                    // see [MenuButtonGalleryScreen]'s own doc comment.
+                    // Temporary, while that look is still being picked.
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton.icon(
+                        onPressed: () =>
+                            _push(const MenuButtonGalleryScreen()),
+                        style: _debugButtonStyle(colors, colors.muted),
+                        icon: Icon(
+                          Icons.grid_view_outlined,
+                          size: 16,
+                          color: colors.muted,
+                        ),
+                        label: Text(
+                          'Menu Button Gallery',
                           style: TextStyle(color: colors.muted, fontSize: 12),
                         ),
                       ),

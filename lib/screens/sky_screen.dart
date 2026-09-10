@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:share_plus/share_plus.dart';
 
 import '../data/area_vision_repository.dart';
 import '../data/constellation_layout.dart';
@@ -16,6 +20,7 @@ import '../l10n/strings_scope.dart';
 import '../models/habit_completion.dart';
 import '../models/life_area.dart';
 import '../models/project.dart';
+import '../models/star.dart';
 import '../models/star_kind.dart';
 import '../notifications/reminder_service.dart';
 import '../settings/settings_controller.dart';
@@ -31,13 +36,14 @@ import '../widgets/nebula_background.dart';
 // import '../widgets/sky_wisps.dart'; — the wispy-nebula take, disabled too.
 // import '../widgets/sky_black_hole.dart'; — the lensed-black-hole take,
 // disabled too.
+import '../widgets/shareable_lit_star_card.dart';
 import '../widgets/sky_area_sigils.dart';
 import '../widgets/sky_menu_drawer.dart';
 import '../widgets/sky_navigation_target.dart';
 import '../widgets/sky_supernova.dart';
+import '../widgets/star_quick_look_panel.dart';
 import 'admire_stars_screen.dart';
 import 'area_detail_screen.dart';
-import 'constellation_screen.dart';
 import 'friends_screen.dart';
 import 'sky_search_screen.dart';
 import 'metaphor_screen.dart';
@@ -106,6 +112,28 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   // either — rather than only widening one end of it.
   static const _maxZoom = kSkyMaxZoom;
 
+  /// The three fly-to zoom levels — one per kind of sky element a tap can
+  /// land on, each its own independently tunable number (see
+  /// [zoomPercent]'s 0..100 scale) rather than one shared value or a
+  /// per-content zoom-to-fit formula, so each can be dialed in on its own.
+  /// Ascending, matching the funnel a tap chain actually walks down:
+  /// supernova -> constellation -> star, each landing closer than the last.
+  ///
+  /// [_constellationZoomPercent] doubles as [_starTapMinZoomPercent] (see
+  /// its own doc comment) on purpose — arriving at a constellation should
+  /// leave its stars individually tappable immediately, not require an
+  /// extra manual zoom in first.
+  static const _areaZoomPercent = 35.0;
+  static const _constellationZoomPercent = 75.0;
+  static const _starZoomPercent = 95.0;
+
+  /// How far back one double-tap-to-zoom-out (see [_handleTapUp]'s own
+  /// manual double-tap tracking and [_zoomOutOneLevel]) steps: below
+  /// [_areaZoomPercent] there's no fourth named level to retreat to, so it
+  /// drops all the way to the sky's own default "furthest comfortable"
+  /// zoom instead of a fourth magic number.
+  static const _zoomOutFloorPercent = 0.0;
+
   // Only used to seed the inertia glide's initial velocity now (see
   // _handleScaleEnd) — the live drag itself is an exact rotation (see
   // _handleScaleUpdate/SkyCamera.rotatedToAlign), not a scaled pixel
@@ -125,6 +153,17 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   List<PlacedConstellation> _placed = [];
   int _revision = 0;
   ui.FragmentProgram? _flareProgram;
+
+  /// Which star (if any) is showing its quick-look panel right now — set
+  /// by [_openStar] for a genuine star (not a pulsar, not a still-nascent
+  /// slot; both keep their own existing tap flow), alongside a
+  /// [_flyTo] that lands it in the screen's top half rather than opening
+  /// [StarReaderScreen] immediately. Both null together; see
+  /// [_quickLookStar] for the actual [Star] this resolves to.
+  PlacedConstellation? _quickLookConstellation;
+  int? _quickLookStarIndex;
+  final _quickLookShareKey = GlobalKey();
+  bool _sharingQuickLookStar = false;
 
   /// Momentum left over from a drag release, in pan-units (turns) per
   /// second — see [_handleScaleEnd]/[_onInertiaTick]. Google Earth's
@@ -168,6 +207,12 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   static const bool _showUiControlsButton = false;
   static const bool _showDrawerButton = false;
 
+  /// Off for now so the star tap's own camera movement (see
+  /// [_openStarQuickLook]) can be tuned on its own, without the panel's
+  /// layout/behavior in the way while doing that — not deleted, the panel
+  /// itself is otherwise unchanged.
+  static const bool _showStarQuickLookPanel = false;
+
   /// Drives the "take me there" fly-to animation — a single controller
   /// reused across flights rather than rebuilt per tap, so a second tap
   /// mid-flight can redirect it smoothly instead of leaving an orphaned
@@ -182,11 +227,10 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _flyController =
-        AnimationController(
-          vsync: this,
-          duration: const Duration(milliseconds: 900),
-        )..addListener(_onFlyTick);
+    _flyController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..addListener(_onFlyTick);
     _loadData();
     _loadFlareProgram();
     // Opens centered on "Love" rather than the world origin — with a
@@ -385,6 +429,73 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
 
     final index = constellation.stars.indexWhere((s) => s.id == star.entityId);
     if (index == -1) return;
+    _openStarQuickLook(constellation, index, star);
+  }
+
+  /// Shows [constellation]'s star at [starIndex] in the quick-look panel
+  /// (see [StarQuickLookPanel]) and flies the camera to it, dead center —
+  /// same as every other "take me there" flight in the app (see
+  /// `SkySearchScreen`'s own use of [_flyTo]). The full [StarReaderScreen]
+  /// page is still just one tap away (see [_viewQuickLookStar]), not
+  /// replaced.
+  ///
+  /// Flies to [renderStar]'s own exact position (via [starWorldPosition]),
+  /// not [SkyStarTarget] — that only ever resolves to the *constellation's*
+  /// shared anchor (see its own doc comment), so every star in the same
+  /// constellation would fly to the identical spot; tapping a different
+  /// star there wouldn't visibly move the camera at all, since it'd
+  /// already be sitting at that same target from the previous tap.
+  void _openStarQuickLook(
+    PlacedConstellation constellation,
+    int starIndex,
+    ConstellationStar renderStar,
+  ) {
+    if (_showStarQuickLookPanel) {
+      setState(() {
+        _quickLookConstellation = constellation;
+        _quickLookStarIndex = starIndex;
+      });
+    }
+    final size = context.size;
+    if (size == null) return;
+    final world = starWorldPosition(
+      constellation,
+      renderStar,
+      _camera,
+      _zoom,
+      size,
+    );
+    if (world == null) return;
+    _flyToWorld(
+      world,
+      zoomFromPercent(_starZoomPercent).clamp(minZoomWithoutRepeats, _maxZoom),
+    );
+  }
+
+  void _closeStarQuickLook() {
+    setState(() {
+      _quickLookConstellation = null;
+      _quickLookStarIndex = null;
+    });
+  }
+
+  /// The actual [Star] the quick-look panel is showing — re-read from
+  /// [_quickLookConstellation] on every access (rather than cached
+  /// separately) so an edit/achieve elsewhere that triggers [_refresh]
+  /// never leaves the panel showing stale content.
+  Star? get _quickLookStar {
+    final constellation = _quickLookConstellation;
+    final index = _quickLookStarIndex;
+    if (constellation == null || index == null) return null;
+    if (index >= constellation.stars.length) return null;
+    return constellation.stars[index];
+  }
+
+  Future<void> _viewQuickLookStar() async {
+    final constellation = _quickLookConstellation;
+    final index = _quickLookStarIndex;
+    if (constellation == null || index == null) return;
+    _closeStarQuickLook();
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => StarReaderScreen(
@@ -401,6 +512,142 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
       ),
     );
     _refresh();
+  }
+
+  /// Mirrors `StarReaderScreen._editOrResurrectCurrent` exactly (same two
+  /// branches, same repository calls) — just reached from the quick-look
+  /// panel instead of the full reader page.
+  Future<void> _editQuickLookStar() async {
+    final constellation = _quickLookConstellation;
+    final star = _quickLookStar;
+    if (constellation == null || star == null) return;
+
+    if (star.dead) {
+      final result = await Navigator.of(context).push<Object>(
+        MaterialPageRoute(
+          builder: (_) => StarFormScreen(
+            existingStar: star,
+            contextProject: constellation.project,
+            projectRepository: widget.projectRepository,
+            customConstellationRepository: widget.customConstellationRepository,
+            hideDelete: true,
+          ),
+        ),
+      );
+      if (result is! StarFormResult) return;
+      await widget.starRepository.resurrect(
+        star.id,
+        title: result.title,
+        description: result.description,
+        projectId: result.projectId,
+        targetDate: result.targetDate,
+        achievedDate: result.achievedDate,
+        intensity: result.intensity,
+        photoPath: result.photoPath,
+      );
+      _closeStarQuickLook();
+      _refresh();
+      return;
+    }
+
+    final result = await Navigator.of(context).push<Object>(
+      MaterialPageRoute(
+        builder: (_) => StarFormScreen(
+          existingStar: star,
+          contextProject: constellation.project,
+          projectRepository: widget.projectRepository,
+          customConstellationRepository: widget.customConstellationRepository,
+        ),
+      ),
+    );
+    if (result == null) return;
+
+    if (result is StarFormDeleteRequested) {
+      await widget.starRepository.delete(star.id);
+      _closeStarQuickLook();
+      _refresh();
+      return;
+    }
+
+    final addResult = result as StarFormResult;
+    await widget.starRepository.update(
+      id: star.id,
+      title: addResult.title,
+      description: addResult.description,
+      projectId: addResult.projectId,
+      targetDate: addResult.targetDate,
+      achievedDate: addResult.achievedDate,
+      intensity: addResult.intensity,
+      photoPath: addResult.photoPath,
+    );
+    _closeStarQuickLook();
+    _refresh();
+  }
+
+  Future<void> _deleteQuickLookStar() async {
+    final star = _quickLookStar;
+    if (star == null) return;
+    final strings = context.strings;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(strings.deleteStarConfirmTitle),
+        content: Text(strings.deleteStarConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(strings.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(strings.deleteStarAction),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await widget.starRepository.delete(star.id);
+    _closeStarQuickLook();
+    _refresh();
+  }
+
+  /// Mirrors `StarReaderScreen._shareCurrent` exactly (same
+  /// [RenderRepaintBoundary] capture, same [SharePlus] call) — captures
+  /// [_quickLookShareKey], which wraps a [ShareableLitStarCard] rendered
+  /// far off-screen (see the `build` Stack) purely so it exists to
+  /// capture; only ever reachable when [_quickLookStar] is lit (see
+  /// [StarQuickLookPanel]'s own `onShare`, null otherwise).
+  Future<void> _shareQuickLookStar() async {
+    final star = _quickLookStar;
+    if (star == null || !star.isLit || _sharingQuickLookStar) return;
+    setState(() => _sharingQuickLookStar = true);
+    try {
+      final boundary =
+          _quickLookShareKey.currentContext!.findRenderObject()
+              as RenderRepaintBoundary;
+      final image = await boundary.toImage(
+        pixelRatio: MediaQuery.of(context).devicePixelRatio,
+      );
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) throw StateError('toByteData returned null');
+      if (!mounted) return;
+      final shareFile = XFile.fromData(
+        byteData.buffer.asUint8List(),
+        name: 'star_${DateTime.now().microsecondsSinceEpoch}.png',
+        mimeType: 'image/png',
+      );
+      await SharePlus.instance.share(
+        ShareParams(files: [shareFile], text: star.title),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.strings.shareStarError)));
+      }
+    } finally {
+      if (mounted) setState(() => _sharingQuickLookStar = false);
+    }
   }
 
   /// Opens the star form on one specific empty slot of [constellation]'s
@@ -523,21 +770,18 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   }
 
   void _openShootingStars() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ShootingStarsScreen()),
-    );
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const ShootingStarsScreen()));
   }
 
   void _openFriends() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const FriendsScreen()),
-    );
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const FriendsScreen()));
   }
 
   void _openMetaphor() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const MetaphorScreen()),
-    );
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const MetaphorScreen()));
   }
 
   Future<void> _openSettings() async {
@@ -567,20 +811,18 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      // Explicit, not just relying on the default: with a scrollable
-      // ListView as the sheet's own content, a swipe-down starting over
-      // it can otherwise get claimed by the list's own scroll gesture
-      // before the sheet's drag-to-dismiss ever sees it. The drag handle
-      // gives a small always-available strip that's never part of the
-      // list, so a downward swipe from there closes the sheet reliably
-      // regardless of the list's own scroll position.
-      enableDrag: true,
-      showDragHandle: true,
+      // [SkyMenuModalFrame] draws its own background/shape/handle and
+      // handles its own drag-to-dismiss (see its own doc comment for
+      // why) — turned off here so [BottomSheet]'s own versions of all
+      // three don't render or compete underneath it.
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      enableDrag: false,
       constraints: BoxConstraints(
         maxHeight: MediaQuery.sizeOf(context).height * 0.9,
       ),
-      builder: (_) => SafeArea(
-        child: SkyMenuContent(
+      builder: (_) => SkyMenuModalFrame(
+        builder: (scrollController, physics) => SkyMenuContent(
           onLightAStar: _openStarForm,
           onNewConstellation: _openNewConstellation,
           onVisions: _openVisions,
@@ -592,6 +834,8 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
           onSettings: _openSettings,
           onMetaphor: _openMetaphor,
           detailed: true,
+          scrollController: scrollController,
+          physics: physics,
         ),
       ),
     );
@@ -630,67 +874,88 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     SkyStarTarget(:final project) => _placedFor(project)?.worldPosition,
   };
 
-  /// How far (radians) a supernova's farthest constellation sits from its
-  /// own center, plus one constellation's own angular footprint so that
-  /// farthest one doesn't itself get cut off at the screen edge — what
-  /// [_zoomFor] fits a [SkyAreaTarget] to. Falls back to a fixed,
-  /// comfortable radius for an area with no constellations yet, rather
-  /// than zooming in absurdly close on a single bare point of light.
-  double _areaAngularRadius(LifeArea area) {
-    final center = areaWorldPosition(area);
-    var maxDistance = 0.0;
-    for (final placed in _placed) {
-      if (placed.project.area != area) continue;
-      final distance = angularDistanceBetween(center, placed.worldPosition);
-      if (distance > maxDistance) maxDistance = distance;
-    }
-    if (maxDistance == 0) return kSkyConstellationAngularSpan * 3;
-    return maxDistance + kSkyConstellationAngularSpan;
-  }
-
-  /// The zoom [_flyTo] should land [target] at — see the Galaxy search
-  /// plan's own note on why each level gets a different one: a supernova
-  /// or constellation zoom-to-fit ([zoomToFit], via [_areaAngularRadius]
-  /// for the former and one constellation's own fixed angular footprint
-  /// for the latter — see [kSkyConstellationAngularSpan]'s own doc comment
-  /// on why that's already a reasonable "don't cut off its stars" radius
-  /// without inspecting each one's exact layout); a single star, for now,
-  /// simply zooms all the way in.
+  /// The zoom [_flyTo] should land [target] at — see [_areaZoomPercent]/
+  /// [_constellationZoomPercent]/[_starZoomPercent]'s own doc comment for
+  /// why each is its own fixed level rather than a per-content
+  /// zoom-to-fit formula.
   double _zoomFor(SkyNavigationTarget target, Size screenSize) {
-    return switch (target) {
-      SkyStarTarget() => _maxZoom,
-      SkyAreaTarget(:final area) => zoomToFit(
-        angularRadius: _areaAngularRadius(area),
-        screenSize: screenSize,
-      ).clamp(minZoomWithoutRepeats, _maxZoom),
-      SkyProjectTarget() => zoomToFit(
-        angularRadius: kSkyConstellationAngularSpan,
-        screenSize: screenSize,
-      ).clamp(minZoomWithoutRepeats, _maxZoom),
+    final percent = switch (target) {
+      SkyAreaTarget() => _areaZoomPercent,
+      SkyProjectTarget() => _constellationZoomPercent,
+      SkyStarTarget() => _starZoomPercent,
     };
+    return zoomFromPercent(percent).clamp(minZoomWithoutRepeats, _maxZoom);
   }
 
-  /// Flies the camera to [target]'s spot on the sky sphere — always dead
-  /// center (see [SkyCamera.lookingAt]), zoomed per [_zoomFor]. Animated as
+  /// Flies the camera to [target]'s spot on the sky sphere — dead center by
+  /// default (see [SkyCamera.lookingAt]), zoomed per [_zoomFor]. Animated as
   /// one smooth sweep along the great circle from wherever the camera
   /// currently looks (see [SkyCamera.rotatedToAlignFraction]), Maps-style,
   /// rather than an instant cut — [_onFlyTick] drives it every frame.
-  void _flyTo(SkyNavigationTarget target) {
+  ///
+  /// [anchorFraction] moves where [target] ends up landing on screen —
+  /// (0.5, 0.5) (the default) is dead center; (0.5, 0.25) is what the star
+  /// quick-look panel uses to land its star in the middle of the screen's
+  /// top half rather than behind the panel covering the bottom half. Found
+  /// via [screenToDirection]/[SkyCamera.rotatedToAlign] rather than a
+  /// simplified pixel-offset: aim a camera dead-center at [target] first
+  /// (`baseCamera`, forward == target's own direction, by construction),
+  /// then rotate so whatever direction *would* render at [anchorFraction]
+  /// under `baseCamera` instead renders at dead center — the same rotation
+  /// forces [target] itself to land at [anchorFraction] instead (the two
+  /// are the same rotation run in the two directions a single-axis
+  /// alignment always is).
+  void _flyTo(
+    SkyNavigationTarget target, {
+    Offset anchorFraction = const Offset(0.5, 0.5),
+  }) {
     final size = context.size;
     if (size == null) return;
     final world = _worldFor(target);
     if (world == null) return;
+    _flyToWorld(world, _zoomFor(target, size), anchorFraction: anchorFraction);
+  }
 
-    final targetForward = SkyCamera.lookingAt(
+  /// The actual flight, once a target has already been resolved to a
+  /// world (azimuth, elevation) position and a zoom — split out from
+  /// [_flyTo] so [_openStarQuickLook] can fly to a *specific star's* own
+  /// exact position (see [starWorldPosition]) rather than [SkyStarTarget]'s
+  /// coarser "somewhere in its constellation".
+  void _flyToWorld(
+    Offset world,
+    double targetZoom, {
+    Offset anchorFraction = const Offset(0.5, 0.5),
+  }) {
+    final size = context.size;
+    if (size == null) return;
+
+    final baseCamera = SkyCamera.lookingAt(
       azimuthTurns: world.dx,
       elevationTurns: world.dy,
-    ).forward;
+    );
+
+    var targetForward = baseCamera.forward;
+    if (anchorFraction != const Offset(0.5, 0.5)) {
+      final anchorPoint = Offset(
+        size.width * anchorFraction.dx,
+        size.height * anchorFraction.dy,
+      );
+      final anchorDirection = screenToDirection(
+        anchorPoint,
+        baseCamera,
+        targetZoom,
+        size,
+      );
+      targetForward = baseCamera
+          .rotatedToAlign(anchorDirection, baseCamera.forward)
+          .forward;
+    }
 
     _stopInertia();
     _flyStartCamera = _camera;
     _flyTargetForward = targetForward;
     _flyStartZoom = _zoom;
-    _flyTargetZoom = _zoomFor(target, size);
+    _flyTargetZoom = targetZoom;
     _flyController
       ..stop()
       ..reset()
@@ -740,7 +1005,10 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
       );
       final startCamera = _dragStartCamera;
       final anchor = _dragAnchorDirection;
-      if (size != null && size.height > 0 && startCamera != null && anchor != null) {
+      if (size != null &&
+          size.height > 0 &&
+          startCamera != null &&
+          anchor != null) {
         // Exact "grab and drag": re-derive the camera fresh, every frame,
         // as the single rotation of the *drag's starting* camera that
         // puts [anchor] back under wherever the cursor is *now* — never
@@ -768,9 +1036,9 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
         // worldToScreen(current, startCamera) algebraically; passing
         // them the other way round was live-tested and turned every
         // drag/zoom backwards).
-        _camera = startCamera.rotatedToAlign(current, anchor).rolled(
-          details.rotation,
-        );
+        _camera = startCamera
+            .rotatedToAlign(current, anchor)
+            .rolled(details.rotation);
       }
     });
   }
@@ -787,7 +1055,10 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     final size = context.size;
     if (size == null || size.height <= 0) return;
     _panVelocity =
-        details.velocity.pixelsPerSecond / size.height / _zoom * _panSensitivity;
+        details.velocity.pixelsPerSecond /
+        size.height /
+        _zoom *
+        _panSensitivity;
     if (_panVelocity == Offset.zero) return;
     _startInertia();
   }
@@ -838,7 +1109,30 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   /// read as wrong (tapping a constellation shouldn't open a specific
   /// star at random). Zoomed in this far, stars are spread out enough on
   /// screen that a tap is unambiguously aimed at one of them specifically.
-  static const _starTapMinZoomPercent = 90.0;
+  /// See [_constellationZoomPercent]'s own doc comment for why this is
+  /// that same value, not its own separate number.
+  static const _starTapMinZoomPercent = _constellationZoomPercent;
+
+  /// When and where the last tap that landed on *empty* sky happened —
+  /// [_handleTapUp]'s own manual double-tap tracking, purely for
+  /// [_zoomOutOneLevel]'s "double-tap empty sky to back out" gesture. Null
+  /// whenever there's no such tap still eligible to be the first half of
+  /// a double-tap.
+  ///
+  /// Deliberately not a real [GestureDetector.onDoubleTap] — registering
+  /// one on the same detector as [onTapUp] would force *every* single tap
+  /// (stars and constellations included) to wait out Flutter's own
+  /// double-tap disambiguation window before firing at all, which read as
+  /// a real, unwelcome lag on the app's single most common gesture. Empty
+  /// sky is the only place a double-tap does anything, so tracking it by
+  /// hand here — two plain taps close together in time and position, ordinary
+  /// [onTapUp] firing immediately both times — gets the same gesture with
+  /// no delay on everything else.
+  DateTime? _lastEmptyTapTime;
+  Offset? _lastEmptyTapPosition;
+
+  static const _doubleTapWindow = Duration(milliseconds: 300);
+  static const _doubleTapMaxDistance = 40.0;
 
   void _handleTapUp(TapUpDetails details) {
     final size = context.size;
@@ -847,6 +1141,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
         ? hitTestField(details.localPosition, _placed, _camera, _zoom, size)
         : null;
     if (hit != null) {
+      _lastEmptyTapTime = null;
       _openStar(hit.$1, hit.$2);
       return;
     }
@@ -856,13 +1151,13 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     // (see [hitTestSupernovas]).
     final area = hitTestSupernovas(details.localPosition, _camera, _zoom, size);
     if (area != null) {
-      _openArea(area);
+      _lastEmptyTapTime = null;
+      _flyToArea(area);
       return;
     }
     // Same idea one level down: a tap that lands within a constellation's
     // own shape but not precisely on one of its stars (already handled
-    // above) opens that constellation's own screen instead of doing
-    // nothing — see [hitTestConstellations].
+    // above) — see [hitTestConstellations].
     final constellation = hitTestConstellations(
       details.localPosition,
       _placed,
@@ -870,37 +1165,83 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
       _zoom,
       size,
     );
-    if (constellation != null) _openConstellation(constellation.project);
+    if (constellation != null) {
+      _lastEmptyTapTime = null;
+      _flyToConstellation(constellation.project);
+      return;
+    }
+
+    // Empty sky — see if this completes a double-tap with the previous
+    // empty-sky tap (see [_lastEmptyTapTime]'s own doc comment).
+    final now = DateTime.now();
+    final lastTime = _lastEmptyTapTime;
+    final lastPosition = _lastEmptyTapPosition;
+    if (lastTime != null &&
+        lastPosition != null &&
+        now.difference(lastTime) < _doubleTapWindow &&
+        (details.localPosition - lastPosition).distance < _doubleTapMaxDistance) {
+      _lastEmptyTapTime = null;
+      _lastEmptyTapPosition = null;
+      _zoomOutOneLevel();
+      return;
+    }
+    _lastEmptyTapTime = now;
+    _lastEmptyTapPosition = details.localPosition;
   }
 
-  Future<void> _openArea(LifeArea area) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AreaDetailScreen(
-          area: area,
-          areaVisionRepository: widget.areaVisionRepository,
-          projectRepository: widget.projectRepository,
-          starRepository: widget.starRepository,
-        ),
-      ),
-    );
-    _refresh();
+  /// Just the camera movement, dead center — same "take me there" flight
+  /// every other target in the app gets, with no page opening behind it
+  /// any more: a tap on a supernova used to push [AreaDetailScreen]
+  /// straight away, which is removed here on purpose, not a screen
+  /// [AreaDetailScreen] itself lost — it's still reachable from wherever
+  /// it already was (e.g. the Galaxy search popup).
+  void _flyToArea(LifeArea area) {
+    _flyTo(SkyAreaTarget(area));
   }
 
-  Future<void> _openConstellation(Project project) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ConstellationScreen(
-          project: project,
-          starRepository: widget.starRepository,
-          projectRepository: widget.projectRepository,
-          habitRepository: widget.habitRepository,
-          habitCompletionRepository: widget.habitCompletionRepository,
-          customConstellationRepository: widget.customConstellationRepository,
-        ),
-      ),
-    );
-    _refresh();
+  /// See [_flyToArea]'s own note — same change, for constellations.
+  void _flyToConstellation(Project project) {
+    _flyTo(SkyProjectTarget(project));
+  }
+
+  /// Steps back one rung of the [_areaZoomPercent]/
+  /// [_constellationZoomPercent]/[_starZoomPercent] ladder from wherever
+  /// [_zoom] currently sits — the largest rung strictly below it, or
+  /// [_zoomOutFloorPercent] once already at or below the lowest one.
+  /// Orientation is left exactly as it is; only zoom moves (see [_zoomTo]).
+  void _zoomOutOneLevel() {
+    const rungs = [
+      _zoomOutFloorPercent,
+      _areaZoomPercent,
+      _constellationZoomPercent,
+      _starZoomPercent,
+    ];
+    final currentPercent = zoomPercent(_zoom);
+    var target = _zoomOutFloorPercent;
+    for (final rung in rungs) {
+      // A tiny margin below the current reading — without it, being
+      // already sitting *exactly* on a rung (the usual case, having just
+      // flown to one) would count that same rung as "below" itself due to
+      // ordinary floating-point noise, and go nowhere.
+      if (rung < currentPercent - 0.5) target = rung;
+    }
+    _zoomTo(zoomFromPercent(target).clamp(minZoomWithoutRepeats, _maxZoom));
+  }
+
+  /// Animates [_zoom] alone to [targetZoom], camera orientation
+  /// unchanged — the zoom-only half of what [_flyToWorld] does, without
+  /// its azimuth/elevation round-trip (there's no new direction to aim
+  /// at here, just [_camera]'s own current one, exactly).
+  void _zoomTo(double targetZoom) {
+    _stopInertia();
+    _flyStartCamera = _camera;
+    _flyTargetForward = _camera.forward;
+    _flyStartZoom = _zoom;
+    _flyTargetZoom = targetZoom;
+    _flyController
+      ..stop()
+      ..reset()
+      ..forward();
   }
 
   /// Opens the small centered dialog that flips [_showGridControl]/
@@ -983,344 +1324,441 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     // [_showRotationControl] preference.
     final showRotation = _showRotationControl && !isTouchOnlyMobile;
 
-    return Scaffold(
-      key: _scaffoldKey,
-      // The sky is dragged edge to edge to look around, so the drawer must
-      // never claim an edge-swipe of its own — it opens from its button and
-      // nowhere else.
-      drawerEdgeDragWidth: 0,
-      drawer: SkyMenuDrawer(
-        onLightAStar: _openStarForm,
-        onNewConstellation: _openNewConstellation,
-        onVisions: _openVisions,
-        onShootingStars: _openShootingStars,
-        onSearch: _openSearch,
-        onStatistics: _openStatistics,
-        onAdmire: _openAdmire,
-        onFriends: _openFriends,
-        onSettings: _openSettings,
-        onMetaphor: _openMetaphor,
-      ),
-      body: Listener(
-        onPointerSignal: _handlePointerSignal,
-        child: GestureDetector(
-          onScaleStart: _handleScaleStart,
-          onScaleUpdate: _handleScaleUpdate,
-          onScaleEnd: _handleScaleEnd,
-          onTapUp: _handleTapUp,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              NebulaBackground(
-                camera: _camera,
-                zoom: _zoom,
-                showGrid: widget.settings.showGrid,
-              ),
-              // A decorative sigil behind each supernova — see
-              // sky_area_sigils.dart. Painted before SkySupernova so that
-              // widget's own glow/icon sit on top of it, not the other
-              // way round.
-              SkyAreaSigils(camera: _camera, zoom: _zoom),
-              // Alternative takes on this slot, tried in order —
-              // SkyDecorations (spiral nebula + supernova per area),
-              // SkyWisps (wispy Hubble-style filaments), SkyBlackHole (a
-              // lensed black hole) — all disabled in favor of SkySupernova
-              // (one simple lens-flare-style star) while the visual style
-              // is explored; swap which one's active here to compare, none
-              // of the files are deleted.
-              SkySupernova(camera: _camera, zoom: _zoom),
-              AnimatedConstellationField(
-                placed: _placed,
-                camera: _camera,
-                zoom: _zoom,
-                flareProgram: _flareProgram,
-                // See [kSkyStarPalette]: a white core with a gold glow
-                // around it for anything burning, matching `SkySupernova`'s
-                // own icons (a plain white glyph over a gold gradient
-                // border/glow), and the blue/white families for everything
-                // that isn't.
-                palette: kSkyStarPalette,
-                revision: _revision,
-              ),
-              // The way into everything that isn't the sky itself — same
-              // disc/navy/gold styling as every other overlay control.
-              // There's no nav bar left for it to duplicate: this button
-              // *is* the app's navigation (or was, before the star FAB —
-              // see [_showDrawerButton]).
-              if (_showDrawerButton)
-              Positioned(
-                top: 0,
-                left: 0,
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.all(6),
-                    child: Material(
-                      color: colors.nightPanel.withValues(alpha: 0.75),
-                      shape: CircleBorder(
-                        side: BorderSide(
-                          color: colors.gold,
-                          width: kBorderWidthActive,
-                        ),
-                      ),
-                      child: InkWell(
-                        customBorder: const CircleBorder(),
-                        onTap: () => _scaffoldKey.currentState?.openDrawer(),
-                        child: SizedBox(
-                          width: 42,
-                          height: 42,
-                          child: Tooltip(
-                            message: strings.openMenuAction,
-                            child: Icon(
-                              Icons.menu,
-                              color: colors.gold,
-                              size: 22,
-                            ),
-                          ),
-                        ),
-                      ),
+    return PopScope(
+      // The quick-look panel isn't a route of its own — a back gesture/
+      // button with it open should close it (same as tapping its own X)
+      // rather than leaving the sky screen entirely.
+      canPop: _quickLookConstellation == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _closeStarQuickLook();
+      },
+      child: Scaffold(
+        key: _scaffoldKey,
+        // The sky is dragged edge to edge to look around, so the drawer must
+        // never claim an edge-swipe of its own — it opens from its button and
+        // nowhere else.
+        drawerEdgeDragWidth: 0,
+        drawer: SkyMenuDrawer(
+          onLightAStar: _openStarForm,
+          onNewConstellation: _openNewConstellation,
+          onVisions: _openVisions,
+          onShootingStars: _openShootingStars,
+          onSearch: _openSearch,
+          onStatistics: _openStatistics,
+          onAdmire: _openAdmire,
+          onFriends: _openFriends,
+          onSettings: _openSettings,
+          onMetaphor: _openMetaphor,
+        ),
+        body: Stack(
+          children: [
+            Listener(
+              onPointerSignal: _handlePointerSignal,
+              child: GestureDetector(
+                onScaleStart: _handleScaleStart,
+                onScaleUpdate: _handleScaleUpdate,
+                onScaleEnd: _handleScaleEnd,
+                onTapUp: _handleTapUp,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    NebulaBackground(
+                      camera: _camera,
+                      zoom: _zoom,
+                      showGrid: widget.settings.showGrid,
                     ),
-                  ),
-                ),
-              ),
-              // The one overlay control with its colors inverted (solid
-              // gold, dark text/icon) rather than the translucent navy disc
-              // every other control uses — top-center and the most
-              // prominent thing here on purpose, since it's the fastest way
-              // off "wander and hope" navigation into the search popup.
-              if (_showSearchButton)
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: SafeArea(
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(6),
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(kRadiusField),
-                          boxShadow: goldGlow(colors, strength: 1.1, size: 56),
-                        ),
-                        child: Material(
-                        color: colors.gold,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(kRadiusField),
-                          // Dark navy rather than the gold every other
-                          // control's border uses — this button's own fill
-                          // is already gold, so a gold border would
-                          // disappear into it.
-                          side: BorderSide(
-                            color: colors.night,
-                            width: kBorderWidthActive,
-                          ),
-                        ),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(kRadiusField),
-                          onTap: _openSearch,
+                    // A decorative sigil behind each supernova — see
+                    // sky_area_sigils.dart. Painted before SkySupernova so that
+                    // widget's own glow/icon sit on top of it, not the other
+                    // way round.
+                    SkyAreaSigils(camera: _camera, zoom: _zoom),
+                    // Alternative takes on this slot, tried in order —
+                    // SkyDecorations (spiral nebula + supernova per area),
+                    // SkyWisps (wispy Hubble-style filaments), SkyBlackHole (a
+                    // lensed black hole) — all disabled in favor of SkySupernova
+                    // (one simple lens-flare-style star) while the visual style
+                    // is explored; swap which one's active here to compare, none
+                    // of the files are deleted.
+                    SkySupernova(camera: _camera, zoom: _zoom),
+                    AnimatedConstellationField(
+                      placed: _placed,
+                      camera: _camera,
+                      zoom: _zoom,
+                      flareProgram: _flareProgram,
+                      // See [kSkyStarPalette]: a white core with a gold glow
+                      // around it for anything burning, matching `SkySupernova`'s
+                      // own icons (a plain white glyph over a gold gradient
+                      // border/glow), and the blue/white families for everything
+                      // that isn't.
+                      palette: kSkyStarPalette,
+                      revision: _revision,
+                    ),
+                    // The way into everything that isn't the sky itself — same
+                    // disc/navy/gold styling as every other overlay control.
+                    // There's no nav bar left for it to duplicate: this button
+                    // *is* the app's navigation (or was, before the star FAB —
+                    // see [_showDrawerButton]).
+                    if (_showDrawerButton)
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        child: SafeArea(
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.search,
-                                  color: colors.onGold,
-                                  size: 18,
+                            padding: const EdgeInsets.all(6),
+                            child: Material(
+                              color: colors.nightPanel.withValues(alpha: 0.75),
+                              shape: CircleBorder(
+                                side: BorderSide(
+                                  color: colors.gold,
+                                  width: kBorderWidthActive,
                                 ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  strings.searchButtonLabel,
-                                  style: TextStyle(
-                                    color: colors.onGold,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              // Always visible regardless of the three toggles below — it's
-              // the only way back to turning them on again, so it can't be
-              // one of the things it itself hides.
-              if (_showUiControlsButton)
-              Positioned(
-                top: 0,
-                right: 0,
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.all(6),
-                    child: Material(
-                      color: colors.nightPanel.withValues(alpha: 0.75),
-                      shape: CircleBorder(
-                        side: BorderSide(
-                          color: colors.gold,
-                          width: kBorderWidthActive,
-                        ),
-                      ),
-                      child: InkWell(
-                        customBorder: const CircleBorder(),
-                        onTap: () => _showUiControlsMenu(context),
-                        child: SizedBox(
-                          width: 42,
-                          height: 42,
-                          child: Icon(Icons.tune, color: colors.gold, size: 22),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              // The three toggleable controls (Grid/Zoom/Rotation), left to
-              // right along the bottom — one shared row rather than three
-              // independently-positioned corners, so [FittedBox] can shrink
-              // all three together (never grow them past their natural
-              // size) whenever a narrow screen can't fit them side by side
-              // at full size; on anything wide enough, this is a no-op and
-              // they render exactly as big as they'd otherwise be.
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: SafeArea(
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            if (_showGridControl)
-                              Material(
-                                color: colors.nightPanel.withValues(alpha: 0.75),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    _bottomPillRadius,
-                                  ),
-                                  side: BorderSide(
-                                    color: colors.gold,
-                                    width: kBorderWidthActive,
-                                  ),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.only(left: 10),
-                                  child: SizedBox(
-                                    height: _bottomPillHeight,
-                                    child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        'Grid',
-                                        style: TextStyle(
-                                          color: colors.muted,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      // Scaled down 20% along with the other
-                                      // two sky-overlay controls (see
-                                      // [_RollKnob]/[_ZoomSlider]'s own
-                                      // sizing) — Switch has no size
-                                      // parameter of its own, so this is the
-                                      // plain way to shrink it without
-                                      // losing its built-in tap/thumb-
-                                      // animation behavior.
-                                      // Colors come from the app's own
-                                      // switch theme, same as every other
-                                      // switch; only the 20% shrink is
-                                      // local, matching the other two
-                                      // sky-overlay controls' sizing.
-                                      Transform.scale(
-                                        scale: 0.8,
-                                        child: Switch(
-                                          value: widget.settings.showGrid,
-                                          onChanged: (value) {
-                                            widget.settings.setShowGrid(value);
-                                            setState(() {});
-                                          },
-                                        ),
-                                      ),
-                                    ],
+                              ),
+                              child: InkWell(
+                                customBorder: const CircleBorder(),
+                                onTap: () =>
+                                    _scaffoldKey.currentState?.openDrawer(),
+                                child: SizedBox(
+                                  width: 42,
+                                  height: 42,
+                                  child: Tooltip(
+                                    message: strings.openMenuAction,
+                                    child: Icon(
+                                      Icons.menu,
+                                      color: colors.gold,
+                                      size: 22,
                                     ),
                                   ),
                                 ),
                               ),
-                            if (_showGridControl &&
-                                (_showZoomControl || showRotation))
-                              const SizedBox(width: 12),
-                            if (_showZoomControl)
-                              _ZoomSlider(
-                                zoom: _zoom,
-                                minZoom: minZoomWithoutRepeats,
-                                maxZoom: _maxZoom,
-                                onChanged: (value) {
-                                  _stopInertia();
-                                  _flyController.stop();
-                                  setState(() => _zoom = value);
-                                },
+                            ),
+                          ),
+                        ),
+                      ),
+                    // The one overlay control with its colors inverted (solid
+                    // gold, dark text/icon) rather than the translucent navy disc
+                    // every other control uses — top-center and the most
+                    // prominent thing here on purpose, since it's the fastest way
+                    // off "wander and hope" navigation into the search popup.
+                    if (_showSearchButton)
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: SafeArea(
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(6),
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(
+                                    kRadiusField,
+                                  ),
+                                  boxShadow: goldGlow(
+                                    colors,
+                                    strength: 1.1,
+                                    size: 56,
+                                  ),
+                                ),
+                                child: Material(
+                                  color: colors.gold,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      kRadiusField,
+                                    ),
+                                    // Dark navy rather than the gold every other
+                                    // control's border uses — this button's own fill
+                                    // is already gold, so a gold border would
+                                    // disappear into it.
+                                    side: BorderSide(
+                                      color: colors.night,
+                                      width: kBorderWidthActive,
+                                    ),
+                                  ),
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(
+                                      kRadiusField,
+                                    ),
+                                    onTap: _openSearch,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 10,
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.search,
+                                            color: colors.onGold,
+                                            size: 18,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            strings.searchButtonLabel,
+                                            style: TextStyle(
+                                              color: colors.onGold,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ),
-                            if (_showZoomControl && showRotation)
-                              const SizedBox(width: 12),
-                            // Touch already has its own two-finger rotate
-                            // gesture (see `_handleScaleUpdate`'s
-                            // `details.rotation`), which is exactly why this
-                            // knob is hidden outright on mobile (see
-                            // [isTouchOnlyMobile]) — kept on desktop/web,
-                            // where there's no such gesture without it, and
-                            // still user-toggleable there via
-                            // [_showUiControlsMenu].
-                            if (showRotation)
-                              _RollKnob(
-                                angle: cameraRollAngle(_camera),
-                                onRoll: (delta) {
-                                  _stopInertia();
-                                  _flyController.stop();
-                                  setState(() => _camera = _camera.rolled(delta));
-                                },
+                            ),
+                          ),
+                        ),
+                      ),
+                    // Always visible regardless of the three toggles below — it's
+                    // the only way back to turning them on again, so it can't be
+                    // one of the things it itself hides.
+                    if (_showUiControlsButton)
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: SafeArea(
+                          child: Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: Material(
+                              color: colors.nightPanel.withValues(alpha: 0.75),
+                              shape: CircleBorder(
+                                side: BorderSide(
+                                  color: colors.gold,
+                                  width: kBorderWidthActive,
+                                ),
                               ),
-                          ],
+                              child: InkWell(
+                                customBorder: const CircleBorder(),
+                                onTap: () => _showUiControlsMenu(context),
+                                child: SizedBox(
+                                  width: 42,
+                                  height: 42,
+                                  child: Icon(
+                                    Icons.tune,
+                                    color: colors.gold,
+                                    size: 22,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    // The three toggleable controls (Grid/Zoom/Rotation), left to
+                    // right along the bottom — one shared row rather than three
+                    // independently-positioned corners, so [FittedBox] can shrink
+                    // all three together (never grow them past their natural
+                    // size) whenever a narrow screen can't fit them side by side
+                    // at full size; on anything wide enough, this is a no-op and
+                    // they render exactly as big as they'd otherwise be.
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: SafeArea(
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  if (_showGridControl)
+                                    Material(
+                                      color: colors.nightPanel.withValues(
+                                        alpha: 0.75,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          _bottomPillRadius,
+                                        ),
+                                        side: BorderSide(
+                                          color: colors.gold,
+                                          width: kBorderWidthActive,
+                                        ),
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 10,
+                                        ),
+                                        child: SizedBox(
+                                          height: _bottomPillHeight,
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                'Grid',
+                                                style: TextStyle(
+                                                  color: colors.muted,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                              // Scaled down 20% along with the other
+                                              // two sky-overlay controls (see
+                                              // [_RollKnob]/[_ZoomSlider]'s own
+                                              // sizing) — Switch has no size
+                                              // parameter of its own, so this is the
+                                              // plain way to shrink it without
+                                              // losing its built-in tap/thumb-
+                                              // animation behavior.
+                                              // Colors come from the app's own
+                                              // switch theme, same as every other
+                                              // switch; only the 20% shrink is
+                                              // local, matching the other two
+                                              // sky-overlay controls' sizing.
+                                              Transform.scale(
+                                                scale: 0.8,
+                                                child: Switch(
+                                                  value:
+                                                      widget.settings.showGrid,
+                                                  onChanged: (value) {
+                                                    widget.settings.setShowGrid(
+                                                      value,
+                                                    );
+                                                    setState(() {});
+                                                  },
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  if (_showGridControl &&
+                                      (_showZoomControl || showRotation))
+                                    const SizedBox(width: 12),
+                                  if (_showZoomControl)
+                                    _ZoomSlider(
+                                      zoom: _zoom,
+                                      minZoom: minZoomWithoutRepeats,
+                                      maxZoom: _maxZoom,
+                                      onChanged: (value) {
+                                        _stopInertia();
+                                        _flyController.stop();
+                                        setState(() => _zoom = value);
+                                      },
+                                    ),
+                                  if (_showZoomControl && showRotation)
+                                    const SizedBox(width: 12),
+                                  // Touch already has its own two-finger rotate
+                                  // gesture (see `_handleScaleUpdate`'s
+                                  // `details.rotation`), which is exactly why this
+                                  // knob is hidden outright on mobile (see
+                                  // [isTouchOnlyMobile]) — kept on desktop/web,
+                                  // where there's no such gesture without it, and
+                                  // still user-toggleable there via
+                                  // [_showUiControlsMenu].
+                                  if (showRotation)
+                                    _RollKnob(
+                                      angle: cameraRollAngle(_camera),
+                                      onRoll: (delta) {
+                                        _stopInertia();
+                                        _flyController.stop();
+                                        setState(
+                                          () => _camera = _camera.rolled(delta),
+                                        );
+                                      },
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-              ),
-              // The star FAB — an alternative way into the same menu the
-              // drawer opens (see [_openMenuModal]), tried alongside the
-              // drawer rather than replacing it. Deliberately not a disc/
-              // chrome control like every other overlay button here: no
-              // filled background, just a glowing gold ring around a
-              // white glyph — as close to [SkySupernova]'s own "white
-              // glyph inside a gold ring, glowing outward" look as a
-              // plain widget (no shader) can get, so it reads as one
-              // more thing burning up there rather than as UI sitting on
-              // top of it.
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Center(
-                      child: _MenuStarButton(onTap: _openMenuModal),
+                    // The star FAB — an alternative way into the same menu the
+                    // drawer opens (see [_openMenuModal]), tried alongside the
+                    // drawer rather than replacing it. Deliberately not a disc/
+                    // chrome control like every other overlay button here: no
+                    // filled background, just a glowing gold ring around a
+                    // white glyph — as close to [SkySupernova]'s own "white
+                    // glyph inside a gold ring, glowing outward" look as a
+                    // plain widget (no shader) can get, so it reads as one
+                    // more thing burning up there rather than as UI sitting on
+                    // top of it.
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: SafeArea(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Center(
+                            child: _MenuStarButton(onTap: _openMenuModal),
+                          ),
+                        ),
+                      ),
                     ),
+                  ],
+                ),
+              ),
+            ),
+            // A lit star's quick-look panel needs a real [ShareableLitStarCard]
+            // laid out (not just described) somewhere to capture — see
+            // [_shareQuickLookStar] — rendered here, far to the side, so it's
+            // never actually visible: [Opacity] would skip painting it
+            // entirely at 0, which [RenderRepaintBoundary.toImage] needs to
+            // have happened at least once, so an off-screen [Positioned] is
+            // used instead.
+            if (_quickLookStar case final star? when star.isLit)
+              Positioned(
+                left: -MediaQuery.sizeOf(context).width * 2,
+                top: 0,
+                width: MediaQuery.sizeOf(context).width,
+                height: MediaQuery.sizeOf(context).height,
+                child: RepaintBoundary(
+                  key: _quickLookShareKey,
+                  child: ShareableLitStarCard(
+                    star: star,
+                    project: _quickLookConstellation?.project,
                   ),
                 ),
               ),
-            ],
-          ),
+            // The quick-look panel itself — bottom half of the screen (see
+            // [_flyTo]'s own `anchorFraction` in [_openStarQuickLook], which
+            // lands the star in the top half to match), sliding in/out as
+            // [_quickLookStar] appears/disappears rather than popping a whole
+            // new route, so the sky stays visible (and its camera fly-to
+            // still animates) behind it.
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: MediaQuery.sizeOf(context).height * 0.5,
+              child: AnimatedSlide(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                offset: _quickLookStar == null
+                    ? const Offset(0, 1)
+                    : Offset.zero,
+                child: _buildQuickLookPanel(),
+              ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  /// [AnimatedSlide]'s own `offset` keeps this mounted the whole time (it's
+  /// what slides), so this can't just be `if (star != null) ... else
+  /// SizedBox.shrink()` inline in a collection literal — [_quickLookStar]
+  /// still has to resolve to *some* widget either way, hence a real method
+  /// rather than a collection `if`.
+  Widget _buildQuickLookPanel() {
+    final star = _quickLookStar;
+    if (star == null) return const SizedBox.shrink();
+    return StarQuickLookPanel(
+      star: star,
+      project: _quickLookConstellation?.project,
+      onClose: _closeStarQuickLook,
+      onView: _viewQuickLookStar,
+      onEdit: _editQuickLookStar,
+      onShare: star.isLit ? _shareQuickLookStar : null,
+      onDelete: star.dead ? null : _deleteQuickLookStar,
     );
   }
 }
@@ -1346,9 +1784,17 @@ class _MenuStarButton extends StatefulWidget {
 }
 
 class _MenuStarButtonState extends State<_MenuStarButton>
-    with SingleTickerProviderStateMixin {
-  // 2/3 of the previous (95) pass, rounded.
-  static const _iconSize = 64.0;
+    with TickerProviderStateMixin {
+  // 2/3 of the previous (95) pass, rounded, nudged down slightly again.
+  // Still what the ring/glow/canvas below size themselves off of — see
+  // [_starGlyphSize] for the star glyph's own, now-separate size.
+  static const _iconSize = 58.0;
+  // The star glyph itself, slightly smaller again than [_iconSize] —
+  // split out from it on purpose: shrinking [_iconSize] directly would
+  // have pulled the ring in to match too (see [_scale] below, sized off
+  // [_iconSize]), when only the star itself was asked to shrink this
+  // time.
+  static const _starGlyphSize = _iconSize * 0.9;
   static const _tapTargetSize = 110.0;
   // Big enough that the shader's own glow/spikes fade out naturally well
   // before this canvas's own edge, rather than clipping hard against a
@@ -1360,17 +1806,74 @@ class _MenuStarButtonState extends State<_MenuStarButton>
   // (not diameter) lands right at the icon's edge instead of sitting
   // just outside it.
   static const _scale = _iconSize / (2 * 0.09) * 0.85;
+  // The white ring + white star glyph [_MenuStarSupernovaPainter] used
+  // to draw on top of the shader's own glow are swapped out for the
+  // app's actual logo below, while a couple of looks are being compared
+  // — off rather than deleted, so flipping it back to true restores
+  // them exactly as they were.
+  static const _showStarRingIcon = false;
+  // The same disc already used at the top of the menu (see
+  // [SkyMenuContent._logoAsset]) at that exact same size, but with its
+  // gold ring/disc recolored to white — a plain asset swap (see
+  // assets/icon/app_icon_ring_centered_white.png) rather than a runtime
+  // tint. The header keeps the original gold version.
+  static const _logoAsset = 'assets/icon/app_icon_ring_centered_white.png';
+  static const _logoSize = 72.0;
+  // Drawn into the same canvas as the shader's own glow (see
+  // [_MenuStarSupernovaPainter.paint]) at this alpha, with plain normal
+  // (srcOver) blending — [BlendMode.overlay] was tried first (see the
+  // gallery in `MenuButtonGalleryScreen`) but read as too washed-out;
+  // normal blending at 100% keeps the logo solid white instead.
+  static const _logoOverlayOpacity = 1.0;
+  // The "MENU" caption under the button, off for now — not deleted, see
+  // [_showStarRingIcon] just above for the same pattern.
+  static const _showMenuLabel = false;
+  // Short enough that a deliberate hold doesn't feel like it's waiting on
+  // anything, long enough that a stray touch while panning/zooming the
+  // sky underneath this button has a real window to read as "not
+  // actually a hold on this" before the menu opens.
+  static const _chargeDuration = Duration(milliseconds: 500);
 
   ui.FragmentShader? _shader;
+  // Decoded once and kept around rather than reloaded every frame — drawn
+  // straight into [_MenuStarSupernovaPainter]'s own canvas (see
+  // [paintLogo]) rather than as an [Image] widget, so it can share that
+  // canvas's own blend-mode-against-the-glow treatment the same way the
+  // star glyph it replaced did.
+  ui.Image? _logoImage;
   late final Ticker _ticker;
   Duration _elapsed = Duration.zero;
+  // A press doesn't open the menu itself — it charges this for as long
+  // as the finger stays down, and the menu only opens once it reaches
+  // 1.0 (see the status listener in initState); let go early and it
+  // reverses back to 0 instead of firing. Its own value, read straight
+  // in build() below (already rebuilding every frame off [_ticker]), is
+  // what drives `supernovaGlow`'s own [chargeGlow].
+  late final AnimationController _chargeController;
+  // Shown briefly whenever a press lets go before the charge completes
+  // — a plain tap reads as "nothing happened" otherwise, with no clue
+  // that holding is what this button actually wants. Visible for
+  // [_hintVisibleDuration], then faded out quickly (see the
+  // AnimatedOpacity in build()) rather than lingering.
+  bool _showHoldHint = false;
+  Timer? _hintTimer;
+  static const _hintVisibleDuration = Duration(milliseconds: 1100);
 
   @override
   void initState() {
     super.initState();
     _ticker = createTicker((elapsed) => setState(() => _elapsed = elapsed))
       ..start();
+    _chargeController =
+        AnimationController(vsync: this, duration: _chargeDuration)
+          ..addStatusListener((status) {
+            if (status == AnimationStatus.completed) {
+              _chargeController.reset();
+              widget.onTap();
+            }
+          });
     _loadShader();
+    _loadLogoImage();
   }
 
   Future<void> _loadShader() async {
@@ -1381,10 +1884,43 @@ class _MenuStarButtonState extends State<_MenuStarButton>
     setState(() => _shader = program.fragmentShader());
   }
 
+  Future<void> _loadLogoImage() async {
+    final bytes = await rootBundle.load(_logoAsset);
+    final codec = await ui.instantiateImageCodec(bytes.buffer.asUint8List());
+    final frame = await codec.getNextFrame();
+    if (!mounted) return;
+    setState(() => _logoImage = frame.image);
+  }
+
+  void _handlePressStart() {
+    _chargeController.forward();
+  }
+
+  // Shared by both onTapUp (a genuine release) and onTapCancel (the
+  // gesture arena handing this touch to something else, e.g. a pan
+  // starting on top of this button) — either way, letting go before
+  // reaching 1.0 backs the charge off rather than leaving it stuck
+  // wherever it was, and is also exactly when the hint below is worth
+  // showing — the press genuinely wasn't held long enough to open
+  // anything.
+  void _handlePressEnd() {
+    if (_chargeController.status == AnimationStatus.forward) {
+      _chargeController.reverse();
+      _hintTimer?.cancel();
+      setState(() => _showHoldHint = true);
+      _hintTimer = Timer(_hintVisibleDuration, () {
+        if (mounted) setState(() => _showHoldHint = false);
+      });
+    }
+  }
+
   @override
   void dispose() {
     _ticker.dispose();
+    _chargeController.dispose();
+    _hintTimer?.cancel();
     _shader?.dispose();
+    _logoImage?.dispose();
     super.dispose();
   }
 
@@ -1392,40 +1928,161 @@ class _MenuStarButtonState extends State<_MenuStarButton>
   Widget build(BuildContext context) {
     final shader = _shader;
 
-    return Material(
-      color: Colors.transparent,
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: widget.onTap,
-        child: SizedBox(
-          width: _tapTargetSize,
-          height: _tapTargetSize,
-          child: Stack(
-            alignment: Alignment.center,
-            clipBehavior: Clip.none,
-            children: [
-              if (shader != null)
-                IgnorePointer(
-                  child: SizedBox(
-                    width: _glowCanvasSize,
-                    height: _glowCanvasSize,
-                    child: CustomPaint(
-                      painter: _MenuStarSupernovaPainter(
-                        shader: shader,
-                        time:
-                            _elapsed.inMicroseconds /
-                            Duration.microsecondsPerSecond,
-                        scale: _scale,
-                        iconSize: _iconSize,
-                      ),
-                    ),
-                  ),
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.topCenter,
+      children: [
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [_buildButtonAndLabel(shader)],
+        ),
+        // Floating above the button via [Positioned] rather than
+        // sitting in the Column's own flow — appearing/disappearing
+        // shouldn't nudge the button or the MENU label up and down
+        // every time it toggles.
+        Positioned(
+          top: -30,
+          child: IgnorePointer(
+            child: AnimatedOpacity(
+              opacity: _showHoldHint ? 1.0 : 0.0,
+              // Fades in a little slower than it fades out — matches
+              // asking for it to *disappear* "molto velocemente"
+              // specifically, not necessarily appear that fast too.
+              duration: Duration(milliseconds: _showHoldHint ? 200 : 120),
+              child: Text(
+                context.strings.menuButtonHoldHint.toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.1,
+                  shadows: [
+                    Shadow(color: Color(0xFF6E8CD8), blurRadius: 6),
+                    Shadow(color: Color(0xFF6E8CD8), blurRadius: 14),
+                  ],
                 ),
-            ],
+              ),
+            ),
           ),
         ),
-      ),
+      ],
+    );
+  }
+
+  Widget _buildButtonAndLabel(ui.FragmentShader? shader) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Material(
+          color: Colors.transparent,
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            // The real logic lives in onTapDown/onTapUp/onTapCancel
+            // below — [onTap] itself stays a no-op, kept only because
+            // InkWell needs at least one tap handler set to wire up its
+            // tap recognizer at all (so onTapDown/onTapUp/onTapCancel
+            // actually fire).
+            onTap: () {},
+            onTapDown: (_) => _handlePressStart(),
+            onTapUp: (_) => _handlePressEnd(),
+            onTapCancel: _handlePressEnd,
+            // No ripple/highlight of its own — [supernovaGlow]'s own
+            // [chargeGlow] is the only feedback a press gets here;
+            // Android's default translucent disc underneath would just
+            // double up on it, off-center from the actual glow and in
+            // a flat white that doesn't match.
+            splashColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+            splashFactory: NoSplash.splashFactory,
+            child: SizedBox(
+              width: _tapTargetSize,
+              height: _tapTargetSize,
+              child: Stack(
+                alignment: Alignment.center,
+                clipBehavior: Clip.none,
+                children: [
+                  if (shader != null)
+                    IgnorePointer(
+                      // A plain [SizedBox] here doesn't actually work:
+                      // this sits inside a Stack that's inside a tight
+                      // 110x110 SizedBox, and Stack's own
+                      // StackFit.loose only loosens the *minimum* it
+                      // passes to non-positioned children — the maximum
+                      // stays 110, so a 384x384 SizedBox got silently
+                      // clamped down to 110x110 despite the Stack's own
+                      // `clipBehavior: Clip.none` (nothing was ever
+                      // actually laid out bigger, so there was nothing
+                      // to overflow). [OverflowBox] overrides its
+                      // child's constraints outright, regardless of
+                      // what it itself was given, which is what
+                      // actually lets this canvas be bigger than the
+                      // tap target around it.
+                      child: OverflowBox(
+                        minWidth: _glowCanvasSize,
+                        maxWidth: _glowCanvasSize,
+                        minHeight: _glowCanvasSize,
+                        maxHeight: _glowCanvasSize,
+                        child: CustomPaint(
+                          painter: _MenuStarSupernovaPainter(
+                            shader: shader,
+                            time:
+                                _elapsed.inMicroseconds /
+                                Duration.microsecondsPerSecond,
+                            scale: _scale,
+                            starGlyphSize: _starGlyphSize,
+                            charge: _chargeController.value,
+                            showStarAndRing: _showStarRingIcon,
+                            logoImage: _showStarRingIcon ? null : _logoImage,
+                            logoSize: _logoSize,
+                            logoOpacity: _logoOverlayOpacity,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // Just a plain caption — makes it clear at a glance that this
+        // is a menu button, not another life-area supernova or a
+        // decoration; deliberately small and secondary next to the
+        // button itself, not competing with it. The two stacked
+        // [Shadow]s are the same blue as the button's own glow — a
+        // tight one for a bright core right against the letters, a
+        // wide, soft one behind that — so the caption reads as lit by
+        // the same light rather than just sitting near it.
+        //
+        // Pulled up with a negative [Transform.translate] rather than
+        // just a smaller/zero gap above — the Column still reserves the
+        // gap-less layout space below the button first, then this
+        // shifts purely the *painted* position up into it, closer than
+        // a real layout gap could go without the button and caption
+        // starting to overlap in hit-testing too.
+        if (_showMenuLabel)
+          Transform.translate(
+            offset: const Offset(0, -15),
+            child: Text(
+              // Reuses [openMenuAction] (already the localized "Menu",
+              // used elsewhere as this same button's tooltip) rather than
+              // a second, separate string for the same word — just
+              // uppercased here to match this caption's own small-caps
+              // styling, which the tooltip text doesn't need.
+              context.strings.openMenuAction.toUpperCase(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.5,
+                shadows: [
+                  Shadow(color: Color(0xFF6E8CD8), blurRadius: 6),
+                  Shadow(color: Color(0xFF6E8CD8), blurRadius: 18),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -1435,13 +2092,36 @@ class _MenuStarSupernovaPainter extends CustomPainter {
     required this.shader,
     required this.time,
     required this.scale,
-    required this.iconSize,
+    required this.starGlyphSize,
+    required this.charge,
+    required this.showStarAndRing,
+    required this.logoImage,
+    required this.logoSize,
+    required this.logoOpacity,
   });
 
   final ui.FragmentShader shader;
   final double time;
   final double scale;
-  final double iconSize;
+  // The star glyph's own rendered size — deliberately not tied to
+  // [scale] (which the ring/glow canvas size off of instead), so the
+  // star can be resized on its own without dragging the ring along.
+  final double starGlyphSize;
+  // 0..1 — see `_MenuStarButtonState._chargeController`.
+  final double charge;
+  // See `_MenuStarButtonState._showStarRingIcon` — the shader's own
+  // additive glow (drawn above, before this flag is even checked) always
+  // stays; only the white ring + white star glyph below it are gated by
+  // this, in favor of the app's own logo drawn on top instead.
+  final bool showStarAndRing;
+  // Null while the asset is still decoding, or while [showStarAndRing]
+  // is true (the older ring+star look, with no logo to draw) — see
+  // `_MenuStarButtonState._loadLogoImage`.
+  final ui.Image? logoImage;
+  // Matches [SkyMenuContent]'s own header logo size.
+  final double logoSize;
+  // See `_MenuStarButtonState._logoOverlayOpacity`.
+  final double logoOpacity;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1449,7 +2129,8 @@ class _MenuStarSupernovaPainter extends CustomPainter {
       ..setFloat(0, size.width)
       ..setFloat(1, size.height)
       ..setFloat(2, time)
-      ..setFloat(3, scale);
+      ..setFloat(3, scale)
+      ..setFloat(4, charge);
 
     canvas.drawRect(
       Offset.zero & size,
@@ -1458,58 +2139,59 @@ class _MenuStarSupernovaPainter extends CustomPainter {
         ..blendMode = BlendMode.plus,
     );
 
-    // The same "rotating decoration" [SkySupernova._paintOutlineIcon]
-    // draws behind each life area's own icon: a blurred gradient stroke
-    // of the glyph's own outline, spun around its center by an angle
-    // that grows with [time] — a rotating *gradient*, not a rotating
-    // shape, so the highlight travels around the star without the star
-    // itself turning. What actually pulses here isn't brightness (see
-    // [supernovaGlow]'s own much subtler breathing `pulse`, still there
-    // underneath) but which edge of the glyph is lit.
-    const glowGradientColors = [Color(0xFFFFEFA0), Color(0xFFF0C078)];
-    void paintRotatingGlow() {
-      final text = String.fromCharCode(Icons.star.codePoint);
-      final center = Offset(size.width, size.height) / 2;
-      final glowAngle = time * 2.2;
-      final glowAxis =
-          Offset(math.cos(glowAngle), math.sin(glowAngle)) * (iconSize / 2);
-      final glowShader = ui.Gradient.linear(
-        center - glowAxis,
-        center + glowAxis,
-        glowGradientColors,
-      );
-      final glowPainter = TextPainter(textDirection: TextDirection.ltr)
-        ..text = TextSpan(
-          text: text,
-          style: TextStyle(
-            fontSize: iconSize,
-            fontFamily: Icons.star.fontFamily,
-            package: Icons.star.fontPackage,
-            foreground: Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = iconSize * 0.08
-              ..shader = glowShader
-              ..maskFilter = MaskFilter.blur(BlurStyle.normal, iconSize * 0.04),
-          ),
-        )
-        ..layout();
-      final topLeft =
-          center - Offset(glowPainter.width, glowPainter.height) / 2;
-      glowPainter.paint(canvas, topLeft);
-    }
+    // Tried, disabled: the same "rotating decoration"
+    // [SkySupernova._paintOutlineIcon] draws behind each life area's own
+    // icon — a blurred gradient stroke of the glyph's own outline, spun
+    // around its center. That's exactly the problem here: it's a glow
+    // that traces the star's own contour, and on this much smaller
+    // button it just read as the star having its own outline glow
+    // rather than a separate decoration — see [paintRing] below and
+    // `supernovaGlow`'s own [nearGlow] for the shapeless central glow
+    // that replaced it instead.
+    //
+    // const glowGradientColors = [Color(0xFFFFEFA0), Color(0xFFF0C078)];
+    // void paintRotatingGlow() {
+    //   final text = String.fromCharCode(Icons.star.codePoint);
+    //   final center = Offset(size.width, size.height) / 2;
+    //   final glowAngle = time * 2.2;
+    //   final glowAxis =
+    //       Offset(math.cos(glowAngle), math.sin(glowAngle)) * (iconSize / 2);
+    //   final glowShader = ui.Gradient.linear(
+    //     center - glowAxis,
+    //     center + glowAxis,
+    //     glowGradientColors,
+    //   );
+    //   final glowPainter = TextPainter(textDirection: TextDirection.ltr)
+    //     ..text = TextSpan(
+    //       text: text,
+    //       style: TextStyle(
+    //         fontSize: iconSize,
+    //         fontFamily: Icons.star.fontFamily,
+    //         package: Icons.star.fontPackage,
+    //         foreground: Paint()
+    //           ..style = PaintingStyle.stroke
+    //           ..strokeWidth = iconSize * 0.08
+    //           ..shader = glowShader
+    //           ..maskFilter = MaskFilter.blur(BlurStyle.normal, iconSize * 0.04),
+    //       ),
+    //     )
+    //     ..layout();
+    //   final topLeft =
+    //       center - Offset(glowPainter.width, glowPainter.height) / 2;
+    //   glowPainter.paint(canvas, topLeft);
+    // }
 
-    // [Icons.stars] turned out to *be* a disc — a filled circle with a
-    // star-shaped hole cut out, no separate star glyph inside it — so it
-    // added nothing on top of this glow and stays hidden. Only
-    // [Icons.star] (the plain solid star) is drawn, blended with the
-    // glow via [BlendMode.overlay] rather than pasted flat on top of it.
+    // Tried dark navy here (and in [paintRing] below) for both, just to
+    // see it — back to white now. [BlendMode.overlay] only ever
+    // brightens what's under it, which is exactly why navy didn't read
+    // as dark there; white doesn't have that problem.
     void paintIcon(IconData icon, double opacity) {
       final text = String.fromCharCode(icon.codePoint);
       final iconPainter = TextPainter(textDirection: TextDirection.ltr)
         ..text = TextSpan(
           text: text,
           style: TextStyle(
-            fontSize: iconSize,
+            fontSize: starGlyphSize,
             fontFamily: icon.fontFamily,
             package: icon.fontPackage,
             foreground: Paint()
@@ -1524,15 +2206,119 @@ class _MenuStarSupernovaPainter extends CustomPainter {
       iconPainter.paint(canvas, topLeft);
     }
 
-    paintRotatingGlow();
-    paintIcon(Icons.star, 0.8);
+    // Used to be part of the shader's own additive glow (drawn first,
+    // via [shader] above) — but at 0.09 world units its radius sits
+    // well inside the icon's own, so drawn there it was the icon
+    // covering most of the ring rather than the ring sitting around
+    // the icon. Painted here instead, after the icon, so it's
+    // unambiguously the outermost thing — same idea as the real
+    // supernovas' own fixed outer ring (see
+    // `SkySupernova._paintOutlineIcon`'s [outlinePainter], also drawn
+    // on top of its icon), just a plain stroked circle rather than a
+    // glyph-shaped one since this ring was never meant to trace the
+    // star's own outline.
+    void paintRing() {
+      final center = Offset(size.width, size.height) / 2;
+      // [scale] is the exact same world-units-to-pixels factor passed
+      // to the shader as `uScale`; 0.09/0.016 match that shader's own
+      // former `ringRadius`/ring width.
+      final radius = 0.09 * scale;
+      final width = 0.016 * scale;
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = width * 3
+          ..color = Colors.white.withValues(alpha: 0.35)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, width * 2)
+          ..blendMode = BlendMode.plus,
+      );
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = width
+          ..color = Colors.white.withValues(alpha: 0.8)
+          ..blendMode = BlendMode.plus,
+      );
+    }
+
+    // Drawn straight into this same canvas, after the glow.
+    void paintLogo() {
+      final image = logoImage;
+      if (image == null) return;
+      final center = Offset(size.width, size.height) / 2;
+      final rect = Rect.fromCenter(
+        center: center,
+        width: logoSize,
+        height: logoSize,
+      );
+      final src = Rect.fromLTWH(
+        0,
+        0,
+        image.width.toDouble(),
+        image.height.toDouble(),
+      );
+
+      // 1. The crisp logo first, clipped to a circle (the source PNG is a
+      // full square, transparent outside its own navy border — left
+      // unclipped, that square's corners would show). [BlendMode.softLight]
+      // instead of plain normal compositing: lets the glow drawn earlier on
+      // this same canvas modulate the logo's whites/darks rather than just
+      // sitting flatly on top of it.
+      canvas.save();
+      canvas.clipPath(Path()..addOval(rect));
+      canvas.drawImageRect(
+        image,
+        src,
+        rect,
+        Paint()
+          ..color = Colors.white.withValues(alpha: logoOpacity)
+          ..blendMode = BlendMode.softLight
+          ..filterQuality = FilterQuality.high,
+      );
+      canvas.restore();
+
+      // 2. A soft, blurred, additive bloom drawn *after* the crisp logo —
+      // it has to come last, or the crisp pass above (opaque, covering
+      // almost this entire canvas) just paints straight over it and hides
+      // it entirely. Deliberately unclipped, so the star's own light
+      // visibly spreads past the disc's own edge into the glow around it
+      // and eats into the dark disc immediately around it, rather than
+      // either blocking the glow outright (opaque) or just letting it
+      // passively show through (transparency) — "consumes what's around
+      // it" rather than "lets it pass through".
+      canvas.drawImageRect(
+        image,
+        src,
+        rect,
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.7)
+          ..blendMode = BlendMode.plus
+          ..imageFilter = ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8)
+          ..filterQuality = FilterQuality.high,
+      );
+    }
+
+    if (showStarAndRing) {
+      paintIcon(Icons.star, 0.8);
+      paintRing();
+    }
+    paintLogo();
   }
 
   @override
   bool shouldRepaint(covariant _MenuStarSupernovaPainter oldDelegate) =>
       oldDelegate.time != time ||
       oldDelegate.scale != scale ||
-      oldDelegate.iconSize != iconSize;
+      oldDelegate.starGlyphSize != starGlyphSize ||
+      oldDelegate.charge != charge ||
+      oldDelegate.showStarAndRing != showStarAndRing ||
+      oldDelegate.logoImage != logoImage ||
+      oldDelegate.logoSize != logoSize ||
+      oldDelegate.logoOpacity != logoOpacity;
 }
 
 /// A two-finger rotate gesture (see `_handleScaleUpdate`) is touch-only —
@@ -1651,7 +2437,10 @@ class _RollKnobState extends State<_RollKnob> {
             left: dotCenter.dx - _dotSize / 2,
             top: dotCenter.dy - _dotSize / 2,
             child: DecoratedBox(
-              decoration: BoxDecoration(shape: BoxShape.circle, color: colors.gold),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: colors.gold,
+              ),
               child: SizedBox(width: _dotSize, height: _dotSize),
             ),
           ),
@@ -1716,55 +2505,55 @@ class _ZoomSlider extends StatelessWidget {
         child: SizedBox(
           height: _bottomPillHeight,
           child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Zoom', style: TextStyle(color: colors.muted, fontSize: 12)),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: _trackLength,
-              height: 24,
-              child: SliderTheme(
-                // Only the track height and the dimmer inactive track are
-                // local: this slider sits on the sky itself, where the
-                // app's own navy track would vanish into the background.
-                data: SliderTheme.of(context).copyWith(
-                  inactiveTrackColor: colors.muted.withValues(alpha: 0.35),
-                  trackHeight: 3,
-                ),
-                child: Slider(
-                  min: logMin,
-                  max: logMax,
-                  value: logValue,
-                  onChanged: (value) => onChanged(math.exp(value)),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Fixed width (enough for "100%", the widest this ever reads)
-            // rather than sizing to the current text — otherwise the whole
-            // pill (and everything sharing its row) subtly resizes as the
-            // digit count changes while dragging.
-            SizedBox(
-              width: 34,
-              child: Text(
-                '$percent%',
-                textAlign: TextAlign.right,
-                // Belt-and-braces alongside the fixed width above: forces
-                // exactly one line regardless of how tight that width is,
-                // so "100%" (the one value with 3 digits) can never wrap
-                // its "%" onto a second line and grow this pill taller
-                // than the Grid switch sharing its row.
-                maxLines: 1,
-                softWrap: false,
-                overflow: TextOverflow.visible,
-                style: TextStyle(
-                  color: colors.gold,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Zoom', style: TextStyle(color: colors.muted, fontSize: 12)),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: _trackLength,
+                height: 24,
+                child: SliderTheme(
+                  // Only the track height and the dimmer inactive track are
+                  // local: this slider sits on the sky itself, where the
+                  // app's own navy track would vanish into the background.
+                  data: SliderTheme.of(context).copyWith(
+                    inactiveTrackColor: colors.muted.withValues(alpha: 0.35),
+                    trackHeight: 3,
+                  ),
+                  child: Slider(
+                    min: logMin,
+                    max: logMax,
+                    value: logValue,
+                    onChanged: (value) => onChanged(math.exp(value)),
+                  ),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(width: 8),
+              // Fixed width (enough for "100%", the widest this ever reads)
+              // rather than sizing to the current text — otherwise the whole
+              // pill (and everything sharing its row) subtly resizes as the
+              // digit count changes while dragging.
+              SizedBox(
+                width: 34,
+                child: Text(
+                  '$percent%',
+                  textAlign: TextAlign.right,
+                  // Belt-and-braces alongside the fixed width above: forces
+                  // exactly one line regardless of how tight that width is,
+                  // so "100%" (the one value with 3 digits) can never wrap
+                  // its "%" onto a second line and grow this pill taller
+                  // than the Grid switch sharing its row.
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.visible,
+                  style: TextStyle(
+                    color: colors.gold,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

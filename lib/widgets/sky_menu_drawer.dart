@@ -88,6 +88,9 @@ class SkyMenuDrawer extends StatelessWidget {
 /// every entry uses a plain [Icon] now.)
 ///
 /// What each group is:
+/// - **Search** — [onSearch] alone, first: the fastest way off "wander and
+///   hope" navigation deserves to be found before anything else, not
+///   buried alongside the statistics page it used to share a section with.
 /// - **Activity** — the things you *make*: [onLightAStar]/[onNewConstellation]
 ///   sit behind one entry ("Light Your Sky") that opens a small chooser
 ///   rather than claiming two rows, [onVisions] ("Imagine Your Dreams"),
@@ -95,7 +98,7 @@ class SkyMenuDrawer extends StatelessWidget {
 /// - **Crisis** — [onAdmire] ("Find Your Light"), right under Activity: what
 ///   it's *for* (a place to go when things are hard, reached in as few taps
 ///   as making something) matters more here than it being its own category.
-/// - **Data** — ways of *looking back*: search and the statistics page.
+/// - **Data** — [onStatistics], a way of *looking back*.
 /// - **Social** — [onFriends], sketched in the same way as Shooting Stars.
 /// - **Info** — just the metaphor guide. Onboarding replay moved back to
 ///   Settings' debug tools (a dev aid, not something worth its own
@@ -117,6 +120,8 @@ class SkyMenuContent extends StatelessWidget {
     required this.onMetaphor,
     required this.onSettings,
     this.detailed = false,
+    this.scrollController,
+    this.physics,
   });
 
   final VoidCallback onLightAStar;
@@ -132,6 +137,19 @@ class SkyMenuContent extends StatelessWidget {
 
   /// See the class doc comment — off for the drawer, on for the modal.
   final bool detailed;
+
+  /// [SkyMenuModalFrame] needs to be able to read this list's own
+  /// scroll position (to know whether it's at its own top) — null (the
+  /// default) lets the list use its own implicit controller instead,
+  /// same as before.
+  final ScrollController? scrollController;
+
+  /// [SkyMenuModalFrame] locks this list's own scrolling for the
+  /// duration of a pull-to-dismiss over its content, so its own
+  /// Scrollable never moves in parallel with the frame the pull is
+  /// actually meant to move — null (the default) lets the list use its
+  /// own default physics.
+  final ScrollPhysics? physics;
 
   // The same disc icon already used as the phone's app icon (the ring +
   // star mark, pre-composited over the app's night background).
@@ -266,11 +284,14 @@ class SkyMenuContent extends StatelessWidget {
               )
             : null,
         onTap: () {
-          // Closed here rather than by each caller, so no action can leave
-          // the menu open behind the page it just pushed — works whether
-          // this content is inside the Drawer or a modal bottom sheet,
-          // since both dismiss via the same Navigator.pop.
-          Navigator.of(context).pop();
+          // Compact mode (the Drawer) still closes first here, same as
+          // always — standard drawer UX, straight to the destination.
+          // Detailed mode (the modal) stays open instead: the page (or
+          // popup) this opens goes on *top* of it rather than replacing
+          // it, so coming back from that page — or closing that popup —
+          // lands right back on the modal, open where it was left,
+          // instead of dropping back onto the bare Sky underneath it.
+          if (!detailed) Navigator.of(context).pop();
           onTap();
         },
       );
@@ -290,135 +311,156 @@ class SkyMenuContent extends StatelessWidget {
       );
     }
 
-    return Column(
+    final list = ListView(
+      controller: scrollController,
+      physics: physics,
+      padding: EdgeInsets.zero,
       children: [
-        Expanded(
-          child: ListView(
-            padding: EdgeInsets.zero,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+          child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-                child: Column(
-                  children: [
-                    ClipOval(
-                      child: Image.asset(_logoAsset, width: 72, height: 72),
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      'Victory Stars',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: colors.text,
-                        fontFamily: kFontBranding,
-                        fontSize: detailed ? 46 : 34,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      strings.aboutTagline,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: colors.muted,
-                        fontSize: detailed ? 18 : 14,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
+              ClipOval(
+                child: Image.asset(_logoAsset, width: 72, height: 72),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Victory Stars',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: colors.text,
+                  fontFamily: kFontBranding,
+                  fontSize: detailed ? 46 : 34,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
-              if (!detailed) Divider(color: colors.nightBorder, height: 1),
-              sectionHeader(strings.menuActivitySection),
-              if (!detailed) const SizedBox(height: 8),
-              entry(
-                icon: Icons.auto_awesome,
-                label: strings.menuLightYourSky,
-                description: strings.menuLightYourSkyDescription,
-                onTap: () {
-                  // Reopening on the next frame: the menu's own
-                  // Navigator.pop (in entry()'s onTap) has to finish
-                  // closing it first, or the sheet opens behind the
-                  // closing menu instead of on top of the Sky.
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _openLightYourSkyChooser(context);
-                  });
-                },
-              ),
-              entry(
-                icon: Icons.flare,
-                label: strings.menuImagineYourDreams,
-                description: strings.menuImagineYourDreamsDescription,
-                onTap: onVisions,
-              ),
-              entry(
-                icon: Icons.auto_fix_high,
-                label: strings.menuShootingStars,
-                description: strings.menuShootingStarsDescription,
-                onTap: onShootingStars,
-              ),
-
-              if (!detailed) Divider(color: colors.nightBorder, height: 1),
-              sectionHeader(strings.menuCrisisSection),
-              if (!detailed) const SizedBox(height: 8),
-              entry(
-                icon: Icons.tips_and_updates,
-                label: strings.menuFindYourLight,
-                description: strings.menuFindYourLightDescription,
-                onTap: onAdmire,
-              ),
-
-              if (!detailed) Divider(color: colors.nightBorder, height: 1),
-              sectionHeader(strings.menuDataSection),
-              if (!detailed) const SizedBox(height: 8),
-              entry(
-                icon: Icons.saved_search,
-                label: strings.menuSearch,
-                description: strings.menuSearchDescription,
-                onTap: onSearch,
-              ),
-              entry(
-                icon: Icons.bar_chart_outlined,
-                label: strings.menuStatistics,
-                description: strings.menuStatisticsDescription,
-                onTap: onStatistics,
-              ),
-
-              if (!detailed) Divider(color: colors.nightBorder, height: 1),
-              sectionHeader(strings.socialSection),
-              if (!detailed) const SizedBox(height: 8),
-              entry(
-                icon: Icons.people,
-                label: strings.menuFriends,
-                description: strings.menuFriendsDescription,
-                onTap: onFriends,
-              ),
-
-              if (!detailed) Divider(color: colors.nightBorder, height: 1),
-              sectionHeader(strings.menuInfoSection),
-              if (!detailed) const SizedBox(height: 8),
-              entry(
-                icon: Icons.auto_stories_outlined,
-                label: strings.menuMetaphor,
-                description: strings.menuMetaphorDescription,
-                onTap: onMetaphor,
-              ),
-
-              // In [detailed] mode (the modal), Settings is just one more
-              // section in the same scrollable list as everything else —
-              // it only gets pulled out and pinned below in compact mode
-              // (the drawer); see the non-detailed branch further down.
-              if (detailed) ...[
-                sectionHeader(strings.menuSettings),
-                entry(
-                  icon: Icons.settings_outlined,
-                  label: strings.menuSettings,
-                  description: strings.menuSettingsDescription,
-                  onTap: onSettings,
+              const SizedBox(height: 8),
+              Text(
+                strings.aboutTagline,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: colors.muted,
+                  fontSize: detailed ? 18 : 14,
+                  height: 1.4,
                 ),
-              ],
+              ),
             ],
           ),
         ),
+        if (!detailed) Divider(color: colors.nightBorder, height: 1),
+        sectionHeader(strings.menuSearchSection),
+        if (!detailed) const SizedBox(height: 8),
+        entry(
+          icon: Icons.saved_search,
+          label: strings.menuSearch,
+          description: strings.menuSearchDescription,
+          onTap: onSearch,
+        ),
+
+        if (!detailed) Divider(color: colors.nightBorder, height: 1),
+        sectionHeader(strings.menuActivitySection),
+        if (!detailed) const SizedBox(height: 8),
+        entry(
+          icon: Icons.auto_awesome,
+          label: strings.menuLightYourSky,
+          description: strings.menuLightYourSkyDescription,
+          onTap: () {
+            // Reopening on the next frame: in compact mode (the
+            // Drawer), the menu's own Navigator.pop (in entry()'s
+            // onTap) has to finish closing it first, or the sheet
+            // opens behind the closing menu instead of on top of
+            // the Sky. Detailed mode (the modal) doesn't pop at
+            // all any more, so there's nothing to race there — the
+            // one-frame defer is just harmless overhead in that
+            // case, not worth a separate code path to skip it.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _openLightYourSkyChooser(context);
+            });
+          },
+        ),
+        entry(
+          icon: Icons.flare,
+          label: strings.menuImagineYourDreams,
+          description: strings.menuImagineYourDreamsDescription,
+          onTap: onVisions,
+        ),
+        entry(
+          icon: Icons.auto_fix_high,
+          label: strings.menuShootingStars,
+          description: strings.menuShootingStarsDescription,
+          onTap: onShootingStars,
+        ),
+
+        if (!detailed) Divider(color: colors.nightBorder, height: 1),
+        sectionHeader(strings.menuCrisisSection),
+        if (!detailed) const SizedBox(height: 8),
+        entry(
+          icon: Icons.tips_and_updates,
+          label: strings.menuFindYourLight,
+          description: strings.menuFindYourLightDescription,
+          onTap: onAdmire,
+        ),
+
+        if (!detailed) Divider(color: colors.nightBorder, height: 1),
+        sectionHeader(strings.menuDataSection),
+        if (!detailed) const SizedBox(height: 8),
+        entry(
+          icon: Icons.bar_chart_outlined,
+          label: strings.menuStatistics,
+          description: strings.menuStatisticsDescription,
+          onTap: onStatistics,
+        ),
+
+        if (!detailed) Divider(color: colors.nightBorder, height: 1),
+        sectionHeader(strings.socialSection),
+        if (!detailed) const SizedBox(height: 8),
+        entry(
+          icon: Icons.people,
+          label: strings.menuFriends,
+          description: strings.menuFriendsDescription,
+          onTap: onFriends,
+        ),
+
+        if (!detailed) Divider(color: colors.nightBorder, height: 1),
+        sectionHeader(strings.menuInfoSection),
+        if (!detailed) const SizedBox(height: 8),
+        entry(
+          icon: Icons.auto_stories_outlined,
+          label: strings.menuMetaphor,
+          description: strings.menuMetaphorDescription,
+          onTap: onMetaphor,
+        ),
+
+        // In [detailed] mode (the modal), Settings is just one more
+        // section in the same scrollable list as everything else —
+        // it only gets pulled out and pinned below in compact mode
+        // (the drawer); see the non-detailed branch further down.
+        if (detailed) ...[
+          sectionHeader(strings.menuSettings),
+          entry(
+            icon: Icons.settings_outlined,
+            label: strings.menuSettings,
+            description: strings.menuSettingsDescription,
+            onTap: onSettings,
+          ),
+          // Settings is the last entry in this list, with nothing
+          // below it — every *other* entry gets a "next section"
+          // to breathe against (this same entry's own 4px bottom
+          // padding plus the next sectionHeader's own 20px top
+          // padding); this closes out with that same 24px instead
+          // of just stopping dead at the list's own edge.
+          const SizedBox(height: 24),
+        ],
+      ],
+    );
+
+    return Column(
+      children: [
+        // Pull-to-dismiss over this content (not just a drag handle) is
+        // handled higher up, by [SkyMenuModalFrame] wrapping this whole
+        // widget in detailed mode — see its own doc comment for why
+        // that has to live there instead of here.
+        Expanded(child: list),
         // Compact mode only: Settings sits outside the scrollable list
         // entirely, not just last within it — its own divider plus the
         // gap above and below reads as "a different kind of thing" (the
@@ -436,6 +478,240 @@ class SkyMenuContent extends StatelessWidget {
           const SizedBox(height: 8),
         ],
       ],
+    );
+  }
+}
+
+/// The modal's own background, rounded top corners, and drag handle —
+/// built by hand rather than via [showModalBottomSheet]'s own
+/// `backgroundColor`/`shape`/`showDragHandle` (all turned off where this
+/// is used — see `SkyScreen._openMenuModal`) — so that pulling down,
+/// whether starting on the handle here or bubbling up from an
+/// already-at-its-top [ListView] inside [child], moves this *whole*
+/// frame together: a small pull springs it back up, a big enough pull
+/// dismisses it, exactly like dragging [BottomSheet]'s own handle
+/// already does.
+///
+/// Why build this by hand at all: [BottomSheet] (`enableDrag: true`)
+/// already wraps its *entire* content — not just the handle — in a
+/// drag recognizer of its own for exactly this follow-the-finger
+/// behavior, but a descendant [Scrollable] (the menu's own [ListView])
+/// claims the same vertical drag from the gesture arena first and never
+/// releases it back up, even once genuinely at its own scroll boundary
+/// — clamping physics keeps "owning" the gesture and just reports the
+/// excess as [OverscrollNotification] instead of ceding it. And even if
+/// it did cede the gesture, [BottomSheet]'s real animation controller
+/// still isn't reachable from inside its own `builder` to drive
+/// ourselves. Owning the whole frame sidesteps both problems at once.
+class SkyMenuModalFrame extends StatefulWidget {
+  const SkyMenuModalFrame({super.key, required this.builder});
+
+  /// Builds the sheet's own content, given the [ScrollController] and
+  /// [ScrollPhysics] this frame needs its scrollable descendant to use
+  /// — see [_SkyMenuModalFrameState]'s own doc comment on why both are
+  /// necessary for a pull that can be canceled by reversing direction.
+  final Widget Function(ScrollController scrollController, ScrollPhysics? physics)
+  builder;
+
+  @override
+  State<SkyMenuModalFrame> createState() => _SkyMenuModalFrameState();
+}
+
+/// Dragging down over the content (not just the handle) needs to move
+/// *this whole frame*, stay following the finger for as long as it's
+/// down — reversing direction partway through has to un-pull it, not
+/// scroll the content underneath instead — and only decide close vs.
+/// spring-back once the finger actually lifts.
+///
+/// [ScrollNotification]s (what an earlier pass here used) turned out
+/// not to be enough for that: once a pull reverses direction, the
+/// child list's own position is sitting at 0 with room to move, so
+/// that reversal is a perfectly normal, in-bounds scroll to it — no
+/// [OverscrollNotification] fires for it at all, just a plain
+/// [ScrollUpdateNotification] once real content movement already
+/// happened, too late to have stopped it from moving in the first
+/// place. Patching that after the fact (snapping the list back to 0
+/// again once its own position had already changed) sometimes
+/// interrupted the *scroll activity itself* — an artifact of forcing a
+/// programmatic jump mid-drag — which could fire a genuine
+/// [ScrollEndNotification] while the finger never actually left the
+/// screen, reading as an unwanted, premature "let go" and closing the
+/// sheet out from under a still-held touch.
+///
+/// [Listener] sidesteps this by tracking the raw pointer directly,
+/// entirely independent of whatever the child [Scrollable] does with
+/// that same touch — so [_dragOffset] never depends on the list's own
+/// activity lifecycle at all. The list is locked to
+/// [NeverScrollableScrollPhysics] for the duration of a pull (see
+/// [_contentLocked]) purely so it can't *also* react to the same
+/// motion in parallel and scroll for real underneath this frame.
+class _SkyMenuModalFrameState extends State<SkyMenuModalFrame>
+    with SingleTickerProviderStateMixin {
+  // How far a pull has to travel before letting go dismisses rather
+  // than springs back — a plain pixel distance rather than a fraction
+  // of the sheet's own height (what [BottomSheet]'s own
+  // `_kCloseProgressThreshold` uses), since that reads the same
+  // regardless of how tall the sheet happens to be.
+  static const _dismissThreshold = 96.0;
+
+  late final AnimationController _springBackController;
+  final _scrollController = ScrollController();
+  double _dragOffset = 0.0;
+  bool _closing = false;
+  bool _contentLocked = false;
+  int? _activePointer;
+  double? _lastPointerY;
+
+  @override
+  void initState() {
+    super.initState();
+    _springBackController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    );
+  }
+
+  @override
+  void dispose() {
+    _springBackController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _springBack() {
+    final animation = Tween<double>(begin: _dragOffset, end: 0.0).animate(
+      CurvedAnimation(parent: _springBackController, curve: Curves.easeOut),
+    );
+    void listener() => setState(() => _dragOffset = animation.value);
+    animation.addListener(listener);
+    _springBackController
+      ..value = 0.0
+      ..forward().whenComplete(() => animation.removeListener(listener));
+  }
+
+  void _addDrag(double delta) {
+    if (_closing) return;
+    setState(() {
+      _dragOffset = (_dragOffset + delta).clamp(0.0, _dismissThreshold * 2);
+    });
+  }
+
+  void _endDrag() {
+    if (_closing || _dragOffset <= 0) return;
+    if (_dragOffset >= _dismissThreshold) {
+      _closing = true;
+      Navigator.of(context).pop();
+    } else {
+      _springBack();
+    }
+  }
+
+  // The handle's own drag (its own plain [GestureDetector] in build(),
+  // below) doesn't go through any of this — nothing else competes for
+  // that gesture, so it never had the bug these three handlers exist
+  // to work around.
+  void _handleContentPointerDown(PointerDownEvent event) {
+    _activePointer = event.pointer;
+    _lastPointerY = event.position.dy;
+  }
+
+  void _handleContentPointerMove(PointerMoveEvent event) {
+    if (event.pointer != _activePointer) return;
+    final previousY = _lastPointerY;
+    _lastPointerY = event.position.dy;
+    if (previousY == null) return;
+    // Positive = finger moved down the screen.
+    final delta = event.position.dy - previousY;
+
+    if (_dragOffset > 0) {
+      // Already mid-pull: every further move drives it directly from
+      // here on, in either direction, regardless of what the (locked)
+      // list underneath would otherwise have done with the same move.
+      _addDrag(delta);
+      return;
+    }
+
+    if (delta > 0 &&
+        _scrollController.hasClients &&
+        _scrollController.position.pixels <= 0) {
+      if (!_contentLocked) setState(() => _contentLocked = true);
+      _addDrag(delta);
+    }
+  }
+
+  void _handleContentPointerEnd(PointerEvent event) {
+    if (event.pointer != _activePointer) return;
+    _activePointer = null;
+    _lastPointerY = null;
+    if (_contentLocked) {
+      setState(() => _contentLocked = false);
+      _endDrag();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    return Transform.translate(
+      offset: Offset(0, _dragOffset),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: colors.nightPanel,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(kRadiusCard),
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(kRadiusCard),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // A plain drag surface, not a [ListView] — any vertical
+                // drag here maps straight to [_addDrag] with nothing
+                // else competing for the gesture.
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onVerticalDragUpdate: (details) =>
+                      _addDrag(details.primaryDelta ?? 0),
+                  onVerticalDragEnd: (_) => _endDrag(),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Center(
+                      child: Container(
+                        width: 32,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: colors.muted.withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Flexible(
+                  child: Listener(
+                    onPointerDown: _handleContentPointerDown,
+                    onPointerMove: _handleContentPointerMove,
+                    onPointerUp: _handleContentPointerEnd,
+                    onPointerCancel: _handleContentPointerEnd,
+                    child: widget.builder(
+                      _scrollController,
+                      _contentLocked
+                          ? const NeverScrollableScrollPhysics()
+                          : null,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

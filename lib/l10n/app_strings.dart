@@ -32,6 +32,11 @@ abstract class AppStrings {
   // menu themselves — they're the two choices offered by
   // [lightYourSkyChooserTitle]'s sheet, which [menuLightYourSky] opens.
   String get openMenuAction;
+  // Shown briefly on the Sky's own star-shaped menu button (see
+  // `_MenuStarButtonState`) whenever a press lets go before the short
+  // hold that opens the menu completes.
+  String get menuButtonHoldHint;
+  String get menuSearchSection;
   String get menuActivitySection;
   String get menuLightYourSky;
   String get menuLightAStar;
@@ -392,6 +397,10 @@ abstract class AppStrings {
   String indexOfCount(int index, int total);
   String get shareStarLabel;
   String get shareStarError;
+
+  // Star quick-look panel (tapping a star on the Sky itself)
+  String get starQuickLookViewAction;
+  String get starQuickLookEditAction;
 
   // Settings
   String get settingsEyebrow;

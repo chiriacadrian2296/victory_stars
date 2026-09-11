@@ -11,53 +11,66 @@ import '../models/custom_constellation.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_style.dart';
 import '../widgets/constellation_editor_painter.dart';
+import '../widgets/pill_action_button.dart';
 import '../widgets/responsive_content.dart';
 
 /// Lets the user hand-draw their own constellation shape: tap empty space to
 /// place a star, tap two stars in turn to connect/disconnect them, drag a
 /// star to reposition it, and save the result as a reusable
-/// [CustomConstellation]. Interaction mirrors the offline Astralarium
+/// [StarsShape]. Interaction mirrors the offline Astralarium
 /// workflow already used to co-design the app's own built-in shapes (see
 /// `tools/constellation-astralarium/`) — tap to place, tap-tap to connect —
 /// brought in-app for end users.
 ///
 /// Pass [existing] to open an already-saved shape for editing instead of
 /// starting from a blank canvas — saving then updates that same
-/// [CustomConstellation] (same id, same position in the user's list) rather
-/// than creating a new one, via [CustomConstellationRepository.update].
+/// [StarsShape] (same id, same position in the user's list) rather
+/// than creating a new one, via [StarsShapeRepository.update].
 ///
 /// The canvas is fixed-size and never pans/zooms: unlike
 /// [ConstellationScreen] (which frames an already-known shape), the user is
 /// actively placing points, and where they land within the canvas doesn't
 /// matter — [normalizeEditorPoints] rescales everything into the shared 0..1
 /// box once, at save time.
-class ConstellationEditorScreen extends StatefulWidget {
-  const ConstellationEditorScreen({
+class StarsShapeEditorScreen extends StatefulWidget {
+  const StarsShapeEditorScreen({
     super.key,
-    required this.customConstellationRepository,
+    required this.starsShapeRepository,
     this.existing,
     this.initialShape,
+    this.initialShapeName,
   }) : assert(
          existing == null || initialShape == null,
          'Pass at most one of existing/initialShape — existing already '
          'carries its own shape to start from.',
+       ),
+       assert(
+         initialShapeName == null || initialShape != null,
+         'initialShapeName only makes sense alongside initialShape — '
+         'existing already carries its own name.',
        );
 
-  final CustomConstellationRepository customConstellationRepository;
-  final CustomConstellation? existing;
+  final StarsShapeRepository starsShapeRepository;
+  final StarsShape? existing;
 
   /// Starts the canvas pre-filled with these points/edges, same as
   /// [existing] would, but *without* tying [_save] to updating some
   /// already-saved constellation — saving still creates a brand new one,
   /// same as a blank canvas would. What a preset picked from the shape
   /// library opens with: the user can go on to reshape it freely, and it
-  /// only ever becomes a real, owned [CustomConstellation] at that save,
+  /// only ever becomes a real, owned [StarsShape] at that save,
   /// never the moment they merely opened the editor to look at it.
   final ConstellationShape? initialShape;
 
+  /// [initialShape]'s own name, shown the same way [existing]'s name is —
+  /// a preset already has one (see `StarsShapePreset.name`), it's just
+  /// not tied to anything owned yet. Null for a blank canvas, where
+  /// there's nothing to show.
+  final String? initialShapeName;
+
   @override
-  State<ConstellationEditorScreen> createState() =>
-      _ConstellationEditorScreenState();
+  State<StarsShapeEditorScreen> createState() =>
+      _StarsShapeEditorScreenState();
 }
 
 /// A soft cap, distinct from `maxChainedStars` in constellation_layout.dart
@@ -68,7 +81,29 @@ class ConstellationEditorScreen extends StatefulWidget {
 /// every preset is one a person could have drawn here) mostly land at 6-14
 /// points, so this leaves headroom without inviting a shape so dense it
 /// stops reading as a constellation on a phone screen.
-const int _maxEditorPoints = 25;
+const int _maxEditorPoints = 30;
+
+/// Splits [text] around its own *first* run of digits — the changing
+/// figure a formatted status string like
+/// [AppStrings.constellationEditorStarCount] embeds (its own fixed
+/// second number, e.g. [_maxEditorPoints], never comes first in any of
+/// this app's translations, so "first digit run" reliably means "the one
+/// that changes" without needing per-language special-casing) — styling
+/// that run bold gold and leaving the rest of the sentence in [colors]'s
+/// own muted tone around it.
+List<InlineSpan> _highlightFirstNumber(String text, AppColors colors) {
+  final match = RegExp(r'\d+').firstMatch(text);
+  final baseStyle = TextStyle(color: colors.muted);
+  if (match == null) return [TextSpan(text: text, style: baseStyle)];
+  return [
+    TextSpan(text: text.substring(0, match.start), style: baseStyle),
+    TextSpan(
+      text: match.group(0),
+      style: TextStyle(color: colors.gold, fontWeight: FontWeight.w700),
+    ),
+    TextSpan(text: text.substring(match.end), style: baseStyle),
+  ];
+}
 
 class _EditorSnapshot {
   const _EditorSnapshot(this.points, this.edges, this.mirrorOf);
@@ -77,14 +112,14 @@ class _EditorSnapshot {
   final List<int?> mirrorOf;
 }
 
-class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
+class _StarsShapeEditorScreenState extends State<StarsShapeEditorScreen> {
   /// Working coordinates, relative to the canvas's own size (roughly 0..1,
   /// same convention a saved [ConstellationShape] uses — but not clamped:
   /// dragging a point past the visible canvas edge just pushes it slightly
   /// outside that range, which [normalizeEditorPoints] resolves at save
   /// time by re-fitting everything to the actual bounding box). Storing
   /// points this way — rather than in raw canvas-pixel space — means
-  /// opening an existing [CustomConstellation] for editing is a direct
+  /// opening an existing [StarsShape] for editing is a direct
   /// assignment (its `shape.points` are already in this same convention),
   /// with no dependency on knowing the on-screen canvas's pixel size up
   /// front.
@@ -112,8 +147,11 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
 
   /// true = the mirror axis is the vertical center line (left/right
   /// symmetry, flips the x coordinate); false = the horizontal center
-  /// line (top/bottom symmetry, flips y).
-  bool _mirrorVertical = true;
+  /// line (top/bottom symmetry, flips y). Defaults off (false, same as
+  /// [_mirrorEnabled]) so only the grid switch reads as "on" the moment
+  /// this screen opens — this one doesn't do anything until mirroring
+  /// itself is switched on anyway.
+  bool _mirrorVertical = false;
 
   /// How close a point's own reflection has to be to itself (in the same
   /// 0..1 relative space [_points] uses) before it's treated as sitting
@@ -258,6 +296,14 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
                 _HelpBullet(
                   text: strings.constellationEditorHelpDeletePoint,
                   illustration: _deleteDiagram,
+                ),
+                _HelpBullet(
+                  text: strings.constellationEditorHelpMirrorToggle,
+                  illustration: _mirrorDiagram,
+                ),
+                _HelpBullet(
+                  text: strings.constellationEditorHelpMirrorAxis,
+                  illustration: const _MirrorAxisSwitchIllustration(),
                 ),
                 const SizedBox(height: 4),
                 InkWell(
@@ -670,11 +716,11 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
     );
     final existing = widget.existing;
     final saved = existing == null
-        ? await widget.customConstellationRepository.add(
+        ? await widget.starsShapeRepository.add(
             name: name,
             shape: shape,
           )
-        : await widget.customConstellationRepository.update(
+        : await widget.starsShapeRepository.update(
             id: existing.id,
             name: name,
             shape: shape,
@@ -682,11 +728,23 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
     if (mounted) Navigator.of(context).pop(saved);
   }
 
+  /// The name to show above the canvas — [widget.existing]'s own, or
+  /// [widget.initialShapeName] for a preset opened to look at/fork. Null
+  /// only for a genuinely blank canvas, which has no name to show yet.
+  String? get _shapeName => widget.existing?.name ?? widget.initialShapeName;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final strings = context.strings;
-    final canSave = _points.length >= 2;
+    // Enough points to be a real shape *and* something's actually
+    // different from wherever this canvas started — see
+    // [_hasUnsavedChanges]'s own doc comment for why "started" means an
+    // already-saved/preset shape's own points/edges, not just "empty".
+    // Reusing it here (rather than a separate points-changed check) means
+    // undo/redo back to the exact starting state also correctly turns
+    // Save back off.
+    final canSave = _points.length >= 2 && _hasUnsavedChanges;
     final disconnected = _disconnectedCount;
 
     final scaffold = Scaffold(
@@ -720,266 +778,349 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
                   ),
                 ],
               ),
-              // Grid/Mirror/Axis, right under the app bar and hugging the
-              // canvas below it — the grid toggle used to live in the app
-              // bar on its own; moved here to sit with the two new mirror
-              // controls instead of splitting canvas-related settings
-              // across two different places on screen. Kept *above* the
-              // canvas rather than between it and the undo/redo/delete
-              // row: that spot pushed the canvas's own centering off,
-              // since it ate into the same [Expanded] region the canvas
-              // itself centers within — up here, it's just one more
-              // fixed-height header row (like the app bar already was),
-              // and the canvas goes right back to centering in whatever
-              // space is left below it, same as before this row existed.
+              // The name of the shape being edited — an already-saved
+              // one's own name, or a preset's (not yet owned, but already
+              // named in the library it came from) — shown either way;
+              // only a genuinely blank canvas has nothing to show here,
+              // since only then is there truly no name yet (only entered
+              // at save time). Used to live inside the canvas's own
+              // layout, given a fixed slot above it; moved up here, right
+              // under the app bar, now that this region is otherwise just
+              // a stack of header rows anyway. Its space stays reserved
+              // (`maintainSize`) even with nothing to show — otherwise a
+              // blank canvas's header content is shorter than a named
+              // one's, which shifts how much room is left below for the
+              // switches/canvas/buttons block to center itself in, moving
+              // the canvas up or down depending on whether a name happens
+              // to be showing above it.
+              Visibility(
+                visible: _shapeName != null,
+                maintainSize: true,
+                maintainAnimation: true,
+                maintainState: true,
+                child: _ShapeNameHeader(name: _shapeName ?? ''),
+              ),
+              // The two pieces of at-a-glance status this screen has — how
+              // many stars are placed (out of [_maxEditorPoints]) and how
+              // many of those aren't wired into the shape yet — as one
+              // line, bigger and with real breathing room between the two
+              // (rather than the small, tight caption this started as),
+              // with just the *changing* numbers in bold gold (never
+              // [_maxEditorPoints] itself, which never moves) so the two
+              // figures that actually matter moment to moment stand out
+              // from the words around them. The disconnected count stays
+              // on screen even at zero now — always there at the same
+              // spot rather than popping in only once it has something to
+              // warn about.
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _EditorToggle(
-                      icon: Icons.grid_on,
-                      label: strings.constellationEditorGridToggleLabel,
-                      value: _gridEnabled,
-                      onChanged: (value) =>
-                          setState(() => _gridEnabled = value),
-                    ),
-                    const SizedBox(width: 20),
-                    _EditorToggle(
-                      icon: Icons.flip,
-                      label: strings.constellationEditorMirrorToggleLabel,
-                      value: _mirrorEnabled,
-                      onChanged: (value) =>
-                          setState(() => _mirrorEnabled = value),
-                    ),
-                    const SizedBox(width: 20),
-                    _EditorToggle(
-                      // The icon itself shows which axis is active —
-                      // horizontal arrows for a vertical (left/right)
-                      // axis, vertical arrows for a horizontal
-                      // (top/bottom) one — rather than a fixed icon next
-                      // to a switch whose two positions would otherwise
-                      // look identical at a glance.
-                      icon: _mirrorVertical
-                          ? Icons.swap_horiz
-                          : Icons.swap_vert,
-                      label: _mirrorVertical
-                          ? strings.constellationEditorMirrorAxisVerticalLabel
-                          : strings
-                                .constellationEditorMirrorAxisHorizontalLabel,
-                      value: _mirrorVertical,
-                      onChanged: (value) =>
-                          setState(() => _mirrorVertical = value),
-                    ),
-                  ],
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      ..._highlightFirstNumber(
+                        strings.constellationEditorStarCount(
+                          _points.length,
+                          _maxEditorPoints,
+                        ),
+                        colors,
+                      ),
+                      TextSpan(text: '     ', style: TextStyle(color: colors.muted)),
+                      ..._highlightFirstNumber(
+                        strings.constellationEditorDisconnectedWarning(
+                          disconnected,
+                        ),
+                        colors,
+                      ),
+                    ],
+                  ),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 15, color: colors.muted),
                 ),
               ),
+              // Grid/Mirror/Axis, the canvas, and undo/redo/delete as one
+              // tight group — the switches row directly above the canvas,
+              // the action row directly below it, both close enough to
+              // read as one block (see the canvas's own inner padding,
+              // which is what actually keeps that gap even on both
+              // sides — these two rows carry only side padding of their
+              // own). The [Padding] wrapping the whole group is what
+              // separates *it* from the info line above and the Save
+              // button below; the grid toggle used to live in the app bar
+              // on its own, moved here to sit with the two mirror
+              // controls instead of splitting canvas-related settings
+              // across two different places on screen.
               Expanded(
-                // The canvas is a square capped to whichever of the
-                // available width/height is smaller — sizing it off width
-                // alone (an AspectRatio taking the Column's full width)
-                // could ask for more height than this region actually has
-                // on a wide-but-short viewport (typical of a browser
-                // window), overflowing past the controls below it. Title
-                // (only shown when editing an existing shape) gets its own
-                // fixed slot above the canvas; equal flex above/below what's
-                // left centers the canvas in the remaining space.
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    const titleHeight = 44.0;
-                    final hasTitle = widget.existing != null;
-                    final availableForCanvas =
-                        constraints.maxHeight - (hasTitle ? titleHeight : 0);
-                    final canvasSize = math.min(
-                      constraints.maxWidth,
-                      availableForCanvas,
-                    );
-                    return Column(
-                      children: [
-                        if (hasTitle)
-                          SizedBox(
-                            height: titleHeight,
-                            child: Center(
-                              child: _ExistingConstellationHeader(
-                                constellation: widget.existing!,
-                              ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  // The canvas below is squared to *width* (it's almost
+                  // always the tighter dimension on a phone), so it ends
+                  // up shorter than this whole region is tall — center,
+                  // not the plain top-aligned default, is what keeps that
+                  // leftover height from piling up as one lopsided gap
+                  // below the group; it splits it evenly above and below
+                  // instead, which is also why the canvas itself is a
+                  // loose [Flexible] rather than an [Expanded] two lines
+                  // down — a tight fit would force it to consume all of
+                  // this Column's height and re-center *within itself*,
+                  // undoing the outer centering.
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _EditorToggle(
+                              icon: Icons.grid_on,
+                              label: strings.constellationEditorGridToggleLabel,
+                              value: _gridEnabled,
+                              onChanged: (value) =>
+                                  setState(() => _gridEnabled = value),
                             ),
-                          ),
-                        Expanded(
-                          child: Center(
-                            child: SizedBox(
-                              width: canvasSize,
-                              height: canvasSize,
-                              child: LayoutBuilder(
-                                builder: (context, canvasConstraints) {
-                                  _canvasSize = canvasConstraints.biggest;
-                                  return Listener(
-                                    behavior: HitTestBehavior.opaque,
-                                    onPointerDown: _handlePointerDown,
-                                    onPointerMove: _handlePointerMove,
-                                    onPointerUp: _handlePointerUp,
-                                    child: Container(
-                                      clipBehavior: Clip.antiAlias,
-                                      decoration: BoxDecoration(
-                                        color: colors.nightPanel,
-                                        border: Border.all(
-                                          color: colors.nightBorder,
-                                        ),
-                                        borderRadius: BorderRadius.circular(
-                                          12,
-                                        ),
-                                      ),
-                                      child: Stack(
-                                        children: [
-                                          if (_gridEnabled)
-                                            Positioned.fill(
-                                              child: CustomPaint(
-                                                painter: _GridPainter(
-                                                  divisions: _gridDivisions,
-                                                  color: colors.nightBorder,
-                                                  // Just a touch brighter than
-                                                  // the regular grid lines —
-                                                  // a small blend toward
-                                                  // `muted` rather than
-                                                  // jumping straight to it,
-                                                  // so the center reads as
-                                                  // "the same grid, slightly
-                                                  // lifted" rather than a
-                                                  // visually distinct line.
-                                                  centerColor: Color.lerp(
-                                                    colors.nightBorder,
-                                                    colors.muted,
-                                                    0.3,
-                                                  )!,
-                                                ),
-                                              ),
+                            const SizedBox(width: 20),
+                            _EditorToggle(
+                              icon: Icons.flip,
+                              label:
+                                  strings.constellationEditorMirrorToggleLabel,
+                              value: _mirrorEnabled,
+                              onChanged: (value) =>
+                                  setState(() => _mirrorEnabled = value),
+                            ),
+                            const SizedBox(width: 20),
+                            _EditorToggle(
+                              // The icon itself shows which axis is active —
+                              // horizontal arrows for a vertical (left/right)
+                              // axis, vertical arrows for a horizontal
+                              // (top/bottom) one — rather than a fixed icon
+                              // next to a switch whose two positions would
+                              // otherwise look identical at a glance.
+                              icon: _mirrorVertical
+                                  ? Icons.swap_horiz
+                                  : Icons.swap_vert,
+                              label: _mirrorVertical
+                                  ? strings
+                                        .constellationEditorMirrorAxisVerticalLabel
+                                  : strings
+                                        .constellationEditorMirrorAxisHorizontalLabel,
+                              value: _mirrorVertical,
+                              onChanged: (value) =>
+                                  setState(() => _mirrorVertical = value),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // An explicit, equal gap on each side of the canvas —
+                      // not padding on the canvas itself, which came out
+                      // uneven in practice: the switches row and the
+                      // action row don't have the same intrinsic height
+                      // (the Switch's own tap target vs. the pill
+                      // buttons' padding), so identical [Padding] values
+                      // above and below the canvas still landed as
+                      // visibly different gaps. A fixed [SizedBox] on
+                      // both sides is immune to that — it's the same 8
+                      // either way regardless of what's sitting next to
+                      // it.
+                      const SizedBox(height: 8),
+                      Flexible(
+                        // The canvas is a square capped to whichever of the
+                        // available width/height is smaller — sizing it off
+                        // width alone (an AspectRatio taking the Column's
+                        // full width) could ask for more height than this
+                        // region actually has on a wide-but-short viewport
+                        // (typical of a browser window), overflowing past
+                        // the controls below it. Loose, not tight
+                        // ([Expanded]'s default): tight would force this
+                        // slot to consume the Column's *entire* remaining
+                        // height even though the square itself is usually
+                        // shorter than that, which just re-centers the
+                        // square *within* the extra height it didn't need
+                        // — invisible padding no [Padding] value here
+                        // could ever cancel out. Loose lets the square be
+                        // exactly its own computed size, so the Column's
+                        // own [mainAxisAlignment.center] (see the Column
+                        // above) is what actually absorbs any leftover
+                        // height, split evenly above and below the whole
+                        // switches/canvas/buttons group instead.
+                        fit: FlexFit.loose,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                              final canvasSize = math.min(
+                                constraints.maxWidth,
+                                constraints.maxHeight,
+                              );
+                              // No [Center] wrapper here — Center always
+                              // fills whatever bounded space it's given
+                              // (that's what lets it center a child
+                              // *within* extra room), so it would report
+                              // its own size as the full available height
+                              // regardless of [canvasSize] being smaller,
+                              // silently defeating the parent [Flexible]'s
+                              // `loose` fit above. A bare [SizedBox]
+                              // reports its true, exact size instead, which
+                              // is what the outer Column's own
+                              // [mainAxisAlignment.center] needs to
+                              // actually have leftover height to work
+                              // with.
+                              return SizedBox(
+                                width: canvasSize,
+                                height: canvasSize,
+                                child: LayoutBuilder(
+                                  builder: (context, canvasConstraints) {
+                                      _canvasSize = canvasConstraints.biggest;
+                                      return Listener(
+                                        behavior: HitTestBehavior.opaque,
+                                        onPointerDown: _handlePointerDown,
+                                        onPointerMove: _handlePointerMove,
+                                        onPointerUp: _handlePointerUp,
+                                        child: Container(
+                                          clipBehavior: Clip.antiAlias,
+                                          decoration: BoxDecoration(
+                                            color: colors.nightPanel,
+                                            border: Border.all(
+                                              color: colors.nightBorder,
                                             ),
-                                          if (_mirrorEnabled)
-                                            Positioned.fill(
-                                              child: CustomPaint(
-                                                painter: _MirrorAxisPainter(
-                                                  vertical: _mirrorVertical,
-                                                  color: Colors.white
-                                                      .withValues(alpha: 0.5),
-                                                ),
-                                              ),
-                                            ),
-                                          if (_points.isEmpty)
-                                            Center(
-                                              child: Padding(
-                                                padding: const EdgeInsets.all(
-                                                  24,
-                                                ),
-                                                child: Text(
-                                                  strings
-                                                      .constellationEditorEmptyHint,
-                                                  textAlign: TextAlign.center,
-                                                  style: TextStyle(
-                                                    color: colors.muted,
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          child: Stack(
+                                            children: [
+                                              if (_gridEnabled)
+                                                Positioned.fill(
+                                                  child: CustomPaint(
+                                                    painter: _GridPainter(
+                                                      divisions:
+                                                          _gridDivisions,
+                                                      color:
+                                                          colors.nightBorder,
+                                                      // Just a touch
+                                                      // brighter than the
+                                                      // regular grid lines —
+                                                      // a small blend
+                                                      // toward `muted`
+                                                      // rather than jumping
+                                                      // straight to it, so
+                                                      // the center reads as
+                                                      // "the same grid,
+                                                      // slightly lifted"
+                                                      // rather than a
+                                                      // visually distinct
+                                                      // line.
+                                                      centerColor: Color.lerp(
+                                                        colors.nightBorder,
+                                                        colors.muted,
+                                                        0.3,
+                                                      )!,
+                                                    ),
                                                   ),
                                                 ),
+                                              if (_mirrorEnabled)
+                                                Positioned.fill(
+                                                  child: CustomPaint(
+                                                    painter: _MirrorAxisPainter(
+                                                      vertical: _mirrorVertical,
+                                                      color: Colors.white
+                                                          .withValues(
+                                                            alpha: 0.5,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              // No empty-canvas hint any
+                                              // more — the grid plus the
+                                              // help action already say
+                                              // enough, and an always-on
+                                              // canvas (no swap between a
+                                              // hint and the painter) is
+                                              // one less thing to jump the
+                                              // moment the first star
+                                              // lands.
+                                              CustomPaint(
+                                                size:
+                                                    canvasConstraints.biggest,
+                                                painter:
+                                                    ConstellationEditorPainter(
+                                                      points: _pixelPoints,
+                                                      edges: _edges,
+                                                      highlightedIndex:
+                                                          _armedIndex ??
+                                                          _draggingIndex,
+                                                      pointColor: colors.text,
+                                                      highlightColor:
+                                                          colors.gold,
+                                                      lineColor: Colors.white
+                                                          .withValues(
+                                                            alpha: 0.5,
+                                                          ),
+                                                    ),
                                               ),
-                                            )
-                                          else
-                                            CustomPaint(
-                                              size: canvasConstraints.biggest,
-                                              painter: ConstellationEditorPainter(
-                                                points: _pixelPoints,
-                                                edges: _edges,
-                                                highlightedIndex:
-                                                    _armedIndex ??
-                                                    _draggingIndex,
-                                                pointColor: colors.text,
-                                                highlightColor: colors.gold,
-                                                lineColor: Colors.white
-                                                    .withValues(alpha: 0.5),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                );
+                            },
                           ),
                         ),
-                      ],
-                    );
-                  },
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                        // A Row of Flexible buttons, not a Wrap — a Wrap
+                        // drops to a second line once the three pills stop
+                        // fitting (which a longer translation, e.g.
+                        // Romanian, hits easily), while Flexible instead
+                        // lets each pill's own label ellipsize so all three
+                        // always stay on one row.
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Flexible(
+                              child: PillActionButton(
+                                icon: Icons.undo,
+                                label: strings.undoAction,
+                                onTap: _undoStack.isEmpty ? null : _undo,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Flexible(
+                              child: PillActionButton(
+                                icon: Icons.redo,
+                                label: strings.redoAction,
+                                onTap: _redoStack.isEmpty ? null : _redo,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Flexible(
+                              child: PillActionButton(
+                                icon: Icons.delete_outline,
+                                label: strings.deletePointAction,
+                                onTap: _armedIndex == null
+                                    ? null
+                                    : _deleteArmedPoint,
+                                danger: true,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-                // A Row of Flexible buttons, not a Wrap — a Wrap drops to a
-                // second line once the three pills stop fitting (which a
-                // longer translation, e.g. Romanian, hits easily), while
-                // Flexible instead lets each pill's own label ellipsize so
-                // all three always stay on one row.
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Flexible(
-                      child: _EditorActionButton(
-                        icon: Icons.undo,
-                        label: strings.undoAction,
-                        onTap: _undoStack.isEmpty ? null : _undo,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Flexible(
-                      child: _EditorActionButton(
-                        icon: Icons.redo,
-                        label: strings.redoAction,
-                        onTap: _redoStack.isEmpty ? null : _redo,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Flexible(
-                      child: _EditorActionButton(
-                        icon: Icons.delete_outline,
-                        label: strings.deletePointAction,
-                        onTap: _armedIndex == null ? null : _deleteArmedPoint,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 8,
-                ),
-                child: Text(
-                  _points.length >= _maxEditorPoints
-                      ? strings.constellationEditorPointCapReached
-                      : disconnected > 0
-                      ? strings.constellationEditorDisconnectedWarning(
-                          disconnected,
-                        )
-                      : '',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: colors.muted),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                // Top is small on purpose — the group above already ends
+                // in its own [vertical: 12] padding (see the Expanded
+                // wrapping the switches/canvas/action-row block), so this
+                // is only the little bit more needed to read as a clear
+                // gap before Save rather than double-padding the same gap.
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
                 child: Center(
-                  child: ElevatedButton(
+                  child: SaveActionButton(
+                    label: strings.saveConstellationAction,
+                    lit: canSave,
                     onPressed: canSave ? _save : null,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 40,
-                        vertical: 14,
-                      ),
-                    ),
-                    child: Text(
-                      strings.saveConstellationAction,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                      ),
-                    ),
                   ),
                 ),
               ),
@@ -1001,11 +1142,13 @@ class _ConstellationEditorScreenState extends State<ConstellationEditorScreen> {
 }
 
 /// One icon+switch pair in the Grid/Mirror/Axis row above the canvas, with
-/// its own small caption underneath — same compact "small icon beside a
-/// scaled-down [Switch]" shape the grid toggle already used in the app
-/// bar, factored out now that there are three of these side by side
-/// instead of one, plus a visible [label] (the grid toggle's own tooltip
-/// was easy to miss; a caption that's just always there isn't).
+/// its own [label] — same compact "small icon beside a scaled-down
+/// [Switch]" shape the grid toggle already used in the app bar, factored
+/// out now that there are three of these side by side instead of one.
+/// The label itself stays off-screen (a [Tooltip] rather than visible
+/// text — three captions was what pushed this row into overflow), with
+/// the icon sized up in its place so what each switch does still reads at
+/// a glance without the width a caption needs.
 class _EditorToggle extends StatelessWidget {
   const _EditorToggle({
     required this.icon,
@@ -1022,31 +1165,35 @@ class _EditorToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Column(
+    return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 18, color: colors.muted),
-            Transform.scale(
-              scale: 0.8,
-              child: Switch(value: value, onChanged: onChanged),
-            ),
-          ],
+        Tooltip(
+          message: label,
+          child: Icon(icon, size: 27, color: colors.muted),
         ),
-        Text(
-          label,
-          style: TextStyle(fontSize: 11, color: colors.muted),
+        Transform.scale(
+          scale: 0.8,
+          child: Switch(
+            value: value,
+            onChanged: onChanged,
+            // [Transform.scale] only shrinks what's painted, not the
+            // widget's own layout box — left at the default `padded`
+            // tap target, the Switch still reserves its full 48dp-tall
+            // footprint, which is what was actually keeping this row
+            // (and so the canvas below it) far from where the tiny
+            // [Padding] values above would suggest.
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
         ),
       ],
     );
   }
 }
 
-/// The line marking where [_ConstellationEditorScreenState._mirrorEnabled]
+/// The line marking where [_StarsShapeEditorScreenState._mirrorEnabled]
 /// splits the canvas in two — the exact vertical or horizontal center
-/// line, matching [_ConstellationEditorScreenState._mirrorAcrossAxis]'s own
+/// line, matching [_StarsShapeEditorScreenState._mirrorAcrossAxis]'s own
 /// reflection (a point exactly on this line reflects to itself). Purely a
 /// visual reference, the same role [_GridPainter] plays for
 /// [_snapIfGridEnabled]'s own grid.
@@ -1075,72 +1222,16 @@ class _MirrorAxisPainter extends CustomPainter {
       vertical != oldDelegate.vertical || color != oldDelegate.color;
 }
 
-/// A small gold pill button for the undo/delete actions below the canvas —
-/// mirrors `_ActionButton` in star_reader_screen.dart (same
-/// `Material`+`StadiumBorder`+`InkWell` gold-pill treatment used for that
-/// screen's share/mark-achieved/resurrect action), just sized down to sit
-/// two-across and with an explicit disabled look (dimmed border/text)
-/// instead of always being tappable.
-class _EditorActionButton extends StatelessWidget {
-  const _EditorActionButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
+/// The name of the shape being edited, shown above the canvas — see
+/// [_StarsShapeEditorScreenState._shapeName] for where it comes from
+/// (an already-saved shape's own name, or a preset's). A shape only ever
+/// has a name — no description (see [StarsShape]'s own doc
+/// comment: the same shape can be reused across several projects, so
+/// "what it means" belongs to the project, not the shape).
+class _ShapeNameHeader extends StatelessWidget {
+  const _ShapeNameHeader({required this.name});
 
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final enabled = onTap != null;
-    final foreground = enabled ? colors.onGold : colors.muted;
-
-    return Material(
-      color: enabled ? colors.gold : colors.nightBorder,
-      shape: const StadiumBorder(),
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const StadiumBorder(),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: foreground, size: 18),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: foreground,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The name (and description, if there is one) of the shape being edited,
-/// shown above the canvas — only when editing an already-saved
-/// [CustomConstellation] (a brand new shape has neither yet, since both are
-/// only entered at save time).
-/// A shape only ever has a name — no description (see [CustomConstellation]'s
-/// own doc comment: the same shape can be reused across several projects,
-/// so "what it means" belongs to the project, not the shape).
-class _ExistingConstellationHeader extends StatelessWidget {
-  const _ExistingConstellationHeader({required this.constellation});
-
-  final CustomConstellation constellation;
+  final String name;
 
   @override
   Widget build(BuildContext context) {
@@ -1152,11 +1243,11 @@ class _ExistingConstellationHeader extends StatelessWidget {
         // toward the top of its own block instead of centering it there.
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Text(
-          constellation.name,
+          name,
           textAlign: TextAlign.center,
           style: TextStyle(
             fontWeight: FontWeight.w700,
-            fontSize: 20,
+            fontSize: 24,
             color: colors.text,
           ),
         ),
@@ -1227,6 +1318,7 @@ class _GestureDiagram extends StatelessWidget {
     this.icon,
     this.iconAt,
     this.iconIsDanger = false,
+    this.axisLine,
   });
 
   final List<_DiagramDot> dots;
@@ -1248,6 +1340,12 @@ class _GestureDiagram extends StatelessWidget {
   final Offset? iconAt;
   final bool iconIsDanger;
 
+  /// A static line through the diagram's center, standing in for the
+  /// mirror axis itself — `true` for the vertical (left/right) axis,
+  /// `false` for the horizontal (top/bottom) one. Independent of [dots];
+  /// unlike [line]/[trail] it isn't anchored to any star.
+  final bool? axisLine;
+
   static const _width = 74.0;
   static const _height = 44.0;
 
@@ -1267,11 +1365,13 @@ class _GestureDiagram extends StatelessWidget {
               line: line,
               trail: trail,
               showArrow: showArrow,
+              axisLine: axisLine,
               dotColor: colors.text,
               ghostColor: colors.muted,
               ringColor: colors.gold,
               lineColor: colors.gold,
               arrowColor: colors.muted,
+              axisColor: colors.muted,
             ),
           ),
           if (icon != null && iconAtValue != null)
@@ -1296,22 +1396,26 @@ class _GestureDiagramPainter extends CustomPainter {
     required this.line,
     required this.trail,
     required this.showArrow,
+    required this.axisLine,
     required this.dotColor,
     required this.ghostColor,
     required this.ringColor,
     required this.lineColor,
     required this.arrowColor,
+    required this.axisColor,
   });
 
   final List<_DiagramDot> dots;
   final (int, int)? line;
   final (int, int)? trail;
   final bool showArrow;
+  final bool? axisLine;
   final Color dotColor;
   final Color ghostColor;
   final Color ringColor;
   final Color lineColor;
   final Color arrowColor;
+  final Color axisColor;
 
   static const _dotRadius = 4.0;
   static const _ringRadius = 7.5;
@@ -1322,6 +1426,30 @@ class _GestureDiagramPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final axis = axisLine;
+    if (axis != null) {
+      final axisPaint = Paint()
+        ..color = axisColor
+        ..strokeWidth = 1.2;
+      if (axis) {
+        final x = size.width / 2;
+        _drawDashedLine(
+          canvas,
+          Offset(x, 0),
+          Offset(x, size.height),
+          axisPaint,
+        );
+      } else {
+        final y = size.height / 2;
+        _drawDashedLine(
+          canvas,
+          Offset(0, y),
+          Offset(size.width, y),
+          axisPaint,
+        );
+      }
+    }
+
     final solidLine = line;
     if (solidLine != null) {
       canvas.drawLine(
@@ -1481,6 +1609,33 @@ const _deleteDiagram = _GestureDiagram(
   iconIsDanger: true,
 );
 
+const _mirrorDiagram = _GestureDiagram(
+  dots: [_DiagramDot(Offset(0.3, 0.5)), _DiagramDot(Offset(0.7, 0.5))],
+  axisLine: true,
+  icon: Icons.touch_app,
+  iconAt: Offset(0.3, 0.15),
+);
+
+/// Small enough that it doesn't need a full [_GestureDiagram] — the axis
+/// switch is self-explanatory (its own icon already shows which way it's
+/// set, see the editor's mirror-axis toggle), this just gives the bullet
+/// row below it the same icon-sized illustration slot the other rows have.
+class _MirrorAxisSwitchIllustration extends StatelessWidget {
+  const _MirrorAxisSwitchIllustration();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return SizedBox(
+      width: _GestureDiagram._width,
+      height: _GestureDiagram._height,
+      child: Center(
+        child: Icon(Icons.swap_horiz, color: colors.muted, size: 22),
+      ),
+    );
+  }
+}
+
 /// A graph-paper backdrop for the editor canvas: a uniform grid dividing
 /// the whole canvas — the one "big square" — into [divisions] equal small
 /// ones on each axis, with the center vertical/horizontal line emphasized
@@ -1498,7 +1653,7 @@ class _GridPainter extends CustomPainter {
   final Color color;
 
   /// The one vertical and one horizontal line through the exact center
-  /// (only when [divisions] is even — [_ConstellationEditorScreenState._gridDivisions]
+  /// (only when [divisions] is even — [_StarsShapeEditorScreenState._gridDivisions]
   /// is fixed at 10, so this always lands cleanly) are drawn in this
   /// brighter shade of the same neutral grid color, same stroke width as
   /// every other line — just enough to keep the canvas's center visible at
@@ -1542,7 +1697,7 @@ class _GridPainter extends CustomPainter {
   }
 }
 
-/// The "name your constellation" prompt shown by [_ConstellationEditorScreenState._save]
+/// The "name your constellation" prompt shown by [_StarsShapeEditorScreenState._save]
 /// — its own [TextEditingController] lives and dies with *this widget's*
 /// element, not with the `showDialog` call's Future. `showDialog`'s Future
 /// resolves the instant `Navigator.pop` is called, before the dialog route's

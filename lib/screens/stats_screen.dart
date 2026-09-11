@@ -41,14 +41,14 @@ class StatsScreen extends StatefulWidget {
     required this.projectRepository,
     required this.habitRepository,
     required this.habitCompletionRepository,
-    required this.customConstellationRepository,
+    required this.starsShapeRepository,
   });
 
   final StarRepository starRepository;
   final ProjectRepository projectRepository;
   final HabitRepository habitRepository;
   final HabitCompletionRepository habitCompletionRepository;
-  final CustomConstellationRepository customConstellationRepository;
+  final StarsShapeRepository starsShapeRepository;
 
   @override
   State<StatsScreen> createState() => _StatsScreenState();
@@ -97,7 +97,7 @@ class _StatsScreenState extends State<StatsScreen> {
       MaterialPageRoute(
         builder: (_) => StarFormScreen(
           projectRepository: widget.projectRepository,
-          customConstellationRepository: widget.customConstellationRepository,
+          starsShapeRepository: widget.starsShapeRepository,
           initialDate: initialDate,
           initialKind: initialKind,
         ),
@@ -152,7 +152,7 @@ class _StatsScreenState extends State<StatsScreen> {
           allowEdit: true,
           projectsById: _projectsById(),
           projectRepository: widget.projectRepository,
-          customConstellationRepository: widget.customConstellationRepository,
+          starsShapeRepository: widget.starsShapeRepository,
           refreshStars: () => _achievedStarsOnDay(day),
         ),
       ),

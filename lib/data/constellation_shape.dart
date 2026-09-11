@@ -7,7 +7,7 @@
 // order" rule.
 //
 // Two things produce one: the in-app editor, which saves what the user drew
-// as a `CustomConstellation`, and the ready-made library in
+// as a `StarsShape`, and the ready-made library in
 // `constellation_presets.dart`. Both land in the same normalized 0..1 box
 // (see `normalizeEditorPoints`), so nothing downstream needs to know which
 // one it's looking at.

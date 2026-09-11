@@ -46,15 +46,15 @@ class StarReaderScreen extends StatefulWidget {
     required this.projectsById,
     this.allowEdit = false,
     this.projectRepository,
-    this.customConstellationRepository,
+    this.starsShapeRepository,
     this.refreshStars,
     this.onNavigateTo,
   }) : assert(
          !allowEdit ||
              (projectRepository != null &&
-                 customConstellationRepository != null &&
+                 starsShapeRepository != null &&
                  refreshStars != null),
-         'projectRepository, customConstellationRepository, and refreshStars are required when allowEdit is true.',
+         'projectRepository, starsShapeRepository, and refreshStars are required when allowEdit is true.',
        );
 
   final StarRepository repository;
@@ -68,7 +68,7 @@ class StarReaderScreen extends StatefulWidget {
   final bool allowEdit;
 
   final ProjectRepository? projectRepository;
-  final CustomConstellationRepository? customConstellationRepository;
+  final StarsShapeRepository? starsShapeRepository;
 
   /// Re-derives this reader's star list the same way [initialStars] was
   /// originally scoped — called after an edit/achieve/delete/resurrect so
@@ -155,7 +155,7 @@ class _StarReaderScreenState extends State<StarReaderScreen> {
             existingStar: current,
             contextProject: widget.projectsById[current.projectId],
             projectRepository: widget.projectRepository,
-            customConstellationRepository: widget.customConstellationRepository,
+            starsShapeRepository: widget.starsShapeRepository,
             hideDelete: true,
           ),
         ),
@@ -181,7 +181,7 @@ class _StarReaderScreenState extends State<StarReaderScreen> {
           existingStar: current,
           contextProject: widget.projectsById[current.projectId],
           projectRepository: widget.projectRepository,
-          customConstellationRepository: widget.customConstellationRepository,
+          starsShapeRepository: widget.starsShapeRepository,
         ),
       ),
     );

@@ -29,7 +29,7 @@ class _GoBackToAreaPicker {
 Future<Project?> pickProject(
   BuildContext context,
   ProjectRepository repository,
-  CustomConstellationRepository customConstellationRepository,
+  StarsShapeRepository starsShapeRepository,
 ) async {
   while (context.mounted) {
     final area = await _pickArea(context);
@@ -45,7 +45,7 @@ Future<Project?> pickProject(
         MaterialPageRoute(
           builder: (_) => NewProjectScreen(
             projectRepository: repository,
-            customConstellationRepository: customConstellationRepository,
+            starsShapeRepository: starsShapeRepository,
             presetArea: area,
           ),
         ),

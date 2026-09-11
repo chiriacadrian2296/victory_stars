@@ -26,7 +26,7 @@ class SkySearchScreen extends StatefulWidget {
     required this.starRepository,
     required this.habitRepository,
     required this.habitCompletionRepository,
-    required this.customConstellationRepository,
+    required this.starsShapeRepository,
     required this.areaVisionRepository,
   });
 
@@ -34,7 +34,7 @@ class SkySearchScreen extends StatefulWidget {
   final StarRepository starRepository;
   final HabitRepository habitRepository;
   final HabitCompletionRepository habitCompletionRepository;
-  final CustomConstellationRepository customConstellationRepository;
+  final StarsShapeRepository starsShapeRepository;
   final AreaVisionRepository areaVisionRepository;
 
   @override
@@ -104,7 +104,7 @@ class _SkySearchScreenState extends State<SkySearchScreen> {
                 starRepository: widget.starRepository,
                 habitRepository: widget.habitRepository,
                 habitCompletionRepository: widget.habitCompletionRepository,
-                customConstellationRepository: widget.customConstellationRepository,
+                starsShapeRepository: widget.starsShapeRepository,
                 areaVisionRepository: widget.areaVisionRepository,
                 onNavigateTo: (target) => Navigator.of(context).pop(target),
                 onModeLabelChanged: (label) =>

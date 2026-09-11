@@ -4,7 +4,7 @@ import 'life_area.dart';
 /// Professional). Its [iconSlug] selects only the badge icon shown in
 /// project lists — purely cosmetic, unrelated to its constellation. The
 /// actual shape its wins light up stars in is the hand-drawn
-/// [customConstellationId] (see `CustomConstellationRepository`), which
+/// [starsShapeId] (see `StarsShapeRepository`), which
 /// every project is expected to have — `NewProjectScreen` requires picking
 /// or drawing one before a project can be created. It's still nullable here
 /// because pre-editor projects only get one lazily, via
@@ -15,7 +15,7 @@ class Project {
     required this.name,
     required this.area,
     required this.iconSlug,
-    this.customConstellationId,
+    this.starsShapeId,
     this.description,
     required this.createdAt,
   });
@@ -24,7 +24,7 @@ class Project {
   final String name;
   final LifeArea area;
   final String iconSlug;
-  final int? customConstellationId;
+  final int? starsShapeId;
 
   /// Optional, freeform — what this project is about. Never required,
   /// unlike [name].
@@ -36,7 +36,7 @@ class Project {
     String? name,
     LifeArea? area,
     String? iconSlug,
-    int? customConstellationId,
+    int? starsShapeId,
     String? description,
     DateTime? createdAt,
   }) {
@@ -45,7 +45,7 @@ class Project {
       name: name ?? this.name,
       area: area ?? this.area,
       iconSlug: iconSlug ?? this.iconSlug,
-      customConstellationId: customConstellationId ?? this.customConstellationId,
+      starsShapeId: starsShapeId ?? this.starsShapeId,
       description: description ?? this.description,
       createdAt: createdAt ?? this.createdAt,
     );
@@ -57,7 +57,11 @@ class Project {
       name: json['name'] as String,
       area: LifeArea.values.byName(json['area'] as String),
       iconSlug: json['iconSlug'] as String,
-      customConstellationId: json['customConstellationId'] as int?,
+      // Reads from the pre-rename storage key on purpose — every project
+      // already saved on a device has this key, and there's no migration
+      // step that runs before this parse, so changing it here would drop
+      // every existing project's shape assignment on next launch.
+      starsShapeId: json['customConstellationId'] as int?,
       description: json['description'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
     );
@@ -69,8 +73,9 @@ class Project {
       'name': name,
       'area': area.name,
       'iconSlug': iconSlug,
-      if (customConstellationId != null)
-        'customConstellationId': customConstellationId,
+      // Same pre-rename key as fromJson reads — see its own comment.
+      if (starsShapeId != null)
+        'customConstellationId': starsShapeId,
       if (description != null) 'description': description,
       'createdAt': createdAt.toIso8601String(),
     };
@@ -83,7 +88,7 @@ class Project {
         other.name == name &&
         other.area == area &&
         other.iconSlug == iconSlug &&
-        other.customConstellationId == customConstellationId &&
+        other.starsShapeId == starsShapeId &&
         other.description == description &&
         other.createdAt == createdAt;
   }
@@ -94,7 +99,7 @@ class Project {
     name,
     area,
     iconSlug,
-    customConstellationId,
+    starsShapeId,
     description,
     createdAt,
   );

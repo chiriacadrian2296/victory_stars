@@ -24,7 +24,7 @@ import 'star_form_screen.dart';
 import 'star_reader_screen.dart';
 
 /// A single constellation up close: a pannable/zoomable star field shaped
-/// like the project's own hand-drawn [Project.customConstellationId] shape.
+/// like the project's own hand-drawn [Project.starsShapeId] shape.
 /// Every slot on that shape holds a star — lit, unlit, dead, or still
 /// nascent — ordered by [Star.slotSequence]; pulsars are separate, smaller
 /// stars scattered around/inside/outside the shape (see
@@ -41,7 +41,7 @@ class ConstellationScreen extends StatefulWidget {
     required this.projectRepository,
     required this.habitRepository,
     required this.habitCompletionRepository,
-    required this.customConstellationRepository,
+    required this.starsShapeRepository,
   });
 
   final Project project;
@@ -49,7 +49,7 @@ class ConstellationScreen extends StatefulWidget {
   final ProjectRepository projectRepository;
   final HabitRepository habitRepository;
   final HabitCompletionRepository habitCompletionRepository;
-  final CustomConstellationRepository customConstellationRepository;
+  final StarsShapeRepository starsShapeRepository;
 
   @override
   State<ConstellationScreen> createState() => _ConstellationScreenState();
@@ -58,16 +58,16 @@ class ConstellationScreen extends StatefulWidget {
 class _ConstellationScreenState extends State<ConstellationScreen> {
   static const _canvasSize = Size(1000, 1000);
 
-  // Every project is expected to carry a customConstellationId — either set
+  // Every project is expected to carry a starsShapeId — either set
   // directly at creation (NewProjectScreen requires it) or backfilled by
   // backfillMissingConstellations for anything older. Falling back to null
   // (rather than looking a shape up from the project's icon, the way this
   // screen used to) is purely a defensive guard for that in-between moment,
   // not a live feature — it reuses the "shape missing" empty state below.
   late final ConstellationShape? _shape =
-      widget.project.customConstellationId != null
-      ? widget.customConstellationRepository
-            .getById(widget.project.customConstellationId!)
+      widget.project.starsShapeId != null
+      ? widget.starsShapeRepository
+            .getById(widget.project.starsShapeId!)
             ?.shape
       : null;
   late final Rect _shapeBounds = _shape == null
@@ -190,7 +190,7 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
             habitRepository: widget.habitRepository,
             habitCompletionRepository: widget.habitCompletionRepository,
             projectRepository: widget.projectRepository,
-            customConstellationRepository: widget.customConstellationRepository,
+            starsShapeRepository: widget.starsShapeRepository,
           ),
         ),
       );
@@ -209,7 +209,7 @@ class _ConstellationScreenState extends State<ConstellationScreen> {
           allowEdit: true,
           projectsById: {widget.project.id: widget.project},
           projectRepository: widget.projectRepository,
-          customConstellationRepository: widget.customConstellationRepository,
+          starsShapeRepository: widget.starsShapeRepository,
           refreshStars: () =>
               widget.starRepository.getAllForProject(widget.project.id),
         ),

@@ -10,10 +10,10 @@ import '../models/custom_constellation.dart';
 import '../models/life_area.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_style.dart';
-import '../widgets/app_action_disc.dart';
 import '../widgets/app_field.dart';
 import '../utils/icon_for_slug.dart';
 import '../widgets/constellation_editor_painter.dart';
+import '../widgets/pill_action_button.dart';
 import '../widgets/responsive_content.dart';
 import 'constellation_editor_screen.dart';
 
@@ -22,12 +22,13 @@ import 'constellation_editor_screen.dart';
 ///
 /// A shape is required — every project needs one for its wins to light up
 /// stars in — and there are three ways to get one: pick a ready-made shape
-/// from the library ([constellationPresets], 100 of them across
-/// [PresetCategory]s), draw a new one in [ConstellationEditorScreen], or
-/// reuse one already saved. Picking from the library also fills in the icon
-/// with the one paired with that shape (a bicycle shape, the bicycle
-/// badge); a hand-drawn shape leaves the icon to the user, since the app has
-/// no idea what they drew. Either way the icon stays editable afterwards.
+/// from the library ([starsShapePresets], 100 of them across
+/// [PresetCategory]s), draw a new one in [StarsShapeEditorScreen], or
+/// reuse one already saved. The icon is always the user's own pick (see
+/// [_buildIconField]) — a preset's own [StarsShapePreset.iconSlug] (a
+/// bicycle shape, the bicycle badge) exists and is kept, but picking that
+/// preset no longer fills the icon field in on its own; see
+/// [_selectPreset]'s own note.
 ///
 /// [presetArea] locks the area (e.g. opened from that area's project list);
 /// when omitted (e.g. opened inline while adding a win), the user picks an
@@ -36,12 +37,12 @@ class NewProjectScreen extends StatefulWidget {
   const NewProjectScreen({
     super.key,
     required this.projectRepository,
-    required this.customConstellationRepository,
+    required this.starsShapeRepository,
     this.presetArea,
   });
 
   final ProjectRepository projectRepository;
-  final CustomConstellationRepository customConstellationRepository;
+  final StarsShapeRepository starsShapeRepository;
   final LifeArea? presetArea;
 
   @override
@@ -57,32 +58,47 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
   /// The two shape selections are mutually exclusive — whichever was picked
   /// last wins, and setting one clears the other (see [_selectPreset] /
   /// [_selectCustom]). A preset is only turned into a real
-  /// [CustomConstellation] at save time (see [_save]), so abandoning this
+  /// [StarsShape] at save time (see [_save]), so abandoning this
   /// form never leaves a stray shape behind in the user's own list.
-  CustomConstellation? _selectedCustomConstellation;
-  ConstellationPreset? _selectedPreset;
+  StarsShape? _selectedStarsShape;
+  StarsShapePreset? _selectedPreset;
 
   bool get _hasShape =>
-      _selectedCustomConstellation != null || _selectedPreset != null;
+      _selectedStarsShape != null || _selectedPreset != null;
 
   ConstellationShape? get _selectedShape =>
-      _selectedCustomConstellation?.shape ?? _selectedPreset?.shape;
+      _selectedStarsShape?.shape ?? _selectedPreset?.shape;
 
   String? _selectedShapeName(AppStrings strings) =>
-      _selectedCustomConstellation?.name ??
+      _selectedStarsShape?.name ??
       _selectedPreset?.name.of(strings.languageCode);
 
-  void _selectPreset(ConstellationPreset preset) {
+  void _selectPreset(StarsShapePreset preset) {
     setState(() {
       _selectedPreset = preset;
-      _selectedCustomConstellation = null;
-      _selectedIconSlug = preset.iconSlug;
+      _selectedStarsShape = null;
+      // Used to also fill in `_selectedIconSlug = preset.iconSlug` here —
+      // switched off for now (still deciding how icon<->shape pairing
+      // should actually work; see the memory note on this), but
+      // [StarsShapePreset.iconSlug] itself is untouched, so turning this
+      // back on later is a one-line change.
     });
   }
 
-  void _selectCustom(CustomConstellation custom) {
+  void _selectCustom(StarsShape custom) {
     setState(() {
-      _selectedCustomConstellation = custom;
+      _selectedStarsShape = custom;
+      _selectedPreset = null;
+    });
+  }
+
+  /// Clears the current shape selection back to the blank placeholder —
+  /// only the shape, not the icon (which a preset may have filled in on
+  /// its own but the user might still want to keep even after backing out
+  /// of that preset).
+  void _resetShape() {
+    setState(() {
+      _selectedStarsShape = null;
       _selectedPreset = null;
     });
   }
@@ -210,15 +226,17 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
   /// an existing one the user almost certainly wants their just-revised
   /// version applied to this project rather than having to pick it again.
   Future<void> _openConstellationEditor({
-    CustomConstellation? existing,
+    StarsShape? existing,
     ConstellationShape? initialShape,
+    String? initialShapeName,
   }) async {
-    final saved = await Navigator.of(context).push<CustomConstellation>(
+    final saved = await Navigator.of(context).push<StarsShape>(
       MaterialPageRoute(
-        builder: (_) => ConstellationEditorScreen(
-          customConstellationRepository: widget.customConstellationRepository,
+        builder: (_) => StarsShapeEditorScreen(
+          starsShapeRepository: widget.starsShapeRepository,
           existing: existing,
           initialShape: initialShape,
+          initialShapeName: initialShapeName,
         ),
       ),
     );
@@ -234,16 +252,19 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
   /// [_SelectedShapePreview] itself, rather than a pencil on every tile
   /// in a whole list of them.
   Future<void> _editSelectedShape() {
-    final custom = _selectedCustomConstellation;
+    final custom = _selectedStarsShape;
     if (custom != null) return _openConstellationEditor(existing: custom);
     final preset = _selectedPreset;
     if (preset != null) {
-      return _openConstellationEditor(initialShape: preset.shape);
+      return _openConstellationEditor(
+        initialShape: preset.shape,
+        initialShapeName: preset.name.of(context.strings.languageCode),
+      );
     }
     return _openConstellationEditor();
   }
 
-  /// The shape picker sheet — presets ([constellationPresets], grouped by
+  /// The shape picker sheet — presets ([starsShapePresets], grouped by
   /// [PresetCategory]) and this user's own already-saved shapes, switched
   /// between by [_ShapePickerTabs] rather than living in two separate
   /// places on the form (a saved shape used to have its own "Your
@@ -254,15 +275,15 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
   Future<void> _openLibrary() async {
     final strings = context.strings;
     final language = strings.languageCode;
-    final customs = widget.customConstellationRepository.getAll();
+    final customs = widget.starsShapeRepository.getAll();
     final items = <_ShapePickerChoice>[
-      for (final preset in constellationPresets) _PresetChoice(preset),
+      for (final preset in starsShapePresets) _PresetChoice(preset),
       for (final custom in customs) _CustomChoice(custom),
     ];
     final currentSelection = _selectedPreset != null
         ? _PresetChoice(_selectedPreset!)
-        : _selectedCustomConstellation != null
-        ? _CustomChoice(_selectedCustomConstellation!)
+        : _selectedStarsShape != null
+        ? _CustomChoice(_selectedStarsShape!)
         : null;
 
     final picked = await _showSearchablePicker<_ShapePickerChoice>(
@@ -468,17 +489,17 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
     // project is actually being created — and reuses the copy made the first
     // time this preset was picked, rather than adding another identical one.
     final constellation = preset != null
-        ? await widget.customConstellationRepository.materializePreset(
+        ? await widget.starsShapeRepository.materializePreset(
             preset,
             languageCode: languageCode,
           )
-        : _selectedCustomConstellation!;
+        : _selectedStarsShape!;
 
     final project = await widget.projectRepository.add(
       name: name,
       area: area,
       iconSlug: iconSlug,
-      customConstellationId: constellation.id,
+      starsShapeId: constellation.id,
       description: _descriptionController.text,
     );
     if (mounted) Navigator.of(context).pop(project);
@@ -581,38 +602,74 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
                 const SizedBox(height: 20),
                 AppFieldLabel(strings.chooseShapeLabel),
                 const SizedBox(height: 8),
-                // Current selection on the left, the two ways to change it
-                // on the right — so the shape being committed to is always
-                // on screen, rather than only discoverable by reopening the
-                // picker it came from.
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _SelectedShapePreview(
-                      shape: _selectedShape,
-                      label: _selectedShapeName(strings),
-                      emptyHint: strings.noShapeChosenHint,
-                      onEdit: _editSelectedShape,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
+                // The shape being committed to, on the left — always on
+                // screen, always editable (tapping it, blank or not,
+                // opens the same editor `_editSelectedShape` always did)
+                // — sized to the same width as the Area field above it
+                // (same 3:1 split, same gap, over the same total row
+                // width) so the two line up rather than matching by
+                // coincidence. The three ways to change it fill the
+                // space that leaves on the right, stacked to match
+                // whatever height that makes the preview (square, so
+                // wider now also means taller) via [IntrinsicHeight] +
+                // `stretch` rather than a guessed fixed height.
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    const gap = 12.0;
+                    final side = (constraints.maxWidth - gap) * 3 / 4;
+                    return IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _ShapeSourceButton(
-                            icon: Icons.auto_awesome_mosaic,
-                            label: strings.pickFromLibraryShort,
-                            onTap: _openLibrary,
+                          _SelectedShapePreview(
+                            shape: _selectedShape,
+                            label: _selectedShapeName(strings),
+                            onEdit: _editSelectedShape,
+                            side: side,
                           ),
-                          const SizedBox(height: 10),
-                          _ShapeSourceButton(
-                            icon: Icons.gesture,
-                            label: strings.drawYourOwnShort,
-                            onTap: _openConstellationEditor,
+                          const SizedBox(width: gap),
+                          Expanded(
+                            // `stretch`, not the Column default `center`
+                            // — [Expanded] alone only shares out the
+                            // *height* between the three buttons; without
+                            // this each one would still shrink-wrap to
+                            // its own icon+label width and sit centered
+                            // in the middle of this slot instead of
+                            // actually filling it edge to edge, the same
+                            // width as the icon field above.
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Expanded(
+                                  child: _ShapeSideButton(
+                                    icon: Icons.edit_outlined,
+                                    label: strings.drawShapeShort,
+                                    onTap: _editSelectedShape,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Expanded(
+                                  child: _ShapeSideButton(
+                                    icon: Icons.insights,
+                                    label: strings.pickFromLibraryShort,
+                                    onTap: _openLibrary,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Expanded(
+                                  child: _ShapeSideButton(
+                                    icon: Icons.refresh,
+                                    label: strings.resetShapeShort,
+                                    onTap: _hasShape ? _resetShape : null,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 28),
                 Center(
@@ -624,12 +681,10 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
                           _selectedArea != null &&
                           _selectedIconSlug != null &&
                           _hasShape;
-                      return AppActionDisc(
-                        heroTag: 'createProjectFab',
-                        icon: Icons.check,
+                      return SaveActionButton(
+                        label: strings.createProject,
                         lit: canSave,
                         onPressed: canSave ? _save : _showCannotSaveMessage,
-                        tooltip: strings.createProject,
                       );
                     },
                   ),
@@ -779,8 +834,8 @@ class _ShapeThumbnail extends StatelessWidget {
 }
 
 /// One entry in the shape picker sheet — either a ready-made
-/// [ConstellationPreset] or one of this user's own saved
-/// [CustomConstellation]s — wrapped in a common type so
+/// [StarsShapePreset] or one of this user's own saved
+/// [StarsShape]s — wrapped in a common type so
 /// `_NewProjectScreenState._openLibrary`'s single searchable sheet (see
 /// [_ShapePickerTabs]) can hold both kinds of item without the picker
 /// shell itself needing to know shapes come from two different places.
@@ -790,18 +845,18 @@ sealed class _ShapePickerChoice {
 
 class _PresetChoice extends _ShapePickerChoice {
   const _PresetChoice(this.preset);
-  final ConstellationPreset preset;
+  final StarsShapePreset preset;
 }
 
 class _CustomChoice extends _ShapePickerChoice {
   const _CustomChoice(this.custom);
-  final CustomConstellation custom;
+  final StarsShape custom;
 }
 
 enum _ShapePickerTab { library, yourShapes }
 
 /// The shape picker sheet's own body: a small segmented switch between
-/// [_ShapePickerTab.library] (every ready-made [ConstellationPreset]) and
+/// [_ShapePickerTab.library] (every ready-made [StarsShapePreset]) and
 /// [_ShapePickerTab.yourShapes] (this user's own saved ones) — a local
 /// [StatefulWidget] rather than plumbing the active tab up through
 /// `_NewProjectScreenState` itself, since which tab is showing is purely
@@ -882,8 +937,27 @@ class _ShapePickerTabsState extends State<_ShapePickerTabs> {
   }
 }
 
+/// [selectableDecoration]'s own gold radial fill + glow read fine for a
+/// small chip/icon tile, but on a whole shape preview it was fighting the
+/// shape's own thumbnail for attention — every shape preview in this
+/// screen (both [_ShapeTile] and [_SelectedShapePreview]) uses this
+/// instead: same gold border for "selected", the ordinary panel
+/// background left alone. Local to this screen rather than a change to
+/// [selectableDecoration] itself, which plenty of other pickers
+/// (icons, areas, kinds) still want its fill/glow treatment for.
+BoxDecoration _shapePreviewDecoration(AppColors colors, {required bool selected}) {
+  return BoxDecoration(
+    color: colors.nightPanel,
+    border: Border.all(
+      color: selected ? colors.gold : colors.nightBorder,
+      width: selected ? kBorderWidthActive : kBorderWidth,
+    ),
+    borderRadius: BorderRadius.circular(kRadiusField),
+  );
+}
+
 /// One shape in the picker sheet: its thumbnail over its name, selectable —
-/// used for both a ready-made [ConstellationPreset] and one of this user's
+/// used for both a ready-made [StarsShapePreset] and one of this user's
 /// own saved shapes alike (see [_ShapePickerChoice]), since a tile looks
 /// and behaves identically either way now — no per-tile edit pencil any
 /// more; see `_NewProjectScreenState._editSelectedShape` for where editing
@@ -924,7 +998,7 @@ class _ShapeTile extends StatelessWidget {
               width: side,
               height: side,
               clipBehavior: Clip.antiAlias,
-              decoration: selectableDecoration(colors, selected: selected),
+              decoration: _shapePreviewDecoration(colors, selected: selected),
               child: _ShapeThumbnail(shape: shape, side: side),
             ),
           ),
@@ -948,110 +1022,96 @@ class _ShapeTile extends StatelessWidget {
 }
 
 /// The shape currently chosen for the project being created — whichever
-/// source it came from — or a placeholder while there isn't one. Once
-/// there *is* one, tapping it (or its small pencil badge) opens it back
-/// up in the editor to revise it — the one place editing happens now,
-/// whether the shape started as a from-scratch drawing, a preset, or an
-/// already-saved one of this user's own (see
-/// `_NewProjectScreenState._editSelectedShape`); every custom
-/// constellation tile used to carry its own edit pencil, one per tile —
-/// this badge is the single one left. Still not tappable while empty:
-/// [_ShapeSourceButton]s beside it are the two ways to actually get a
-/// shape in the first place.
+/// source it came from — or a placeholder while there isn't one. Tapping
+/// anywhere on it always opens the editor: on an existing shape that's a
+/// revise, on the empty placeholder it's a from-scratch draw — the one
+/// place editing (or starting) a shape happens now, folding in what used
+/// to be a separate "draw your own" button, whether the shape started as
+/// a from-scratch drawing, a preset, or an already-saved one of this
+/// user's own (see `_NewProjectScreenState._editSelectedShape`). No
+/// separate edit-pencil badge any more — the whole tile is already the
+/// tap target, so a dedicated one was redundant; its corner now shows the
+/// shape's own name instead.
 class _SelectedShapePreview extends StatelessWidget {
   const _SelectedShapePreview({
     required this.shape,
     required this.label,
-    required this.emptyHint,
     required this.onEdit,
+    this.side = _constellationPreviewSide,
   });
 
   final ConstellationShape? shape;
   final String? label;
-  final String emptyHint;
   final VoidCallback onEdit;
-
-  static const _side = _constellationPreviewSide;
+  final double side;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final chosen = shape;
-    return SizedBox(
-      width: _side,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Stack(
-            children: [
-              InkWell(
-                onTap: chosen == null ? null : onEdit,
-                borderRadius: BorderRadius.circular(kRadiusField),
-                child: Container(
-                  width: _side,
-                  height: _side,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: selectableDecoration(
-                    colors,
-                    selected: chosen != null,
+    return InkWell(
+      onTap: onEdit,
+      borderRadius: BorderRadius.circular(kRadiusField),
+      child: Container(
+        width: side,
+        height: side,
+        clipBehavior: Clip.antiAlias,
+        decoration: _shapePreviewDecoration(colors, selected: chosen != null),
+        child: Stack(
+          children: [
+            if (chosen == null)
+              // Same [Icons.insights] as the "Shapes" button beside it —
+              // no separate caption under it any more ("No shape chosen
+              // yet" was redundant once this whole tile visibly matched
+              // the empty canvas it opens), bigger now that it's carrying
+              // the empty state on its own.
+              Center(
+                child: Icon(Icons.insights, color: colors.muted, size: 44),
+              )
+            else
+              _ShapeThumbnail(shape: chosen, side: side),
+            // The name, not a pencil badge — the whole tile already opens
+            // the editor on tap (see `onEdit` above), so a dedicated edit
+            // affordance was redundant; this corner was better spent
+            // saying *what* the shape is instead. A soft shadow, not a
+            // solid scrim behind it, keeps it legible over the shape's
+            // own stars/lines without boxing it in. Only shown once
+            // there's an actual name — nothing to caption while empty.
+            if (label != null)
+              Positioned(
+                left: 10,
+                top: 8,
+                right: 10,
+                child: Text(
+                  label!,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.2,
+                    fontWeight: FontWeight.w700,
+                    color: colors.text,
+                    shadows: const [
+                      Shadow(color: Colors.black87, blurRadius: 6),
+                    ],
                   ),
-                  child: chosen == null
-                      ? Center(
-                          child: Icon(
-                            Icons.auto_awesome_outlined,
-                            color: colors.muted,
-                            size: 28,
-                          ),
-                        )
-                      : _ShapeThumbnail(shape: chosen, side: _side),
                 ),
               ),
-              if (chosen != null)
-                Positioned(
-                  right: 2,
-                  top: 2,
-                  child: Material(
-                    color: colors.night.withValues(alpha: 0.75),
-                    shape: const CircleBorder(),
-                    child: InkWell(
-                      onTap: onEdit,
-                      customBorder: const CircleBorder(),
-                      child: Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: Icon(
-                          Icons.edit,
-                          size: 18,
-                          color: colors.gold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label ?? emptyHint,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 11,
-              height: 1.2,
-              color: chosen == null ? colors.muted : colors.gold,
-              fontWeight: chosen == null ? FontWeight.w400 : FontWeight.w600,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-/// One of the two ways to get a shape — a full-width outlined row, sized so
-/// two of them stack alongside the selection preview.
-class _ShapeSourceButton extends StatelessWidget {
-  const _ShapeSourceButton({
+/// One of the three ways to change the shape, beside the preview — icon
+/// above a short label, filling whatever cell height
+/// [Expanded]/[IntrinsicHeight] give it in the column of three these stack
+/// in (see the shape picker's own build code). A disabled (null [onTap])
+/// one — Reset with nothing to reset — dims to [AppColors.muted] the same
+/// way every other disabled control in this app does.
+class _ShapeSideButton extends StatelessWidget {
+  const _ShapeSideButton({
     required this.icon,
     required this.label,
     required this.onTap,
@@ -1059,24 +1119,42 @@ class _ShapeSourceButton extends StatelessWidget {
 
   final IconData icon;
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: onTap,
-        icon: Icon(icon, size: 20),
-        // Flexible, not a bare Text: the button's own Row is mainAxisSize.min,
-        // so a label too long for the space left beside the shape preview
-        // (Italian and Romanian both run longer than English here) would
-        // overflow rather than ellipsize.
-        label: Flexible(
-          child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-        ),
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+    final colors = context.colors;
+    final enabled = onTap != null;
+    final foreground = enabled ? colors.gold : colors.muted;
+
+    // The same flat panel + border every other tappable tile in this app
+    // uses (see `panelDecoration`) — a plain [InkWell] with no surface of
+    // its own read as three loose icons floating beside the preview
+    // rather than three buttons.
+    return Container(
+      decoration: panelDecoration(colors),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: foreground, size: 22),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: enabled ? colors.text : colors.muted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

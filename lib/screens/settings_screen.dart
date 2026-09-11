@@ -39,7 +39,7 @@ class SettingsScreen extends StatefulWidget {
     required this.projectRepository,
     required this.habitRepository,
     required this.habitCompletionRepository,
-    required this.customConstellationRepository,
+    required this.starsShapeRepository,
     required this.areaVisionRepository,
     required this.reminderService,
   });
@@ -49,7 +49,7 @@ class SettingsScreen extends StatefulWidget {
   final ProjectRepository projectRepository;
   final HabitRepository habitRepository;
   final HabitCompletionRepository habitCompletionRepository;
-  final CustomConstellationRepository customConstellationRepository;
+  final StarsShapeRepository starsShapeRepository;
   final AreaVisionRepository areaVisionRepository;
   final ReminderService reminderService;
 
@@ -172,7 +172,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // leaving them shapeless until the next app launch.
     await backfillMissingConstellations(
       projectRepository: widget.projectRepository,
-      customConstellationRepository: widget.customConstellationRepository,
+      starsShapeRepository: widget.starsShapeRepository,
     );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -210,7 +210,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await widget.projectRepository.clear();
     await widget.habitRepository.clear();
     await widget.habitCompletionRepository.clear();
-    await widget.customConstellationRepository.clear();
+    await widget.starsShapeRepository.clear();
     await widget.areaVisionRepository.clear();
     if (mounted) {
       ScaffoldMessenger.of(context)

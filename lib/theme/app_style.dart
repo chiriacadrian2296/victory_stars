@@ -101,6 +101,26 @@ BoxDecoration selectableDecoration(
   );
 }
 
+/// [selectableDecoration] without its gold radial fill/glow — just the flat
+/// panel with a gold border once selected. For a surface that already
+/// carries its own content/color (a shape's own stars, a kind's own glyph),
+/// where the glow read as a wash sitting *on top of* that content rather
+/// than as a halo around a plain chip.
+BoxDecoration flatSelectableDecoration(
+  AppColors colors, {
+  required bool selected,
+  double radius = kRadiusField,
+}) {
+  return BoxDecoration(
+    color: colors.nightPanel,
+    border: Border.all(
+      color: selected ? colors.gold : colors.nightBorder,
+      width: selected ? kBorderWidthActive : kBorderWidth,
+    ),
+    borderRadius: BorderRadius.circular(radius),
+  );
+}
+
 /// The three states a field can be in, and the only three it can be in.
 ///
 /// This is the rule the whole app now follows, and the one place it's

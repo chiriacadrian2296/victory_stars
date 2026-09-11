@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Renders the in-progress shape inside `ConstellationEditorScreen`: plain
+/// Renders the in-progress shape inside `StarsShapeEditorScreen`: plain
 /// dots and connecting lines, with a ring around whichever point is
 /// currently armed (about to be connected) or being dragged. Deliberately
 /// not a reuse of `ConstellationPainter` — that one is tuned for the
@@ -31,7 +31,7 @@ class ConstellationEditorPainter extends CustomPainter {
   final Color lineColor;
 
   /// Defaults tuned for the full-size editor canvas. Small preview
-  /// thumbnails (see `_CustomConstellationOption` in `new_project_screen.dart`)
+  /// thumbnails (see `_StarsShapeOption` in `new_project_screen.dart`)
   /// pass a smaller [pointRadius] — otherwise, with several stars packed
   /// into ~100 logical pixels, the dots themselves overlap each other and
   /// hide the connecting lines between them.

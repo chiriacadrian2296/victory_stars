@@ -58,13 +58,11 @@ class StringsEn implements AppStrings {
   @override
   String get menuLightYourSky => 'Light Your Sky';
   @override
-  String get menuLightAStar => 'Light A Star';
+  String get menuLightAStar => 'Stars';
   @override
-  String get menuNewConstellation => 'New Constellation';
+  String get menuNewConstellation => 'Constellations';
   @override
-  String get lightYourSkyChooserTitle => 'What would you like to create?';
-  @override
-  String get menuImagineYourDreams => 'Imagine Your Dreams';
+  String get lightYourSkyChooserSupernovaOption => 'Supernovas';
   @override
   String get menuShootingStars => 'Shooting Stars';
   @override
@@ -92,10 +90,7 @@ class StringsEn implements AppStrings {
 
   @override
   String get menuLightYourSkyDescription =>
-      'Light a star or draw a new constellation.';
-  @override
-  String get menuImagineYourDreamsDescription =>
-      "Revisit what you're working toward, area by area.";
+      'Enrich your sky with new sources of light.';
   @override
   String get menuShootingStarsDescription => 'A wish, timed — coming soon.';
   @override
@@ -249,6 +244,8 @@ class StringsEn implements AppStrings {
   String get searchButtonLabel => 'Search';
   @override
   String get takeMeThereAction => 'Take me there';
+  @override
+  String get skyTapHoldHint => 'Tap to Move & Hold for Details';
 
   @override
   String get areaVisionLabel => 'Your vision for this area';
@@ -299,22 +296,17 @@ class StringsEn implements AppStrings {
       "This constellation's shape couldn't be found.";
 
   @override
-  String get drawYourOwnConstellation => 'Draw your own constellation';
+  String get drawYourOwnConstellation => 'Draw Your Own Stars Shape';
   @override
-  String get drawYourOwnShort => 'Draw your own';
+  String get constellationEditorTitle => 'Draw Your Stars Shape';
   @override
-  String get constellationEditorTitle => 'Draw your constellation';
-  @override
-  String get constellationEditorEditTitle => 'Edit your constellation';
-  @override
-  String get constellationEditorEmptyHint =>
-      'Tap anywhere to place your first star';
+  String get constellationEditorEditTitle => 'Edit Your Stars Shape';
   @override
   String constellationEditorDisconnectedWarning(int count) =>
-      '$count star${count == 1 ? '' : 's'} not connected yet';
+      '$count unconnected star${count == 1 ? '' : 's'}';
   @override
-  String get constellationEditorPointCapReached =>
-      "You've reached the maximum number of stars";
+  String constellationEditorStarCount(int count, int max) =>
+      'Used $count/$max stars';
   @override
   String get undoAction => 'Undo';
   @override
@@ -324,7 +316,7 @@ class StringsEn implements AppStrings {
   @override
   String get saveConstellationAction => 'Save';
   @override
-  String get nameYourConstellationTitle => 'Name your constellation';
+  String get nameYourConstellationTitle => 'Name Your Stars Shape';
   @override
   String get constellationNameHint => 'E.g. My own path';
   @override
@@ -354,19 +346,27 @@ class StringsEn implements AppStrings {
   String get constellationEditorHelpDeletePoint =>
       'Select a star, then tap the delete icon to remove it';
   @override
+  String get constellationEditorHelpMirrorToggle =>
+      'Turn on mirror mode to add, move, and delete stars on both sides at once';
+  @override
+  String get constellationEditorHelpMirrorAxis =>
+      'Switch the axis to mirror left/right or top/bottom';
+  @override
   String get constellationEditorHelpDontShowAgain => "Don't show this again";
   @override
   String get constellationEditorHelpClose => 'Got it';
   @override
   String get chooseShapeLabel => 'Constellation shape';
   @override
-  String get shapeLibraryTitle => 'Shape library';
+  String get shapeLibraryTitle => 'Shape Library';
   @override
-  String get pickFromLibraryShort => 'Pick a shape';
+  String get pickFromLibraryShort => 'Shapes';
+  @override
+  String get drawShapeShort => 'Draw';
+  @override
+  String get resetShapeShort => 'Reset';
   @override
   String get shapeSearchHint => 'Search shapes';
-  @override
-  String get noShapeChosenHint => 'No shape chosen yet';
   @override
   String get shapeLibraryTabLabel => 'Library';
   @override
@@ -393,7 +393,7 @@ class StringsEn implements AppStrings {
   @override
   String get iconLabel => 'Icon';
   @override
-  String get chooseIconTitle => 'Choose an icon';
+  String get chooseIconTitle => 'Choose An Icon';
   @override
   String get pickerConfirmAction => 'OK';
   @override
@@ -614,7 +614,7 @@ class StringsEn implements AppStrings {
   @override
   String get visionsEyebrow => 'THE BIGGEST PICTURE';
   @override
-  String get visionsTitle => 'Your visions';
+  String get visionsTitle => 'Your Visions';
   @override
   String get visionsSubtitle =>
       'One vision per supernova — the reality you want in that area of your '
@@ -625,11 +625,11 @@ class StringsEn implements AppStrings {
   @override
   String get guideEyebrow => 'HOW YOUR SKY WORKS';
   @override
-  String get guideTitle => 'The metaphor';
+  String get guideTitle => 'The Metaphor';
   @override
   String get guideIntroBody =>
       'Everything here is one sky, read at three sizes: the areas of your '
-      'life burn as supernovas, the projects inside them are '
+      'life burn as supernovas, the projects orbiting them are '
       'constellations, and every effort you make is a star.';
   @override
   String get examplesLabel => 'Examples';
@@ -653,7 +653,7 @@ class StringsEn implements AppStrings {
   String get guideConstellationMeaning => 'A project in your life';
   @override
   String get guideConstellationBody =>
-      'A shape you draw yourself, inside one supernova. It gathers every '
+      'A shape you draw yourself, orbiting one supernova. It gathers every '
       'effort about the same thing. Its shape is there from the first day '
       '— the stars along it simply start out nascent, waiting for you.';
   @override
@@ -719,6 +719,14 @@ class StringsEn implements AppStrings {
   String get starQuickLookViewAction => 'View';
   @override
   String get starQuickLookEditAction => 'Edit';
+  @override
+  String get starQuickLookShareAction => 'Share';
+  @override
+  String constellationTooltipLitCount(int lit, int total) =>
+      '$lit/$total stars lit';
+  @override
+  String areaTooltipStarCount(int count) =>
+      '$count star${count == 1 ? '' : 's'} lit';
 
   @override
   String get settingsEyebrow => 'SETTINGS';
@@ -837,10 +845,10 @@ class StringsEn implements AppStrings {
       'Stars and pulsars about the same thing — a project, a relationship, '
       'anything — belong to a constellation you name yourself.';
   @override
-  String get onboardingAreasTitle => 'Constellations live in supernovas';
+  String get onboardingAreasTitle => 'Constellations orbit supernovas';
   @override
   String get onboardingAreasBody =>
-      'Every constellation sits inside one of 8 supernovas — the fixed '
+      'Every constellation orbits one of 8 supernovas — the fixed '
       'areas of your life, from physical to social to spiritual. Together, '
       "they're your Sky.";
   @override

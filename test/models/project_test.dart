@@ -3,7 +3,7 @@ import 'package:victory_stars/models/life_area.dart';
 import 'package:victory_stars/models/project.dart';
 
 void main() {
-  test('fromJson() on data saved before customConstellationId existed yields null, not a crash', () {
+  test('fromJson() on data saved before starsShapeId existed yields null, not a crash', () {
     final json = {
       'id': 1,
       'name': 'Build this app',
@@ -14,7 +14,7 @@ void main() {
 
     final project = Project.fromJson(json);
 
-    expect(project.customConstellationId, isNull);
+    expect(project.starsShapeId, isNull);
     expect(project.description, isNull);
   });
 
@@ -34,19 +34,19 @@ void main() {
     expect(roundTripped.description, original.description);
   });
 
-  test('fromJson/toJson round-trips a set customConstellationId', () {
+  test('fromJson/toJson round-trips a set starsShapeId', () {
     final original = Project(
       id: 1,
       name: 'Build this app',
       area: LifeArea.professional,
       iconSlug: 'rocket_launch',
-      customConstellationId: 42,
+      starsShapeId: 42,
       createdAt: DateTime(2026, 1, 1),
     );
 
     final roundTripped = Project.fromJson(original.toJson());
 
     expect(roundTripped, original);
-    expect(roundTripped.customConstellationId, 42);
+    expect(roundTripped.starsShapeId, 42);
   });
 }

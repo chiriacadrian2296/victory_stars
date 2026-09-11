@@ -27,12 +27,12 @@ class AdmireStarsScreen extends StatefulWidget {
     super.key,
     required this.starRepository,
     required this.projectRepository,
-    required this.customConstellationRepository,
+    required this.starsShapeRepository,
   });
 
   final StarRepository starRepository;
   final ProjectRepository projectRepository;
-  final CustomConstellationRepository customConstellationRepository;
+  final StarsShapeRepository starsShapeRepository;
 
   @override
   State<AdmireStarsScreen> createState() => _AdmireStarsScreenState();
@@ -106,7 +106,7 @@ class _AdmireStarsScreenState extends State<AdmireStarsScreen> {
           allowEdit: true,
           projectsById: _projectsById(),
           projectRepository: widget.projectRepository,
-          customConstellationRepository: widget.customConstellationRepository,
+          starsShapeRepository: widget.starsShapeRepository,
           refreshStars: currentInShuffledOrder,
         ),
       ),

@@ -58,13 +58,11 @@ class StringsIt implements AppStrings {
   @override
   String get menuLightYourSky => 'Accendi Il Tuo Cielo';
   @override
-  String get menuLightAStar => 'Accendi Una Stella';
+  String get menuLightAStar => 'Stelle';
   @override
-  String get menuNewConstellation => 'Nuova Costellazione';
+  String get menuNewConstellation => 'Costellazioni';
   @override
-  String get lightYourSkyChooserTitle => 'Cosa vuoi creare?';
-  @override
-  String get menuImagineYourDreams => 'Immagina I Tuoi Sogni';
+  String get lightYourSkyChooserSupernovaOption => 'Supernove';
   @override
   String get menuShootingStars => 'Stelle Cadenti';
   @override
@@ -92,10 +90,7 @@ class StringsIt implements AppStrings {
 
   @override
   String get menuLightYourSkyDescription =>
-      'Accendi una stella o disegna una nuova costellazione.';
-  @override
-  String get menuImagineYourDreamsDescription =>
-      'Rivedi ciò per cui stai lavorando, area per area.';
+      'Arricchisci il tuo cielo con nuove fonti di luce.';
   @override
   String get menuShootingStarsDescription =>
       'Un desiderio a tempo — presto disponibile.';
@@ -251,6 +246,8 @@ class StringsIt implements AppStrings {
   String get searchButtonLabel => 'Cerca';
   @override
   String get takeMeThereAction => 'Portami lì';
+  @override
+  String get skyTapHoldHint => 'Tocca per spostarti · tieni premuto per i dettagli';
 
   @override
   String get areaVisionLabel => 'La tua visione per quest\'area';
@@ -301,22 +298,17 @@ class StringsIt implements AppStrings {
       'La forma di questa costellazione non è stata trovata.';
 
   @override
-  String get drawYourOwnConstellation => 'Disegna la tua costellazione';
+  String get drawYourOwnConstellation => 'Disegna La Tua Forma Di Stelle';
   @override
-  String get drawYourOwnShort => 'Disegna la tua';
+  String get constellationEditorTitle => 'Disegna La Tua Forma Di Stelle';
   @override
-  String get constellationEditorTitle => 'Disegna la tua costellazione';
-  @override
-  String get constellationEditorEditTitle => 'Modifica la tua costellazione';
-  @override
-  String get constellationEditorEmptyHint =>
-      'Tocca ovunque per posizionare la prima stella';
+  String get constellationEditorEditTitle => 'Modifica La Tua Forma Di Stelle';
   @override
   String constellationEditorDisconnectedWarning(int count) =>
-      '$count stell${count == 1 ? 'a non ancora collegata' : 'e non ancora collegate'}';
+      '$count stell${count == 1 ? 'a scollegata' : 'e scollegate'}';
   @override
-  String get constellationEditorPointCapReached =>
-      'Hai raggiunto il numero massimo di stelle';
+  String constellationEditorStarCount(int count, int max) =>
+      'Usate $count/$max stelle';
   @override
   String get undoAction => 'Annulla';
   @override
@@ -326,7 +318,7 @@ class StringsIt implements AppStrings {
   @override
   String get saveConstellationAction => 'Salva';
   @override
-  String get nameYourConstellationTitle => 'Dai un nome alla tua costellazione';
+  String get nameYourConstellationTitle => 'Dai Un Nome Alla Tua Forma Di Stelle';
   @override
   String get constellationNameHint => 'Es. Il mio percorso';
   @override
@@ -357,19 +349,27 @@ class StringsIt implements AppStrings {
   String get constellationEditorHelpDeletePoint =>
       'Seleziona una stella, poi tocca l\'icona elimina per rimuoverla';
   @override
+  String get constellationEditorHelpMirrorToggle =>
+      'Attiva la modalità specchio per aggiungere, spostare ed eliminare stelle su entrambi i lati contemporaneamente';
+  @override
+  String get constellationEditorHelpMirrorAxis =>
+      'Cambia l\'asse per specchiare a sinistra/destra o in alto/basso';
+  @override
   String get constellationEditorHelpDontShowAgain => 'Non mostrarlo più';
   @override
   String get constellationEditorHelpClose => 'Ho capito';
   @override
   String get chooseShapeLabel => 'Forma della costellazione';
   @override
-  String get shapeLibraryTitle => 'Libreria di forme';
+  String get shapeLibraryTitle => 'Libreria Di Forme';
   @override
-  String get pickFromLibraryShort => 'Scegli una forma';
+  String get pickFromLibraryShort => 'Forme';
+  @override
+  String get drawShapeShort => 'Disegna';
+  @override
+  String get resetShapeShort => 'Reset';
   @override
   String get shapeSearchHint => 'Cerca una forma';
-  @override
-  String get noShapeChosenHint => 'Nessuna forma scelta';
   @override
   String get shapeLibraryTabLabel => 'Libreria';
   @override
@@ -396,7 +396,7 @@ class StringsIt implements AppStrings {
   @override
   String get iconLabel => 'Icona';
   @override
-  String get chooseIconTitle => 'Scegli un\'icona';
+  String get chooseIconTitle => 'Scegli Un\'Icona';
   @override
   String get pickerConfirmAction => 'OK';
   @override
@@ -623,7 +623,7 @@ class StringsIt implements AppStrings {
   @override
   String get visionsEyebrow => 'IL QUADRO PIÙ GRANDE';
   @override
-  String get visionsTitle => 'Le tue visioni';
+  String get visionsTitle => 'Le Tue Visioni';
   @override
   String get visionsSubtitle =>
       'Una visione per ogni supernova — la realtà che vuoi in quell\'area '
@@ -634,12 +634,13 @@ class StringsIt implements AppStrings {
   @override
   String get guideEyebrow => 'COME FUNZIONA IL TUO CIELO';
   @override
-  String get guideTitle => 'La metafora';
+  String get guideTitle => 'La Metafora';
   @override
   String get guideIntroBody =>
       'Qui dentro tutto è un unico cielo, letto a tre grandezze: le aree '
-      'della tua vita bruciano come supernove, i progetti al loro interno '
-      'sono costellazioni, e ogni sforzo che fai è una stella.';
+      'della tua vita bruciano come supernove, i progetti che orbitano '
+      'attorno a esse sono costellazioni, e ogni sforzo che fai è una '
+      'stella.';
   @override
   String get examplesLabel => 'Esempi';
   @override
@@ -662,8 +663,9 @@ class StringsIt implements AppStrings {
   String get guideConstellationMeaning => 'Un progetto della tua vita';
   @override
   String get guideConstellationBody =>
-      'Una forma che disegni tu, dentro una supernova. Raccoglie tutti gli '
-      'sforzi che riguardano la stessa cosa. La sua forma esiste dal primo '
+      'Una forma che disegni tu, in orbita attorno a una supernova. '
+      'Raccoglie tutti gli sforzi che riguardano la stessa cosa. La sua '
+      'forma esiste dal primo '
       'giorno — le stelle lungo di essa nascono soltanto come stelle '
       'nascenti, in attesa di te.';
   @override
@@ -730,6 +732,14 @@ class StringsIt implements AppStrings {
   String get starQuickLookViewAction => 'Visualizza';
   @override
   String get starQuickLookEditAction => 'Modifica';
+  @override
+  String get starQuickLookShareAction => 'Condividi';
+  @override
+  String constellationTooltipLitCount(int lit, int total) =>
+      '$lit/$total stelle accese';
+  @override
+  String areaTooltipStarCount(int count) =>
+      '$count stell${count == 1 ? 'a accesa' : 'e accese'}';
 
   @override
   String get settingsEyebrow => 'IMPOSTAZIONI';
@@ -851,10 +861,10 @@ class StringsIt implements AppStrings {
       'relazione, qualsiasi cosa — appartengono a una costellazione che '
       'nomini tu.';
   @override
-  String get onboardingAreasTitle => 'Le costellazioni vivono nelle supernove';
+  String get onboardingAreasTitle => 'Le costellazioni orbitano le supernove';
   @override
   String get onboardingAreasBody =>
-      'Ogni costellazione si trova dentro una delle 8 supernove — le aree '
+      'Ogni costellazione orbita attorno a una delle 8 supernove — le aree '
       'fisse della tua vita, dalla fisica alla sociale alla spirituale. '
       'Insieme, sono il tuo Cielo.';
   @override

@@ -28,9 +28,9 @@ abstract class AppStrings {
 
   // The Sky's own side menu — the app has exactly one screen now (the
   // Sky), and everything else opens from there. Grouped into sections;
-  // [menuLightAStar]/[menuNewConstellation] no longer sit directly in the
-  // menu themselves — they're the two choices offered by
-  // [lightYourSkyChooserTitle]'s sheet, which [menuLightYourSky] opens.
+  // [menuLightAStar]/[menuNewConstellation]/[lightYourSkyChooserSupernovaOption]
+  // no longer sit directly in the menu themselves — they're the three
+  // choices offered by the popup [menuLightYourSky] opens.
   String get openMenuAction;
   // Shown briefly on the Sky's own star-shaped menu button (see
   // `_MenuStarButtonState`) whenever a press lets go before the short
@@ -41,8 +41,7 @@ abstract class AppStrings {
   String get menuLightYourSky;
   String get menuLightAStar;
   String get menuNewConstellation;
-  String get lightYourSkyChooserTitle;
-  String get menuImagineYourDreams;
+  String get lightYourSkyChooserSupernovaOption;
   String get menuShootingStars;
   String get menuDataSection;
   String get menuSearch;
@@ -60,7 +59,6 @@ abstract class AppStrings {
   // variant of the menu ([SkyMenuContent]'s `detailed: true`) — the
   // drawer stays as compact as it already was tuned to be.
   String get menuLightYourSkyDescription;
-  String get menuImagineYourDreamsDescription;
   String get menuShootingStarsDescription;
   String get menuFindYourLightDescription;
   String get menuSearchDescription;
@@ -160,6 +158,7 @@ abstract class AppStrings {
   String get allKindsLabel;
   String get searchButtonLabel;
   String get takeMeThereAction;
+  String get skyTapHoldHint;
 
   // Area detail (the vision text, description, and big stat numbers for a
   // single Supernova)
@@ -175,12 +174,16 @@ abstract class AppStrings {
 
   // Constellation editor (hand-drawn custom shapes)
   String get drawYourOwnConstellation;
-  String get drawYourOwnShort;
   String get constellationEditorTitle;
   String get constellationEditorEditTitle;
-  String get constellationEditorEmptyHint;
   String constellationEditorDisconnectedWarning(int count);
-  String get constellationEditorPointCapReached;
+
+  /// The always-visible "Used N/max stars" count above the canvas — same
+  /// line as [constellationEditorDisconnectedWarning], itself always
+  /// visible too now (even at zero), replacing the old cap-reached-only
+  /// message (reaching [_maxEditorPoints] is now just this count landing
+  /// on its own max, self-explanatory without a separate string).
+  String constellationEditorStarCount(int count, int max);
   String get undoAction;
   String get redoAction;
   String get deletePointAction;
@@ -198,6 +201,8 @@ abstract class AppStrings {
   String get constellationEditorHelpDisarmPoint;
   String get constellationEditorHelpMovePoint;
   String get constellationEditorHelpDeletePoint;
+  String get constellationEditorHelpMirrorToggle;
+  String get constellationEditorHelpMirrorAxis;
   String get constellationEditorHelpDontShowAgain;
   String get constellationEditorHelpClose;
 
@@ -207,8 +212,9 @@ abstract class AppStrings {
   String get chooseShapeLabel;
   String get shapeLibraryTitle;
   String get pickFromLibraryShort;
+  String get drawShapeShort;
+  String get resetShapeShort;
   String get shapeSearchHint;
-  String get noShapeChosenHint;
 
   /// The picker sheet's own two tabs — every ready-made shape vs. the
   /// ones this user has already drawn/saved themselves (formerly a
@@ -409,9 +415,17 @@ abstract class AppStrings {
   String get shareStarLabel;
   String get shareStarError;
 
-  // Star quick-look panel (tapping a star on the Sky itself)
+  // Sky tooltips (tapping a star or a constellation on the Sky itself)
   String get starQuickLookViewAction;
   String get starQuickLookEditAction;
+
+  /// Short enough to sit fourth-across next to [starQuickLookViewAction]/
+  /// [starQuickLookEditAction]/[deleteStarAction] in the tooltip's own
+  /// compact action row — [shareStarLabel] is a full sentence-length label
+  /// meant for a full-width button elsewhere, too long for this one.
+  String get starQuickLookShareAction;
+  String constellationTooltipLitCount(int lit, int total);
+  String areaTooltipStarCount(int count);
 
   // Settings
   String get settingsEyebrow;

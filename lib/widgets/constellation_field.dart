@@ -961,6 +961,14 @@ double _smoothstep(double edge0, double edge1, double x) {
 /// them back on later.
 const bool _kShowStarLabels = false;
 
+/// Constellation-name labels — parked the same way, and for the same
+/// reason (see [_kShowStarLabels]'s own comment): left in place, gated
+/// behind this flag rather than deleted, so a later cleanup pass (or a
+/// change of mind) is a one-line flip back, not a rewrite. See the
+/// project's "TRB" (to-remember box) memory for the standing list of
+/// things parked this way.
+const bool _kShowConstellationLabels = false;
+
 /// Where, on the log-zoom scale, constellation-name labels finish fading
 /// out and star-name labels finish fading in (see [ConstellationFieldPainter]
 /// — `_kLabelFadeLogRange` either side of this is the actual crossfade
@@ -1165,8 +1173,9 @@ class ConstellationFieldPainter extends CustomPainter {
       _kLabelZoomFadeEndPercent,
       zoomRangePercent,
     );
-    final constellationLabelAlpha =
-        (_kShowStarLabels ? 1 - starLabelAlpha : 1.0) * zoomFadeAlpha;
+    final constellationLabelAlpha = _kShowConstellationLabels
+        ? (_kShowStarLabels ? 1 - starLabelAlpha : 1.0) * zoomFadeAlpha
+        : 0.0;
 
     for (final constellation in placed) {
       final transform = _projectConstellationTransform(

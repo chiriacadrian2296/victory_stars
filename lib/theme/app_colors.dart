@@ -17,6 +17,7 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.muted,
     required this.onGold,
     required this.danger,
+    required this.dangerBackground,
     required this.starNascent,
     required this.starUnlit,
     required this.starDead,
@@ -45,6 +46,17 @@ class AppColors extends ThemeExtension<AppColors> {
 
   /// Color for destructive actions (e.g. the reset-all-data button).
   final Color danger;
+
+  /// A pale/muted danger surface — the background a destructive control
+  /// (e.g. a delete pill) fills with once it's actually active, paired
+  /// with [danger] itself as the foreground on top of it. Distinct from
+  /// [danger]: that's the vivid color for icons/text/borders, this is the
+  /// soft fill behind them — same "vivid foreground vs. muted surface"
+  /// split [gold]/[onGold] already draw on for the non-destructive case,
+  /// just built the other way around (dark, desaturated surface + bright
+  /// foreground, since a light-pink surface would clash with the rest of
+  /// this app's dark palette).
+  final Color dangerBackground;
 
   /// The three non-gold star families (see [StarKind]). [gold] itself is
   /// the fourth — the "light" one, used for a lit star and for a pulsar on
@@ -84,6 +96,7 @@ class AppColors extends ThemeExtension<AppColors> {
     muted: Color(0xFF7C8699),
     onGold: Color(0xFF241A04),
     danger: Color(0xFFE0574F),
+    dangerBackground: Color(0xFF3A2329),
     starNascent: Color(0xFFE9EEFB),
     starUnlit: Color(0xFF6E8CD8),
     starDead: Color(0xFF44568A),
@@ -104,6 +117,7 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? muted,
     Color? onGold,
     Color? danger,
+    Color? dangerBackground,
     Color? starNascent,
     Color? starUnlit,
     Color? starDead,
@@ -122,6 +136,7 @@ class AppColors extends ThemeExtension<AppColors> {
       muted: muted ?? this.muted,
       onGold: onGold ?? this.onGold,
       danger: danger ?? this.danger,
+      dangerBackground: dangerBackground ?? this.dangerBackground,
       starNascent: starNascent ?? this.starNascent,
       starUnlit: starUnlit ?? this.starUnlit,
       starDead: starDead ?? this.starDead,
@@ -145,6 +160,7 @@ class AppColors extends ThemeExtension<AppColors> {
       muted: Color.lerp(muted, other.muted, t)!,
       onGold: Color.lerp(onGold, other.onGold, t)!,
       danger: Color.lerp(danger, other.danger, t)!,
+      dangerBackground: Color.lerp(dangerBackground, other.dangerBackground, t)!,
       starNascent: Color.lerp(starNascent, other.starNascent, t)!,
       starUnlit: Color.lerp(starUnlit, other.starUnlit, t)!,
       starDead: Color.lerp(starDead, other.starDead, t)!,

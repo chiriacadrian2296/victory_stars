@@ -44,7 +44,7 @@ class ProjectRepository {
     required String name,
     required LifeArea area,
     required String iconSlug,
-    int? customConstellationId,
+    int? starsShapeId,
     String? description,
   }) async {
     final projects = getAll();
@@ -54,7 +54,7 @@ class ProjectRepository {
       name: name.trim(),
       area: area,
       iconSlug: iconSlug,
-      customConstellationId: customConstellationId,
+      starsShapeId: starsShapeId,
       description: (trimmedDescription == null || trimmedDescription.isEmpty)
           ? null
           : trimmedDescription,
@@ -67,7 +67,7 @@ class ProjectRepository {
 
   /// Ids are millisecondsSinceEpoch, which two adds inside the same
   /// millisecond would collide on — and a duplicate id is not cosmetic here:
-  /// [assignCustomConstellation] and [renameProject] both find their target
+  /// [assignStarsShape] and [renameProject] both find their target
   /// by id, so they'd keep resolving to whichever twin comes first and the
   /// other would silently never be updated (`backfillMissingConstellations`
   /// leaving the second of two same-icon projects with no shape at all is
@@ -84,13 +84,13 @@ class ProjectRepository {
   }
 
   /// Backfills a [Project] that predates the hand-drawn constellation editor
-  /// (or was seeded without one) with a [CustomConstellation] created for
+  /// (or was seeded without one) with a [StarsShape] created for
   /// it — see `backfillMissingConstellations`, the only caller. Keeps the
   /// project's position in the list. Throws if [projectId] doesn't match
   /// anything saved.
-  Future<Project> assignCustomConstellation({
+  Future<Project> assignStarsShape({
     required int projectId,
-    required int customConstellationId,
+    required int starsShapeId,
   }) async {
     final projects = getAll();
     final index = projects.indexWhere((p) => p.id == projectId);
@@ -99,7 +99,7 @@ class ProjectRepository {
     }
 
     final updated = projects[index].copyWith(
-      customConstellationId: customConstellationId,
+      starsShapeId: starsShapeId,
     );
     projects[index] = updated;
     await _saveAll(projects);

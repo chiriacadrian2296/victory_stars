@@ -12,7 +12,7 @@ import 'project_repository.dart';
 /// the catalogue, seeded by the slug itself so the same slug always lands on
 /// the same shape. Projects that share a slug share one materialized copy
 /// rather than each minting their own — see
-/// [CustomConstellationRepository.materializePreset].
+/// [StarsShapeRepository.materializePreset].
 ///
 /// This used to map each legacy slug to one of 20 real-astronomy shapes
 /// (Orion, Cassiopeia, ...) kept solely as migration data. Those are gone
@@ -21,22 +21,22 @@ import 'project_repository.dart';
 /// in the app could produce.
 ///
 /// Idempotent: skips any project that already has a
-/// [Project.customConstellationId], so it's safe to call on every app launch
+/// [Project.starsShapeId], so it's safe to call on every app launch
 /// (see `main.dart`) and again right after seeding sample data (see
 /// `SettingsScreen._seedSampleData`) without ever creating a duplicate.
 Future<void> backfillMissingConstellations({
   required ProjectRepository projectRepository,
-  required CustomConstellationRepository customConstellationRepository,
+  required StarsShapeRepository starsShapeRepository,
 }) async {
   for (final project in projectRepository.getAll()) {
-    if (project.customConstellationId != null) continue;
+    if (project.starsShapeId != null) continue;
 
-    final materialized = await customConstellationRepository.materializePreset(
+    final materialized = await starsShapeRepository.materializePreset(
       presetForIconSlug(project.iconSlug),
     );
-    await projectRepository.assignCustomConstellation(
+    await projectRepository.assignStarsShape(
       projectId: project.id,
-      customConstellationId: materialized.id,
+      starsShapeId: materialized.id,
     );
   }
 }

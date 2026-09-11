@@ -58,13 +58,11 @@ class StringsRo implements AppStrings {
   @override
   String get menuLightYourSky => 'Aprinde-ți Cerul';
   @override
-  String get menuLightAStar => 'Aprinde O Stea';
+  String get menuLightAStar => 'Stele';
   @override
-  String get menuNewConstellation => 'Constelație Nouă';
+  String get menuNewConstellation => 'Constelații';
   @override
-  String get lightYourSkyChooserTitle => 'Ce ai vrea să creezi?';
-  @override
-  String get menuImagineYourDreams => 'Imaginează-ți Visurile';
+  String get lightYourSkyChooserSupernovaOption => 'Supernove';
   @override
   String get menuShootingStars => 'Stele Căzătoare';
   @override
@@ -92,10 +90,7 @@ class StringsRo implements AppStrings {
 
   @override
   String get menuLightYourSkyDescription =>
-      'Aprinde o stea sau desenează o constelație nouă.';
-  @override
-  String get menuImagineYourDreamsDescription =>
-      'Revezi ce lucrezi să obții, arie cu arie.';
+      'Îmbogățește-ți cerul cu noi surse de lumină.';
   @override
   String get menuShootingStarsDescription =>
       'O dorință cu limită de timp — în curând.';
@@ -251,6 +246,8 @@ class StringsRo implements AppStrings {
   String get searchButtonLabel => 'Caută';
   @override
   String get takeMeThereAction => 'Du-mă acolo';
+  @override
+  String get skyTapHoldHint => 'Atinge pentru a te deplasa · ține apăsat pentru detalii';
 
   @override
   String get areaVisionLabel => 'Viziunea ta pentru această zonă';
@@ -301,22 +298,17 @@ class StringsRo implements AppStrings {
       'Forma acestei constelații nu a fost găsită.';
 
   @override
-  String get drawYourOwnConstellation => 'Desenează-ți propria constelație';
+  String get drawYourOwnConstellation => 'Desenează-ți Propria Formă De Stele';
   @override
-  String get drawYourOwnShort => 'Desenează-o singur';
+  String get constellationEditorTitle => 'Desenează-ți Forma De Stele';
   @override
-  String get constellationEditorTitle => 'Desenează-ți constelația';
-  @override
-  String get constellationEditorEditTitle => 'Editează-ți constelația';
-  @override
-  String get constellationEditorEmptyHint =>
-      'Atinge oriunde pentru a plasa prima stea';
+  String get constellationEditorEditTitle => 'Editează-ți Forma De Stele';
   @override
   String constellationEditorDisconnectedWarning(int count) =>
-      '$count ${count == 1 ? 'stea neconectată' : 'stele neconectate'} încă';
+      '$count ${count == 1 ? 'stea neconectată' : 'stele neconectate'}';
   @override
-  String get constellationEditorPointCapReached =>
-      'Ai atins numărul maxim de stele';
+  String constellationEditorStarCount(int count, int max) =>
+      'Folosite $count/$max stele';
   @override
   String get undoAction => 'Anulează';
   @override
@@ -326,7 +318,7 @@ class StringsRo implements AppStrings {
   @override
   String get saveConstellationAction => 'Salvează';
   @override
-  String get nameYourConstellationTitle => 'Dă un nume constelației tale';
+  String get nameYourConstellationTitle => 'Dă Un Nume Formei Tale De Stele';
   @override
   String get constellationNameHint => 'Ex. Drumul meu';
   @override
@@ -357,19 +349,27 @@ class StringsRo implements AppStrings {
   String get constellationEditorHelpDeletePoint =>
       'Selectează o stea, apoi atinge iconița de ștergere pentru a o elimina';
   @override
+  String get constellationEditorHelpMirrorToggle =>
+      'Activează modul oglindă pentru a adăuga, muta și șterge stele pe ambele părți simultan';
+  @override
+  String get constellationEditorHelpMirrorAxis =>
+      'Schimbă axa pentru a oglindi stânga/dreapta sau sus/jos';
+  @override
   String get constellationEditorHelpDontShowAgain => 'Nu mai arăta asta';
   @override
   String get constellationEditorHelpClose => 'Am înțeles';
   @override
   String get chooseShapeLabel => 'Forma constelației';
   @override
-  String get shapeLibraryTitle => 'Bibliotecă de forme';
+  String get shapeLibraryTitle => 'Bibliotecă De Forme';
   @override
-  String get pickFromLibraryShort => 'Alege o formă';
+  String get pickFromLibraryShort => 'Forme';
+  @override
+  String get drawShapeShort => 'Desenează';
+  @override
+  String get resetShapeShort => 'Reset';
   @override
   String get shapeSearchHint => 'Caută o formă';
-  @override
-  String get noShapeChosenHint => 'Nicio formă aleasă';
   @override
   String get shapeLibraryTabLabel => 'Bibliotecă';
   @override
@@ -396,7 +396,7 @@ class StringsRo implements AppStrings {
   @override
   String get iconLabel => 'Pictogramă';
   @override
-  String get chooseIconTitle => 'Alege o pictogramă';
+  String get chooseIconTitle => 'Alege O Pictogramă';
   @override
   String get pickerConfirmAction => 'OK';
   @override
@@ -620,7 +620,7 @@ class StringsRo implements AppStrings {
   @override
   String get visionsEyebrow => 'IMAGINEA CEA MAI MARE';
   @override
-  String get visionsTitle => 'Viziunile tale';
+  String get visionsTitle => 'Viziunile Tale';
   @override
   String get visionsSubtitle =>
       'O viziune pentru fiecare supernovă — realitatea pe care o vrei în '
@@ -636,8 +636,8 @@ class StringsRo implements AppStrings {
   @override
   String get guideIntroBody =>
       'Totul aici e un singur cer, citit la trei mărimi: zonele vieții '
-      'tale ard ca supernove, proiectele dinăuntrul lor sunt constelații, '
-      'iar fiecare efort pe care îl faci e o stea.';
+      'tale ard ca supernove, proiectele care orbitează în jurul lor sunt '
+      'constelații, iar fiecare efort pe care îl faci e o stea.';
   @override
   String get examplesLabel => 'Exemple';
   @override
@@ -660,7 +660,8 @@ class StringsRo implements AppStrings {
   String get guideConstellationMeaning => 'Un proiect din viața ta';
   @override
   String get guideConstellationBody =>
-      'O formă pe care o desenezi tu, într-o supernovă. Adună toate '
+      'O formă pe care o desenezi tu, ce orbitează în jurul unei supernove. '
+      'Adună toate '
       'eforturile despre același lucru. Forma ei există din prima zi — '
       'stelele de pe ea pornesc pur și simplu ca stele noi, așteptându-te.';
   @override
@@ -727,6 +728,14 @@ class StringsRo implements AppStrings {
   String get starQuickLookViewAction => 'Vizualizează';
   @override
   String get starQuickLookEditAction => 'Editează';
+  @override
+  String get starQuickLookShareAction => 'Distribuie';
+  @override
+  String constellationTooltipLitCount(int lit, int total) =>
+      '$lit/$total stele aprinse';
+  @override
+  String areaTooltipStarCount(int count) =>
+      '$count ${count == 1 ? 'stea aprinsă' : 'stele aprinse'}';
 
   @override
   String get settingsEyebrow => 'SETĂRI';
@@ -846,10 +855,11 @@ class StringsRo implements AppStrings {
       'Stelele și pulsarii legați de același lucru — un proiect, o '
       'relație, orice — aparțin unei constelații pe care o numești tu.';
   @override
-  String get onboardingAreasTitle => 'Constelațiile trăiesc în supernove';
+  String get onboardingAreasTitle => 'Constelațiile orbitează supernovele';
   @override
   String get onboardingAreasBody =>
-      'Fiecare constelație se află într-una din cele 8 supernove — zonele '
+      'Fiecare constelație orbitează în jurul uneia din cele 8 supernove — '
+      'zonele '
       'fixe ale vieții tale, de la fizic la social la spiritual. Împreună, '
       'sunt Cerul tău.';
   @override

@@ -8,6 +8,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:share_plus/share_plus.dart';
+import 'package:tooltip_card/tooltip_card.dart';
 
 import '../data/area_vision_repository.dart';
 import '../data/constellation_layout.dart';
@@ -27,6 +28,7 @@ import '../settings/settings_controller.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_style.dart';
 import '../utils/responsive.dart';
+import '../utils/star_stats.dart';
 import '../widgets/constellation_field.dart';
 import '../widgets/constellation_painter.dart';
 import '../widgets/nebula_background.dart';
@@ -38,10 +40,12 @@ import '../widgets/nebula_background.dart';
 // disabled too.
 import '../widgets/shareable_lit_star_card.dart';
 import '../widgets/sky_area_sigils.dart';
+import '../widgets/sky_area_tooltip.dart';
+import '../widgets/sky_constellation_tooltip.dart';
 import '../widgets/sky_menu_drawer.dart';
 import '../widgets/sky_navigation_target.dart';
+import '../widgets/sky_star_tooltip.dart';
 import '../widgets/sky_supernova.dart';
-import '../widgets/star_quick_look_panel.dart';
 import 'admire_stars_screen.dart';
 import 'area_detail_screen.dart';
 import 'friends_screen.dart';
@@ -50,6 +54,7 @@ import 'metaphor_screen.dart';
 import 'pulsar_reader_screen.dart';
 import 'new_project_screen.dart';
 import 'settings_screen.dart';
+import 'constellation_screen.dart';
 import 'shooting_stars_screen.dart';
 import 'star_form_screen.dart';
 import 'star_reader_screen.dart';
@@ -73,9 +78,14 @@ const double _bottomPillRadius = 22.0;
 /// the side menu ([SkyMenuDrawer]), from the search popup, or by tapping
 /// the sky itself.
 ///
-/// Tapping resolves to whatever was aimed at: a star (opening its reader,
-/// or the form that configures it if it's still nascent), a constellation,
-/// or a supernova.
+/// A tap flies the camera to whatever was aimed at — a star, a
+/// constellation, or a supernova — and nothing more; a nascent star (an
+/// empty slot, not something to peek at) is the one exception, opening
+/// its form straight away, same as a pulsar opens its reader straight
+/// away. Holding instead of tapping is what actually opens a star's/
+/// constellation's/supernova's tooltip, most of the way through the
+/// camera's own flight there rather than waiting for it to fully land
+/// (see [_openTooltipDuringFlight]) — see [_handleTapUp]/[_handleHold].
 class SkyScreen extends StatefulWidget {
   const SkyScreen({
     super.key,
@@ -84,7 +94,7 @@ class SkyScreen extends StatefulWidget {
     required this.starRepository,
     required this.habitRepository,
     required this.habitCompletionRepository,
-    required this.customConstellationRepository,
+    required this.starsShapeRepository,
     required this.areaVisionRepository,
     required this.reminderService,
   });
@@ -94,12 +104,36 @@ class SkyScreen extends StatefulWidget {
   final StarRepository starRepository;
   final HabitRepository habitRepository;
   final HabitCompletionRepository habitCompletionRepository;
-  final CustomConstellationRepository customConstellationRepository;
+  final StarsShapeRepository starsShapeRepository;
   final AreaVisionRepository areaVisionRepository;
   final ReminderService reminderService;
 
   @override
   State<SkyScreen> createState() => _SkyScreenState();
+}
+
+/// What [_SkyScreenState._skyTooltipController] is showing — a star's
+/// quick-look, a constellation's, or a supernova's, one per level of the
+/// sky the same way the "Light Your Sky" chooser is (see
+/// `SkyMenuContent._openLightYourSkyChooser`).
+sealed class _SkyTooltip {
+  const _SkyTooltip();
+}
+
+class _StarTooltip extends _SkyTooltip {
+  const _StarTooltip(this.constellation, this.starIndex);
+  final PlacedConstellation constellation;
+  final int starIndex;
+}
+
+class _ConstellationTooltip extends _SkyTooltip {
+  const _ConstellationTooltip(this.constellation);
+  final PlacedConstellation constellation;
+}
+
+class _AreaTooltip extends _SkyTooltip {
+  const _AreaTooltip(this.area);
+  final LifeArea area;
 }
 
 class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
@@ -154,16 +188,30 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   int _revision = 0;
   ui.FragmentProgram? _flareProgram;
 
-  /// Which star (if any) is showing its quick-look panel right now — set
-  /// by [_openStar] for a genuine star (not a pulsar, not a still-nascent
-  /// slot; both keep their own existing tap flow), alongside a
-  /// [_flyTo] that lands it in the screen's top half rather than opening
-  /// [StarReaderScreen] immediately. Both null together; see
-  /// [_quickLookStar] for the actual [Star] this resolves to.
-  PlacedConstellation? _quickLookConstellation;
-  int? _quickLookStarIndex;
+  /// What the sky's tap tooltip (see [_buildSkyTooltip]) is showing right
+  /// now, if anything — carried as the [TooltipCardController]'s own
+  /// `data` rather than duplicated into separate state fields, so there's
+  /// exactly one place ("is a tooltip open, and showing what") that could
+  /// ever disagree with what's actually on screen. A listener added in
+  /// [initState] calls `setState` on every open/close/data change, since
+  /// [_quickLookConstellation]/[_quickLookStar] below are read directly
+  /// during `build` (the off-screen share capture, the back-button
+  /// handling) the same way plain fields used to be.
+  final _skyTooltipController = TooltipCardController<_SkyTooltip>();
   final _quickLookShareKey = GlobalKey();
   bool _sharingQuickLookStar = false;
+
+  /// The `TooltipCard` widget itself (see [_buildSkyTooltipOverlay]),
+  /// rebuilt only in [didChangeDependencies] rather than fresh on every
+  /// `build()` — see that method's own doc comment for why: `TooltipCard`
+  /// reacts to [_skyTooltipController] entirely on its own (that's the
+  /// whole point of handing it a controller + a content `builder`
+  /// callback), so it never actually needs a new instance for that;
+  /// handing it one anyway, every time this screen rebuilds for pan/zoom/
+  /// inertia/fly (all of which call `setState` far more often than the
+  /// tooltip itself changes), was what caused every tap to leave the sky
+  /// stuck — see that comment for the full explanation.
+  Widget? _skyTooltipOverlay;
 
   /// Momentum left over from a drag release, in pan-units (turns) per
   /// second — see [_handleScaleEnd]/[_onInertiaTick]. Google Earth's
@@ -207,12 +255,6 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   static const bool _showUiControlsButton = false;
   static const bool _showDrawerButton = false;
 
-  /// Off for now so the star tap's own camera movement (see
-  /// [_openStarQuickLook]) can be tuned on its own, without the panel's
-  /// layout/behavior in the way while doing that — not deleted, the panel
-  /// itself is otherwise unchanged.
-  static const bool _showStarQuickLookPanel = false;
-
   /// Drives the "take me there" fly-to animation — a single controller
   /// reused across flights rather than rebuilt per tap, so a second tap
   /// mid-flight can redirect it smoothly instead of leaving an orphaned
@@ -231,6 +273,14 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..addListener(_onFlyTick);
+    // Every read of [_quickLookConstellation]/[_quickLookStar] below is a
+    // plain synchronous getter over this controller's own `data`, same as
+    // when they were separate `setState`-managed fields — this listener
+    // is what still makes that work now that they're not: `open`/`close`/
+    // `updateData` all notify it, same as any other state change would.
+    _skyTooltipController.addListener(() {
+      if (mounted) setState(() {});
+    });
     _loadData();
     _loadFlareProgram();
     // Opens centered on "Love" rather than the world origin — with a
@@ -250,9 +300,23 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Only actually rebuilds [_skyTooltipOverlay] when something it reads
+    // (theme, screen size) really changed — see that field's own doc
+    // comment. Reading `context.colors`/`MediaQuery.sizeOf` here (rather
+    // than in `build`) is what makes this method re-run only for genuine
+    // dependency changes instead of on every one of this screen's own
+    // frequent `setState` calls.
+    _skyTooltipOverlay = _buildSkyTooltipOverlay(context.colors);
+  }
+
+  @override
   void dispose() {
+    _holdTimer?.cancel();
     _flyController.dispose();
     _inertiaTicker?.dispose();
+    _skyTooltipController.dispose();
     super.dispose();
   }
 
@@ -361,9 +425,9 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     int indexInArea,
     Map<int, List<HabitCompletion>> completionsByHabit,
   ) {
-    final shape = project.customConstellationId != null
-        ? widget.customConstellationRepository
-              .getById(project.customConstellationId!)
+    final shape = project.starsShapeId != null
+        ? widget.starsShapeRepository
+              .getById(project.starsShapeId!)
               ?.shape
         : null;
     final stars = widget.starRepository.getAllForProject(project.id);
@@ -393,10 +457,20 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     });
   }
 
+  /// [showTooltip] tells the real-star branch (the only one with a
+  /// tooltip at all) whether to open it as the camera flies there (see
+  /// [_openTooltipDuringFlight]) — false for a plain tap (see
+  /// [_handleTapUp], which only ever flies the camera),
+  /// true for a hold (see [_handleHold]). The nascent/pulsar
+  /// branches below never had a tooltip to begin with — they still act on
+  /// a plain tap exactly as before, tap or hold, since holding a moment
+  /// longer on an empty slot or a pulsar isn't asking to *peek* at
+  /// anything, it's the same "open it" gesture either way.
   Future<void> _openStar(
     PlacedConstellation constellation,
-    ConstellationStar star,
-  ) async {
+    ConstellationStar star, {
+    required bool showTooltip,
+  }) async {
     // A nascent star isn't something to read — it's an empty slot on the
     // shape, and tapping it is how you give it a meaning.
     if (star.kind == StarKind.nascent) {
@@ -419,7 +493,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
             habitRepository: widget.habitRepository,
             habitCompletionRepository: widget.habitCompletionRepository,
             projectRepository: widget.projectRepository,
-            customConstellationRepository: widget.customConstellationRepository,
+            starsShapeRepository: widget.starsShapeRepository,
           ),
         ),
       );
@@ -429,33 +503,18 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
 
     final index = constellation.stars.indexWhere((s) => s.id == star.entityId);
     if (index == -1) return;
-    _openStarQuickLook(constellation, index, star);
+    if (showTooltip) {
+      _openStarQuickLook(constellation, index, star);
+    } else {
+      _flyToStar(constellation, star);
+    }
   }
 
-  /// Shows [constellation]'s star at [starIndex] in the quick-look panel
-  /// (see [StarQuickLookPanel]) and flies the camera to it, dead center —
-  /// same as every other "take me there" flight in the app (see
-  /// `SkySearchScreen`'s own use of [_flyTo]). The full [StarReaderScreen]
-  /// page is still just one tap away (see [_viewQuickLookStar]), not
-  /// replaced.
-  ///
-  /// Flies to [renderStar]'s own exact position (via [starWorldPosition]),
-  /// not [SkyStarTarget] — that only ever resolves to the *constellation's*
-  /// shared anchor (see its own doc comment), so every star in the same
-  /// constellation would fly to the identical spot; tapping a different
-  /// star there wouldn't visibly move the camera at all, since it'd
-  /// already be sitting at that same target from the previous tap.
-  void _openStarQuickLook(
-    PlacedConstellation constellation,
-    int starIndex,
-    ConstellationStar renderStar,
-  ) {
-    if (_showStarQuickLookPanel) {
-      setState(() {
-        _quickLookConstellation = constellation;
-        _quickLookStarIndex = starIndex;
-      });
-    }
+  /// The plain-tap half of [_openStar]'s real-star branch — flies the
+  /// camera to [renderStar] (see [_openStarQuickLook]'s own doc comment
+  /// for why its exact position, not [SkyStarTarget]'s coarser
+  /// constellation-wide one) without ever opening the tooltip.
+  void _flyToStar(PlacedConstellation constellation, ConstellationStar renderStar) {
     final size = context.size;
     if (size == null) return;
     final world = starWorldPosition(
@@ -472,30 +531,70 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _closeStarQuickLook() {
-    setState(() {
-      _quickLookConstellation = null;
-      _quickLookStarIndex = null;
-    });
+  /// The hold half — same flight as [_flyToStar], plus the quick-look
+  /// tooltip (see [SkyStarTooltip]), opened partway through rather than
+  /// waiting for it to land (see [_openTooltipDuringFlight]). The full
+  /// [StarReaderScreen] page is still just one tap away from there (see
+  /// [_viewQuickLookStar]), not replaced.
+  void _openStarQuickLook(
+    PlacedConstellation constellation,
+    int starIndex,
+    ConstellationStar renderStar,
+  ) {
+    final size = context.size;
+    if (size == null) return;
+    final world = starWorldPosition(
+      constellation,
+      renderStar,
+      _camera,
+      _zoom,
+      size,
+    );
+    if (world == null) return;
+    // See [_openTooltipDuringFlight]'s own doc comment for why this
+    // doesn't wait for the flight to actually land.
+    _openTooltipDuringFlight(
+      _flyToWorld(
+        world,
+        zoomFromPercent(
+          _starZoomPercent,
+        ).clamp(minZoomWithoutRepeats, _maxZoom),
+      ),
+      _StarTooltip(constellation, starIndex),
+    );
   }
 
-  /// The actual [Star] the quick-look panel is showing — re-read from
-  /// [_quickLookConstellation] on every access (rather than cached
-  /// separately) so an edit/achieve elsewhere that triggers [_refresh]
-  /// never leaves the panel showing stale content.
+  void _closeSkyTooltip() => _skyTooltipController.close();
+
+  /// The actual [Star] the quick-look tooltip is showing — re-read from
+  /// [_skyTooltipController]'s own data on every access (rather than
+  /// cached separately) so an edit/achieve elsewhere that triggers
+  /// [_refresh] never leaves the tooltip showing stale content.
   Star? get _quickLookStar {
-    final constellation = _quickLookConstellation;
-    final index = _quickLookStarIndex;
-    if (constellation == null || index == null) return null;
-    if (index >= constellation.stars.length) return null;
-    return constellation.stars[index];
+    final data = _skyTooltipController.data;
+    if (data is! _StarTooltip) return null;
+    final constellation = data.constellation;
+    if (data.starIndex >= constellation.stars.length) return null;
+    return constellation.stars[data.starIndex];
   }
+
+  /// The constellation the open tooltip is about — a star's, or a
+  /// constellation's own; null while neither is showing (including while
+  /// a supernova's is, which has no single constellation to point to).
+  PlacedConstellation? get _quickLookConstellation => switch (
+    _skyTooltipController.data
+  ) {
+    _StarTooltip(:final constellation) => constellation,
+    _ConstellationTooltip(:final constellation) => constellation,
+    _AreaTooltip() || null => null,
+  };
 
   Future<void> _viewQuickLookStar() async {
-    final constellation = _quickLookConstellation;
-    final index = _quickLookStarIndex;
-    if (constellation == null || index == null) return;
-    _closeStarQuickLook();
+    final data = _skyTooltipController.data;
+    if (data is! _StarTooltip) return;
+    final constellation = data.constellation;
+    final index = data.starIndex;
+    _closeSkyTooltip();
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => StarReaderScreen(
@@ -505,7 +604,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
           allowEdit: true,
           projectsById: {constellation.project.id: constellation.project},
           projectRepository: widget.projectRepository,
-          customConstellationRepository: widget.customConstellationRepository,
+          starsShapeRepository: widget.starsShapeRepository,
           refreshStars: () =>
               widget.starRepository.getAllForProject(constellation.project.id),
         ),
@@ -521,6 +620,12 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     final constellation = _quickLookConstellation;
     final star = _quickLookStar;
     if (constellation == null || star == null) return;
+    // Before the push, not after it returns — the tooltip lives in the
+    // root overlay (see [_buildSkyTooltip]'s own `TooltipCard`), which
+    // sits *above* routes rather than being covered by them the way the
+    // old in-tree quick-look panel was, so leaving it open here left it
+    // floating over the edit screen for as long as that stayed open.
+    _closeSkyTooltip();
 
     if (star.dead) {
       final result = await Navigator.of(context).push<Object>(
@@ -529,7 +634,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
             existingStar: star,
             contextProject: constellation.project,
             projectRepository: widget.projectRepository,
-            customConstellationRepository: widget.customConstellationRepository,
+            starsShapeRepository: widget.starsShapeRepository,
             hideDelete: true,
           ),
         ),
@@ -545,7 +650,6 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
         intensity: result.intensity,
         photoPath: result.photoPath,
       );
-      _closeStarQuickLook();
       _refresh();
       return;
     }
@@ -556,7 +660,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
           existingStar: star,
           contextProject: constellation.project,
           projectRepository: widget.projectRepository,
-          customConstellationRepository: widget.customConstellationRepository,
+          starsShapeRepository: widget.starsShapeRepository,
         ),
       ),
     );
@@ -564,7 +668,6 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
 
     if (result is StarFormDeleteRequested) {
       await widget.starRepository.delete(star.id);
-      _closeStarQuickLook();
       _refresh();
       return;
     }
@@ -580,7 +683,6 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
       intensity: addResult.intensity,
       photoPath: addResult.photoPath,
     );
-    _closeStarQuickLook();
     _refresh();
   }
 
@@ -588,6 +690,10 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     final star = _quickLookStar;
     if (star == null) return;
     final strings = context.strings;
+    // Before the dialog, not after — see [_editQuickLookStar]'s own note
+    // on why (the tooltip's root-overlay entry doesn't get covered by a
+    // new one the way the old in-tree panel did).
+    _closeSkyTooltip();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -607,7 +713,6 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     );
     if (confirmed != true) return;
     await widget.starRepository.delete(star.id);
-    _closeStarQuickLook();
     _refresh();
   }
 
@@ -616,7 +721,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   /// [_quickLookShareKey], which wraps a [ShareableLitStarCard] rendered
   /// far off-screen (see the `build` Stack) purely so it exists to
   /// capture; only ever reachable when [_quickLookStar] is lit (see
-  /// [StarQuickLookPanel]'s own `onShare`, null otherwise).
+  /// [SkyStarTooltip]'s own `onShare`, null otherwise).
   Future<void> _shareQuickLookStar() async {
     final star = _quickLookStar;
     if (star == null || !star.isLit || _sharingQuickLookStar) return;
@@ -690,7 +795,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
       MaterialPageRoute(
         builder: (_) => StarFormScreen(
           projectRepository: widget.projectRepository,
-          customConstellationRepository: widget.customConstellationRepository,
+          starsShapeRepository: widget.starsShapeRepository,
         ),
       ),
     );
@@ -723,7 +828,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
       MaterialPageRoute(
         builder: (_) => NewProjectScreen(
           projectRepository: widget.projectRepository,
-          customConstellationRepository: widget.customConstellationRepository,
+          starsShapeRepository: widget.starsShapeRepository,
         ),
       ),
     );
@@ -749,7 +854,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
         builder: (_) => AdmireStarsScreen(
           starRepository: widget.starRepository,
           projectRepository: widget.projectRepository,
-          customConstellationRepository: widget.customConstellationRepository,
+          starsShapeRepository: widget.starsShapeRepository,
         ),
       ),
     );
@@ -763,7 +868,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
           projectRepository: widget.projectRepository,
           habitRepository: widget.habitRepository,
           habitCompletionRepository: widget.habitCompletionRepository,
-          customConstellationRepository: widget.customConstellationRepository,
+          starsShapeRepository: widget.starsShapeRepository,
         ),
       ),
     );
@@ -793,7 +898,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
           projectRepository: widget.projectRepository,
           habitRepository: widget.habitRepository,
           habitCompletionRepository: widget.habitCompletionRepository,
-          customConstellationRepository: widget.customConstellationRepository,
+          starsShapeRepository: widget.starsShapeRepository,
           areaVisionRepository: widget.areaVisionRepository,
           reminderService: widget.reminderService,
         ),
@@ -852,7 +957,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
           starRepository: widget.starRepository,
           habitRepository: widget.habitRepository,
           habitCompletionRepository: widget.habitCompletionRepository,
-          customConstellationRepository: widget.customConstellationRepository,
+          starsShapeRepository: widget.starsShapeRepository,
           areaVisionRepository: widget.areaVisionRepository,
         ),
       ),
@@ -905,15 +1010,25 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   /// forces [target] itself to land at [anchorFraction] instead (the two
   /// are the same rotation run in the two directions a single-axis
   /// alignment always is).
-  void _flyTo(
+  /// Returns the flight's own [TickerFuture] — [_openStarQuickLook] and
+  /// [_flyToConstellation] use it to open their tooltip only once the
+  /// camera actually lands (`whenCompleteOrCancel`, so an interrupted
+  /// flight — a second tap before the first one finishes — still resolves
+  /// instead of leaving a dangling callback). Every other caller ignores
+  /// it, same as when this returned nothing at all.
+  TickerFuture _flyTo(
     SkyNavigationTarget target, {
     Offset anchorFraction = const Offset(0.5, 0.5),
   }) {
     final size = context.size;
-    if (size == null) return;
+    if (size == null) return TickerFuture.complete();
     final world = _worldFor(target);
-    if (world == null) return;
-    _flyToWorld(world, _zoomFor(target, size), anchorFraction: anchorFraction);
+    if (world == null) return TickerFuture.complete();
+    return _flyToWorld(
+      world,
+      _zoomFor(target, size),
+      anchorFraction: anchorFraction,
+    );
   }
 
   /// The actual flight, once a target has already been resolved to a
@@ -921,13 +1036,13 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   /// [_flyTo] so [_openStarQuickLook] can fly to a *specific star's* own
   /// exact position (see [starWorldPosition]) rather than [SkyStarTarget]'s
   /// coarser "somewhere in its constellation".
-  void _flyToWorld(
+  TickerFuture _flyToWorld(
     Offset world,
     double targetZoom, {
     Offset anchorFraction = const Offset(0.5, 0.5),
   }) {
     final size = context.size;
-    if (size == null) return;
+    if (size == null) return TickerFuture.complete();
 
     final baseCamera = SkyCamera.lookingAt(
       azimuthTurns: world.dx,
@@ -958,8 +1073,8 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     _flyTargetZoom = targetZoom;
     _flyController
       ..stop()
-      ..reset()
-      ..forward();
+      ..reset();
+    return _flyController.forward();
   }
 
   void _onFlyTick() {
@@ -976,6 +1091,88 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
       _zoom = _flyStartZoom + (_flyTargetZoom - _flyStartZoom) * t;
     });
   }
+
+  /// How far into the fly controller's own 0..1 progress a flight has to
+  /// reach before the tooltip it's heading toward opens — well short of
+  /// full arrival, on purpose: the tooltip is anchored to screen-center
+  /// regardless of exactly where the flight currently sits (see
+  /// [_buildSkyTooltipOverlay]), so it already reads fine while the
+  /// camera is still finishing its last stretch, and opening it here
+  /// rather than waiting out the whole ~900ms flight (see
+  /// [TickerFuture.whenCompleteOrCancel]) is what makes a hold feel
+  /// snappier.
+  static const _tooltipOpenAtFlightProgress = 0.6;
+
+  /// Opens [tooltip] once [flight] — the [TickerFuture] a [_flyToWorld]/
+  /// [_flyTo] call just returned — crosses
+  /// [_tooltipOpenAtFlightProgress], or actually finishes/gets
+  /// interrupted, whichever comes first (a short flight, e.g. the target
+  /// was already close, might complete before ever reaching that
+  /// fraction). Shared by [_openStarQuickLook]/[_holdArea]/
+  /// [_holdConstellation] so this early-open behavior lives in one place
+  /// rather than three hand-rolled listeners.
+  void _openTooltipDuringFlight(TickerFuture flight, _SkyTooltip tooltip) {
+    var opened = false;
+    void openOnce() {
+      if (opened || !mounted) return;
+      opened = true;
+      _skyTooltipController.open(data: tooltip);
+      // `tooltip_card` reads this tooltip's anchor position (moved by
+      // [_tooltipAnchorOffset]'s own [Transform.translate], applied via
+      // [ListenableBuilder] in [build]) the instant `open()` above
+      // synchronously notifies it — before this frame's build/layout
+      // pass has actually run, so `RenderBox.localToGlobal` can only
+      // ever hand back the *previous* frame's position. `TooltipCard`
+      // happens to self-correct this on its very first-ever open (its
+      // own "did the resolved beak position change?" check starts
+      // uninitialized, so it always differs once and triggers its own
+      // refresh) — but that state is otherwise persistent across opens
+      // (this screen deliberately keeps `TooltipCard`'s own widget
+      // instance stable, see [_skyTooltipOverlay]'s doc comment), and
+      // every *later* open resolves to the same side/beak position as
+      // before, so nothing detects a change and the stale, un-offset
+      // position just sticks — exactly the "first hold looks right,
+      // every one after snaps back to no spacing" bug this was.
+      // Nudging with a fresh (non-identical) copy of the same data one
+      // frame later — after our offset has actually been laid out —
+      // forces a fresh read, correctly this time.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && identical(_skyTooltipController.data, tooltip)) {
+          _skyTooltipController.updateData(_copyTooltip(tooltip));
+        }
+      });
+    }
+
+    void onFlyProgress() {
+      if (_flyController.value >= _tooltipOpenAtFlightProgress) {
+        _flyController.removeListener(onFlyProgress);
+        openOnce();
+      }
+    }
+
+    _flyController.addListener(onFlyProgress);
+    flight.whenCompleteOrCancel(() {
+      _flyController.removeListener(onFlyProgress);
+      openOnce();
+    });
+  }
+
+  /// A field-for-field copy of [tooltip] as a *new* instance — see
+  /// [_openTooltipDuringFlight]'s own `openOnce` for why: these classes
+  /// don't override `==`, so a fresh instance is never `==` to the
+  /// original one, which is exactly what's needed to make
+  /// [TooltipCardController.updateData] treat it as "changed" and
+  /// re-notify even though the actual content is identical.
+  _SkyTooltip _copyTooltip(_SkyTooltip tooltip) => switch (tooltip) {
+    _StarTooltip(:final constellation, :final starIndex) => _StarTooltip(
+      constellation,
+      starIndex,
+    ),
+    _ConstellationTooltip(:final constellation) => _ConstellationTooltip(
+      constellation,
+    ),
+    _AreaTooltip(:final area) => _AreaTooltip(area),
+  };
 
   void _handleScaleStart(ScaleStartDetails details) {
     _zoomAtGestureStart = _zoom;
@@ -996,7 +1193,26 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     }
   }
 
+  /// How much a single [_handleScaleUpdate] frame's own movement/zoom has
+  /// to clear before it counts as a genuine pan/zoom rather than the
+  /// sub-pixel jitter a finger produces while holding almost still for
+  /// what's about to resolve as a tap — see where these gate closing any
+  /// open tooltip below. A plain dismiss-tap needs to stay well under
+  /// this, or every tap meant purely to close a tooltip would also read
+  /// as an (imperceptible) pan.
+  static const _realPanDistance = 3.0;
+  static const _realZoomDelta = 0.01;
+
   void _handleScaleUpdate(ScaleUpdateDetails details) {
+    // A genuine pan/zoom — not just the jitter above — closes any open
+    // tooltip: letting the camera move out from under one used to leave
+    // it pinned in place, still pointing at wherever the target *used*
+    // to be rather than closing along with the view moving away from it.
+    if (_skyTooltipController.isOpen &&
+        (details.focalPointDelta.distance > _realPanDistance ||
+            (details.scale - 1.0).abs() > _realZoomDelta)) {
+      _skyTooltipController.close();
+    }
     final size = context.size;
     setState(() {
       _zoom = (_zoomAtGestureStart * details.scale).clamp(
@@ -1074,6 +1290,11 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     if (event is! PointerScrollEvent) return;
     final size = context.size;
     if (size == null) return;
+    // A discrete scroll tick, unlike a finger's drag — no jitter to
+    // filter out, so this always counts as a real zoom (see
+    // [_handleScaleUpdate]'s own version of this for why that one needs
+    // a threshold and this doesn't).
+    if (_skyTooltipController.isOpen) _skyTooltipController.close();
     _stopInertia();
     _flyController.stop();
     final oldZoom = _zoom;
@@ -1134,40 +1355,131 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   static const _doubleTapWindow = Duration(milliseconds: 300);
   static const _doubleTapMaxDistance = 40.0;
 
-  void _handleTapUp(TapUpDetails details) {
-    final size = context.size;
-    if (size == null) return;
+  /// The tap-vs-hold split (see [_handleTapDown]/[_handleTapUp]/
+  /// [_handleTapCancel]) is driven by a plain [Timer] off
+  /// [GestureDetector]'s ordinary `onTapDown`/`onTapUp`/`onTapCancel`
+  /// rather than its own `onLongPressStart` — a real
+  /// `LongPressGestureRecognizer` on this same detector was tried first
+  /// and broke [_MenuStarButton]'s own hold-to-open charge: that button
+  /// times a hold purely through its own `onTapDown`/`onTapUp`/
+  /// `onTapCancel` (see `_MenuStarButtonState._handlePressStart`/
+  /// `_handlePressEnd`), and once a hold ran past
+  /// [Duration(milliseconds: 500)] (`kLongPressTimeout`), the new
+  /// long-press recognizer here self-accepted and won the gesture arena
+  /// over the button's own tap recognizer — which fired *that* button's
+  /// `onTapCancel` before its charge ever finished, so holding it no
+  /// longer opened the menu. Timing the hold by hand off the very same
+  /// `TapGestureRecognizer` this detector already had (rather than
+  /// introducing a second, competing recognizer type) sidesteps that
+  /// arena fight entirely — proven safe because [onTapUp] already
+  /// coexisted fine with the button's own before this. Not tied to
+  /// `kLongPressTimeout` at all any more, in fact — see [_holdDuration],
+  /// its own separate, shorter number.
+  Timer? _holdTimer;
+
+  /// How long a touch has to stay down before it counts as a hold rather
+  /// than a tap — shorter than Flutter's own default long-press timing
+  /// (`kLongPressTimeout`, 500ms) so the hold-to-peek gesture feels quick
+  /// to trigger rather than sluggish.
+  static const _holdDuration = Duration(milliseconds: 300);
+
+  /// True once [_holdTimer] has actually fired for the touch currently
+  /// down — [_handleTapUp] checks this to know the release is just the
+  /// tail end of a hold that already acted, not a fresh plain tap.
+  bool _holdFired = false;
+
+  void _handleTapDown(TapDownDetails details) {
+    _holdFired = false;
+    _holdTimer?.cancel();
+    _holdTimer = Timer(_holdDuration, () {
+      _holdTimer = null;
+      _holdFired = true;
+      _handleHold(details.localPosition);
+    });
+  }
+
+  /// Fires whenever the arena hands this touch to something else instead
+  /// — most commonly a pan/zoom starting from the same spot, but also
+  /// (see [_holdTimer]'s own doc comment) a nested control like
+  /// [_MenuStarButton] winning its own tap outright. Either way, a
+  /// pending hold that hasn't fired yet is no longer this touch's to act
+  /// on.
+  void _handleTapCancel() {
+    _holdTimer?.cancel();
+    _holdTimer = null;
+  }
+
+  /// Shared by [_handleTapUp] and [_handleHold] — both resolve a
+  /// screen [position] to whichever of a star/supernova/constellation it
+  /// landed on the exact same way, and only ever differ in what they do
+  /// once they know: a plain tap ([showTooltip] false) only flies the
+  /// camera there, a hold ([showTooltip] true) also opens that target's
+  /// tooltip partway through the flight (see [_openStar]/[_flyToArea]/[_holdArea]/
+  /// [_flyToConstellation]/[_holdConstellation]). Returns whether
+  /// anything was actually hit, so [_handleTapUp] knows whether to fall
+  /// through to its own empty-sky double-tap tracking.
+  bool _resolveTapTarget(
+    Offset position,
+    Size size, {
+    required bool showTooltip,
+  }) {
     final hit = zoomPercent(_zoom) >= _starTapMinZoomPercent
-        ? hitTestField(details.localPosition, _placed, _camera, _zoom, size)
+        ? hitTestField(position, _placed, _camera, _zoom, size)
         : null;
     if (hit != null) {
-      _lastEmptyTapTime = null;
-      _openStar(hit.$1, hit.$2);
-      return;
+      _openStar(hit.$1, hit.$2, showTooltip: showTooltip);
+      return true;
     }
     // An invisible zone over each supernova's own icon — no visible change
     // to `SkySupernova`'s artwork, just the same tap-to-open-detail
     // behavior the Galaxy search popup's own Supernovas cards already have
     // (see [hitTestSupernovas]).
-    final area = hitTestSupernovas(details.localPosition, _camera, _zoom, size);
+    final area = hitTestSupernovas(position, _camera, _zoom, size);
     if (area != null) {
-      _lastEmptyTapTime = null;
-      _flyToArea(area);
-      return;
+      showTooltip ? _holdArea(area) : _flyToArea(area);
+      return true;
     }
     // Same idea one level down: a tap that lands within a constellation's
     // own shape but not precisely on one of its stars (already handled
     // above) — see [hitTestConstellations].
     final constellation = hitTestConstellations(
-      details.localPosition,
+      position,
       _placed,
       _camera,
       _zoom,
       size,
     );
     if (constellation != null) {
+      showTooltip ? _holdConstellation(constellation) : _flyToConstellation(constellation);
+      return true;
+    }
+    return false;
+  }
+
+  void _handleTapUp(TapUpDetails details) {
+    _holdTimer?.cancel();
+    _holdTimer = null;
+    // The hold already fired (and already did whatever it does — see
+    // [_handleHold]) before this release arrived; the release itself is
+    // not a second, separate tap on top of that.
+    if (_holdFired) return;
+    final size = context.size;
+    if (size == null) return;
+    // While a tooltip is showing, the first tap anywhere else only
+    // closes it — it doesn't also act on whatever's underneath. Without
+    // this, a tap meant purely to dismiss (say) a star's tooltip could
+    // also fly the camera to, and hold open a tooltip for, the
+    // constellation sitting right behind it, which read as the sky
+    // ignoring the dismissal entirely. A second, deliberate tap/hold is
+    // what reaches that target now — this one is fully swallowed.
+    if (_skyTooltipController.isOpen) {
+      _skyTooltipController.close();
       _lastEmptyTapTime = null;
-      _flyToConstellation(constellation.project);
+      _lastEmptyTapPosition = null;
+      return;
+    }
+    if (_resolveTapTarget(details.localPosition, size, showTooltip: false)) {
+      _lastEmptyTapTime = null;
       return;
     }
 
@@ -1189,19 +1501,59 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     _lastEmptyTapPosition = details.localPosition;
   }
 
-  /// Just the camera movement, dead center — same "take me there" flight
-  /// every other target in the app gets, with no page opening behind it
-  /// any more: a tap on a supernova used to push [AreaDetailScreen]
-  /// straight away, which is removed here on purpose, not a screen
-  /// [AreaDetailScreen] itself lost — it's still reachable from wherever
-  /// it already was (e.g. the Galaxy search popup).
+  /// The hold counterpart to [_handleTapUp], fired by [_holdTimer] (see
+  /// its own doc comment for why this is a plain timer rather than
+  /// `onLongPressStart`) — same hit test (see [_resolveTapTarget]), but a
+  /// hit's tooltip opens partway through the resulting flight (see
+  /// [_openTooltipDuringFlight]) rather than staying suppressed. A hold
+  /// on empty sky does nothing (no tooltip to show,
+  /// and the double-tap-to-zoom-out gesture is a tap-only affordance —
+  /// see [_lastEmptyTapTime]'s own doc comment for why that one is
+  /// tracked by hand rather than through a real recognizer).
+  void _handleHold(Offset position) {
+    final size = context.size;
+    if (size == null) return;
+    // Same "first interaction outside just closes it" rule as
+    // [_handleTapUp] — holding elsewhere while a tooltip is open
+    // shouldn't also open a *different* one.
+    if (_skyTooltipController.isOpen) {
+      _skyTooltipController.close();
+      _lastEmptyTapTime = null;
+      _lastEmptyTapPosition = null;
+      return;
+    }
+    _resolveTapTarget(position, size, showTooltip: true);
+  }
+
+  /// The plain-tap half of a supernova hit — just the "take me there"
+  /// flight every other target in the app gets, camera only, no tooltip.
+  /// See [_holdArea] for the hold half, which adds the tooltip back in.
   void _flyToArea(LifeArea area) {
     _flyTo(SkyAreaTarget(area));
   }
 
-  /// See [_flyToArea]'s own note — same change, for constellations.
-  void _flyToConstellation(Project project) {
-    _flyTo(SkyProjectTarget(project));
+  /// The hold half of a supernova hit — same flight as [_flyToArea], plus
+  /// its own tooltip (see [_buildSkyTooltip]), opened partway through
+  /// rather than waiting for it to land (see
+  /// [_openTooltipDuringFlight]) — a tap on a supernova used to push
+  /// [AreaDetailScreen] straight away, replaced first by just the camera
+  /// movement and now by this tooltip's own [_viewArea] instead.
+  void _holdArea(LifeArea area) {
+    _openTooltipDuringFlight(_flyTo(SkyAreaTarget(area)), _AreaTooltip(area));
+  }
+
+  /// See [_flyToArea]'s own note — same plain-tap/camera-only split, for
+  /// constellations.
+  void _flyToConstellation(PlacedConstellation constellation) {
+    _flyTo(SkyProjectTarget(constellation.project));
+  }
+
+  /// See [_holdArea]'s own note — same change, for constellations.
+  void _holdConstellation(PlacedConstellation constellation) {
+    _openTooltipDuringFlight(
+      _flyTo(SkyProjectTarget(constellation.project)),
+      _ConstellationTooltip(constellation),
+    );
   }
 
   /// Steps back one rung of the [_areaZoomPercent]/
@@ -1330,7 +1682,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
       // rather than leaving the sky screen entirely.
       canPop: _quickLookConstellation == null,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _closeStarQuickLook();
+        if (!didPop) _closeSkyTooltip();
       },
       child: Scaffold(
         key: _scaffoldKey,
@@ -1358,7 +1710,9 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
                 onScaleStart: _handleScaleStart,
                 onScaleUpdate: _handleScaleUpdate,
                 onScaleEnd: _handleScaleEnd,
+                onTapDown: _handleTapDown,
                 onTapUp: _handleTapUp,
+                onTapCancel: _handleTapCancel,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -1392,6 +1746,32 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
                       // that isn't.
                       palette: kSkyStarPalette,
                       revision: _revision,
+                    ),
+                    // A quiet reminder of the tap/hold split above (see
+                    // [_handleTapUp]/[_handleHold]) — small,
+                    // muted, and [IgnorePointer]-wrapped so it never
+                    // competes with the sky underneath it for a gesture,
+                    // just sits there to be read.
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: SafeArea(
+                        child: IgnorePointer(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Center(
+                              child: Text(
+                                strings.skyTapHoldHint,
+                                style: TextStyle(
+                                  color: colors.muted.withValues(alpha: 0.7),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                     // The way into everything that isn't the sky itself — same
                     // disc/navy/gold styling as every other overlay control.
@@ -1636,6 +2016,9 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
                                       minZoom: minZoomWithoutRepeats,
                                       maxZoom: _maxZoom,
                                       onChanged: (value) {
+                                        if (_skyTooltipController.isOpen) {
+                                          _skyTooltipController.close();
+                                        }
                                         _stopInertia();
                                         _flyController.stop();
                                         setState(() => _zoom = value);
@@ -1655,6 +2038,9 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
                                     _RollKnob(
                                       angle: cameraRollAngle(_camera),
                                       onRoll: (delta) {
+                                        if (_skyTooltipController.isOpen) {
+                                          _skyTooltipController.close();
+                                        }
                                         _stopInertia();
                                         _flyController.stop();
                                         setState(
@@ -1696,7 +2082,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
                 ),
               ),
             ),
-            // A lit star's quick-look panel needs a real [ShareableLitStarCard]
+            // A lit star's quick-look tooltip needs a real [ShareableLitStarCard]
             // laid out (not just described) somewhere to capture — see
             // [_shareQuickLookStar] — rendered here, far to the side, so it's
             // never actually visible: [Opacity] would skip painting it
@@ -1717,25 +2103,23 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ),
-            // The quick-look panel itself — bottom half of the screen (see
-            // [_flyTo]'s own `anchorFraction` in [_openStarQuickLook], which
-            // lands the star in the top half to match), sliding in/out as
-            // [_quickLookStar] appears/disappears rather than popping a whole
-            // new route, so the sky stays visible (and its camera fly-to
-            // still animates) behind it.
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: MediaQuery.sizeOf(context).height * 0.5,
-              child: AnimatedSlide(
-                duration: const Duration(milliseconds: 260),
-                curve: Curves.easeOutCubic,
-                offset: _quickLookStar == null
-                    ? const Offset(0, 1)
-                    : Offset.zero,
-                child: _buildQuickLookPanel(),
+            // The tap tooltip itself — see [_skyTooltipOverlay]'s own doc
+            // comment for why the actual `TooltipCard` is a cached field
+            // rather than built fresh right here. This [ListenableBuilder]
+            // is a thin wrapper that *does* rebuild on every
+            // [_skyTooltipController] change (exactly what
+            // [_tooltipAnchorOffset] needs, to react to which kind of
+            // tooltip just opened) — but since it hands the identical
+            // [_skyTooltipOverlay] instance down as `child` every time,
+            // `TooltipCard` itself never sees a reason to rebuild, so this
+            // adds no risk of reintroducing that field's own bug.
+            ListenableBuilder(
+              listenable: _skyTooltipController,
+              builder: (context, child) => Transform.translate(
+                offset: _tooltipAnchorOffset(_skyTooltipController.data),
+                child: child,
               ),
+              child: _skyTooltipOverlay!,
             ),
           ],
         ),
@@ -1743,23 +2127,167 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// [AnimatedSlide]'s own `offset` keeps this mounted the whole time (it's
-  /// what slides), so this can't just be `if (star != null) ... else
-  /// SizedBox.shrink()` inline in a collection literal — [_quickLookStar]
-  /// still has to resolve to *some* widget either way, hence a real method
-  /// rather than a collection `if`.
-  Widget _buildQuickLookPanel() {
-    final star = _quickLookStar;
-    if (star == null) return const SizedBox.shrink();
-    return StarQuickLookPanel(
+  /// Builds the `TooltipCard` that hosts [_buildSkyTooltip] — split out
+  /// from `build()` and only ever called from [didChangeDependencies] (see
+  /// [_skyTooltipOverlay]'s own doc comment). `TooltipCard` already
+  /// listens to [_skyTooltipController] itself and re-invokes its own
+  /// `builder` callback whenever the controller opens/closes/changes data
+  /// (that's the entire point of handing it a controller instead of
+  /// driving its visibility from outside) — so it was never necessary to
+  /// rebuild *this widget* on every one of this screen's own `setState`
+  /// calls. Doing so anyway ran head-first into a real bug in
+  /// `tooltip_card` 2.9.0: its `didUpdateWidget` unconditionally calls
+  /// `OverlayEntry.markNeedsBuild()` on the tooltip's already-mounted
+  /// overlay entry whenever this widget is handed a new instance while
+  /// that entry still exists — which, called synchronously while *this*
+  /// screen's own build was already in progress (which it always was,
+  /// since a plain `setState` is exactly what got a new instance built in
+  /// the first place), is an illegal cross-tree `markNeedsBuild` "during
+  /// build". Flutter throws for it, and every frame after that first
+  /// throw kept failing the same way ("Each child must be laid out
+  /// exactly once") — the sky was still technically listening to pan/zoom
+  /// gestures, it just could never successfully render the result, which
+  /// read as the whole screen being stuck. Reproduced live on-device: the
+  /// exact assertion showed up in the log the instant the first tooltip
+  /// opened, and pan/zoom stayed dead afterward exactly as described.
+  /// Keeping this widget's own instance stable (rebuilt only when the
+  /// theme or screen size actually changes, never for a plain pan/zoom/
+  /// inertia/fly frame) means Flutter's own `identical`-widget fast path
+  /// skips `didUpdateWidget` entirely on those frames, so the buggy call
+  /// never fires.
+  Widget _buildSkyTooltipOverlay(AppColors colors) {
+    return Center(
+      child: TooltipCard.builder(
+        controller: _skyTooltipController,
+        placementSide: TooltipCardPlacementSide.bottom,
+        flyoutBackgroundColor: colors.nightPanel,
+        borderColor: colors.nightBorder,
+        beakColor: colors.nightPanel,
+        borderRadius: BorderRadius.circular(kRadiusCard),
+        elevation: 8,
+        // `tooltip_card`'s own position delegate caps width by
+        // horizontal clearance to *one* screen edge from the
+        // anchor — correct for a start/end placement, but overly
+        // conservative for a `bottom` one like this: it never
+        // accounts for a centered card only needing *half* its
+        // width of clearance on each side, and it ignores
+        // `minWidth` outright. With the anchor dead center that
+        // halves the usable width for no real reason, so
+        // `fitToViewport` is off here and this `maxWidth` (well
+        // under any real phone's screen width, minus its own
+        // small clamp margin) is what actually keeps it on
+        // screen instead.
+        fitToViewport: false,
+        constraints: BoxConstraints(
+          maxWidth: math.min(380, MediaQuery.sizeOf(context).width - 48),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: const SizedBox.shrink(),
+        builder: (context, close) => _buildSkyTooltip(),
+      ),
+    );
+  }
+
+  /// The tooltip's own content — a star's quick-look, a constellation's,
+  /// or a supernova's — chosen by [_skyTooltipController]'s current
+  /// `data`. `null` (nothing open, or the exit-animation frame after a
+  /// close) renders empty: `TooltipCard` itself decides whether that's
+  /// ever actually visible.
+  Widget _buildSkyTooltip() {
+    return switch (_skyTooltipController.data) {
+      _StarTooltip(:final constellation, :final starIndex) =>
+        _buildStarTooltip(constellation, starIndex),
+      _ConstellationTooltip(:final constellation) => SkyConstellationTooltip(
+        project: constellation.project,
+        stars: constellation.stars,
+        onClose: _closeSkyTooltip,
+        onView: () => _viewConstellation(constellation),
+      ),
+      _AreaTooltip(:final area) => SkyAreaTooltip(
+        area: area,
+        starCount: starsInArea(
+          area,
+          widget.projectRepository,
+          widget.starRepository,
+        ),
+        onClose: _closeSkyTooltip,
+        onView: () => _viewArea(area),
+      ),
+      null => const SizedBox.shrink(),
+    };
+  }
+
+  /// How far below the tooltip's own dead-center anchor each kind of
+  /// popup actually renders — see the [ListenableBuilder] in [build] that
+  /// applies this. A constellation's own shape is usually still on screen
+  /// above the anchor, which crowded its tooltip into the shape's own
+  /// lower stars, so it drops the farthest; a supernova's is just one
+  /// icon, so it needs less; a star's already reads fine right under
+  /// wherever it just flew to, so it only nudges down slightly. Plain
+  /// tuned numbers, not derived from anything — adjust them directly if
+  /// the amount ever needs to change.
+  static const _starTooltipDrop = 15.0;
+  static const _areaTooltipDrop = 35.0;
+  static const _constellationTooltipDrop = 120.0;
+
+  Offset _tooltipAnchorOffset(_SkyTooltip? data) => switch (data) {
+    _ConstellationTooltip() => const Offset(0, _constellationTooltipDrop),
+    _AreaTooltip() => const Offset(0, _areaTooltipDrop),
+    _StarTooltip() => const Offset(0, _starTooltipDrop),
+    null => Offset.zero,
+  };
+
+  /// Split out from [_buildSkyTooltip] only because a [_StarTooltip]'s own
+  /// [starIndex] can go stale (the star it pointed to was deleted
+  /// elsewhere, e.g. from [StarReaderScreen] reached some other way) —
+  /// this is the one spot that has to guard for that rather than assume
+  /// the index is always still valid.
+  Widget _buildStarTooltip(PlacedConstellation constellation, int starIndex) {
+    if (starIndex >= constellation.stars.length) {
+      return const SizedBox.shrink();
+    }
+    final star = constellation.stars[starIndex];
+    return SkyStarTooltip(
       star: star,
-      project: _quickLookConstellation?.project,
-      onClose: _closeStarQuickLook,
+      project: constellation.project,
+      onClose: _closeSkyTooltip,
       onView: _viewQuickLookStar,
       onEdit: _editQuickLookStar,
       onShare: star.isLit ? _shareQuickLookStar : null,
       onDelete: star.dead ? null : _deleteQuickLookStar,
     );
+  }
+
+  Future<void> _viewConstellation(PlacedConstellation constellation) async {
+    _closeSkyTooltip();
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ConstellationScreen(
+          project: constellation.project,
+          starRepository: widget.starRepository,
+          projectRepository: widget.projectRepository,
+          habitRepository: widget.habitRepository,
+          habitCompletionRepository: widget.habitCompletionRepository,
+          starsShapeRepository: widget.starsShapeRepository,
+        ),
+      ),
+    );
+    _refresh();
+  }
+
+  Future<void> _viewArea(LifeArea area) async {
+    _closeSkyTooltip();
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AreaDetailScreen(
+          area: area,
+          areaVisionRepository: widget.areaVisionRepository,
+          projectRepository: widget.projectRepository,
+          starRepository: widget.starRepository,
+        ),
+      ),
+    );
+    _refresh();
   }
 }
 

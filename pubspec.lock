@@ -754,6 +754,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.11.1"
+  tooltip_card:
+    dependency: "direct main"
+    description:
+      name: tooltip_card
+      sha256: "5aab52e2004b1569aac58615c46c7bf67e4914e212e2bcd04f84e20be1ab487b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.9.0"
   typed_data:
     dependency: transitive
     description:

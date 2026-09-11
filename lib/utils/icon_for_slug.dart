@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 /// The project badge icons — one per shape in the constellation library.
 ///
-/// This map and `constellationPresets` (constellation_presets.dart) are two
+/// This map and `starsShapePresets` (constellation_presets.dart) are two
 /// halves of the same catalogue: every preset shape names exactly one of
 /// these slugs, no slug is shared by two presets, and there are no spare
 /// slugs. Pick "Bicycle" in the library and the badge is the bicycle icon;

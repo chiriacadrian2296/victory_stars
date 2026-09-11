@@ -14,8 +14,8 @@ import 'project_tag.dart';
 /// A static duplicate of `StarReaderScreen`'s own lit-star layout, with
 /// none of the close/edit/prev-next chrome — exists only to be captured as
 /// an image via a [RepaintBoundary] wrapped around it (see
-/// `StarReaderScreen._shareCurrent` and `StarQuickLookPanel`'s own share
-/// action, the two places that do so). Only ever built for an achieved
+/// `StarReaderScreen._shareCurrent` and `SkyScreen._shareQuickLookStar`,
+/// the two places that do so). Only ever built for an achieved
 /// star, so [Star.achievedDate]/[Star.intensity] are always non-null here.
 class ShareableLitStarCard extends StatelessWidget {
   const ShareableLitStarCard({super.key, required this.star, this.project});

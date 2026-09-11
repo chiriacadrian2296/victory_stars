@@ -87,7 +87,7 @@ class SkyExplorerView extends StatefulWidget {
     required this.starRepository,
     required this.habitRepository,
     required this.habitCompletionRepository,
-    required this.customConstellationRepository,
+    required this.starsShapeRepository,
     required this.areaVisionRepository,
     required this.onNavigateTo,
     required this.onModeLabelChanged,
@@ -97,7 +97,7 @@ class SkyExplorerView extends StatefulWidget {
   final StarRepository starRepository;
   final HabitRepository habitRepository;
   final HabitCompletionRepository habitCompletionRepository;
-  final CustomConstellationRepository customConstellationRepository;
+  final StarsShapeRepository starsShapeRepository;
   final AreaVisionRepository areaVisionRepository;
 
   /// See [SkyNavigationTarget] — called when a card's "take me there" button
@@ -237,7 +237,7 @@ class _SkyExplorerViewState extends State<SkyExplorerView> {
           projectRepository: widget.projectRepository,
           habitRepository: widget.habitRepository,
           habitCompletionRepository: widget.habitCompletionRepository,
-          customConstellationRepository: widget.customConstellationRepository,
+          starsShapeRepository: widget.starsShapeRepository,
         ),
       ),
     );
@@ -255,7 +255,7 @@ class _SkyExplorerViewState extends State<SkyExplorerView> {
           allowEdit: true,
           projectsById: _projectsById,
           projectRepository: widget.projectRepository,
-          customConstellationRepository: widget.customConstellationRepository,
+          starsShapeRepository: widget.starsShapeRepository,
           refreshStars: _filteredStarsOnly,
           onNavigateTo: (project) => widget.onNavigateTo(SkyStarTarget(project)),
         ),
@@ -273,7 +273,7 @@ class _SkyExplorerViewState extends State<SkyExplorerView> {
           habitRepository: widget.habitRepository,
           habitCompletionRepository: widget.habitCompletionRepository,
           projectRepository: widget.projectRepository,
-          customConstellationRepository: widget.customConstellationRepository,
+          starsShapeRepository: widget.starsShapeRepository,
         ),
       ),
     );

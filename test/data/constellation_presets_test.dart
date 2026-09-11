@@ -9,15 +9,15 @@ import 'package:victory_stars/utils/icon_for_slug.dart';
 /// a widget, so it stays a plain data test.
 void main() {
   test('there are 100 presets, with unique ids', () {
-    expect(constellationPresets, hasLength(100));
+    expect(starsShapePresets, hasLength(100));
     expect(
-      constellationPresets.map((p) => p.id).toSet(),
-      hasLength(constellationPresets.length),
+      starsShapePresets.map((p) => p.id).toSet(),
+      hasLength(starsShapePresets.length),
     );
   });
 
   test('every preset pairs with its own icon, and every icon is used once', () {
-    final slugs = constellationPresets.map((p) => p.iconSlug).toList();
+    final slugs = starsShapePresets.map((p) => p.iconSlug).toList();
     expect(slugs.toSet(), hasLength(slugs.length), reason: 'no shared icons');
     expect(slugs.toSet(), availableIconSlugs);
   });
@@ -34,7 +34,7 @@ void main() {
         expect(category.name.of(code), isNotEmpty);
       }
     }
-    for (final preset in constellationPresets) {
+    for (final preset in starsShapePresets) {
       for (final code in ['en', 'it', 'ro']) {
         expect(preset.name.of(code), isNotEmpty, reason: preset.id);
       }
@@ -42,7 +42,7 @@ void main() {
   });
 
   test('every shape is drawable: on-grid points, valid edges, nothing stranded', () {
-    for (final preset in constellationPresets) {
+    for (final preset in starsShapePresets) {
       final reason = preset.id;
       expect(preset.grid.length, greaterThanOrEqualTo(2), reason: reason);
       // The editor's own soft cap (`_maxEditorPoints`) — a preset the user
@@ -71,7 +71,7 @@ void main() {
   });
 
   test('shapes normalize into the 0..1 box, keeping their point order', () {
-    for (final preset in constellationPresets) {
+    for (final preset in starsShapePresets) {
       final shape = preset.shape;
       expect(shape.points, hasLength(preset.grid.length), reason: preset.id);
       expect(shape.edges, preset.edges, reason: preset.id);
@@ -83,7 +83,7 @@ void main() {
   });
 
   test('presetById and presetForIconSlug resolve back to the same preset', () {
-    for (final preset in constellationPresets) {
+    for (final preset in starsShapePresets) {
       expect(presetById(preset.id), same(preset));
       expect(presetForIconSlug(preset.iconSlug), same(preset));
     }

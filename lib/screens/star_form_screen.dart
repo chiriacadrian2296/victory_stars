@@ -16,11 +16,11 @@ import '../theme/app_colors.dart';
 import '../theme/app_style.dart';
 import '../utils/date_format.dart';
 import '../utils/icon_for_slug.dart';
-import '../widgets/app_action_disc.dart';
 import '../widgets/app_field.dart';
 import '../widgets/area_tag.dart';
 import '../widgets/intensity_bolts.dart';
 import '../widgets/photo_picker.dart';
+import '../widgets/pill_action_button.dart';
 import '../widgets/project_picker.dart';
 import '../widgets/responsive_content.dart';
 import '../widgets/star_glyph.dart';
@@ -115,7 +115,7 @@ class StarFormScreen extends StatefulWidget {
     this.existingHabit,
     this.lockedProject,
     this.projectRepository,
-    this.customConstellationRepository,
+    this.starsShapeRepository,
     this.contextProject,
     this.initialDate,
     this.initialKind = StarKind.lit,
@@ -129,8 +129,8 @@ class StarFormScreen extends StatefulWidget {
        assert(
          lockedProject != null ||
              (projectRepository != null &&
-                 customConstellationRepository != null),
-         'Provide lockedProject (pre-scoped, no picker) or both projectRepository and customConstellationRepository (picker, for add or edit).',
+                 starsShapeRepository != null),
+         'Provide lockedProject (pre-scoped, no picker) or both projectRepository and starsShapeRepository (picker, for add or edit).',
        );
 
   final Star? existingStar;
@@ -141,7 +141,7 @@ class StarFormScreen extends StatefulWidget {
   /// Required alongside [projectRepository] whenever [lockedProject] isn't
   /// given — the constellation picker offers an inline "create new" action
   /// that needs it (see [pickProject]).
-  final CustomConstellationRepository? customConstellationRepository;
+  final StarsShapeRepository? starsShapeRepository;
 
   /// The existing star's current constellation, resolved by the caller —
   /// seeds the picker's initial selection when editing.
@@ -528,12 +528,12 @@ class _StarFormScreenState extends State<StarFormScreen> {
 
   Future<void> _openProjectPicker() async {
     final repository = widget.projectRepository;
-    final customConstellationRepository = widget.customConstellationRepository;
-    if (repository == null || customConstellationRepository == null) return;
+    final starsShapeRepository = widget.starsShapeRepository;
+    if (repository == null || starsShapeRepository == null) return;
     final picked = await pickProject(
       context,
       repository,
-      customConstellationRepository,
+      starsShapeRepository,
     );
     if (picked != null && mounted) {
       setState(() => _selectedProject = picked);
@@ -827,17 +827,19 @@ class _StarFormScreenState extends State<StarFormScreen> {
                 ],
                 const SizedBox(height: 20),
                 Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 16,
+                    runSpacing: 12,
                     children: [
-                      if (widget.isEditing && !widget.hideDelete) ...[
-                        AppActionDisc.danger(
-                          heroTag: 'deleteStarFab',
-                          onPressed: _confirmAndDelete,
-                          tooltip: strings.deleteStarAction,
+                      if (widget.isEditing && !widget.hideDelete)
+                        PillActionButton(
+                          icon: Icons.delete_outline,
+                          label: strings.deleteStarAction,
+                          onTap: _confirmAndDelete,
+                          danger: true,
                         ),
-                        const SizedBox(width: 20),
-                      ],
                       ValueListenableBuilder<TextEditingValue>(
                         valueListenable: _titleController,
                         builder: (context, value, child) {
@@ -845,18 +847,16 @@ class _StarFormScreenState extends State<StarFormScreen> {
                               value.text.trim().isNotEmpty &&
                               _selectedProject != null &&
                               (!widget.isEditing || _hasUnsavedChanges);
-                          return AppActionDisc(
-                            heroTag: 'saveStarFab',
-                            icon: Icons.check,
-                            lit: canSave,
-                            onPressed: canSave
-                                ? _save
-                                : _showCannotSaveMessage,
-                            tooltip: widget.isEditing
+                          return SaveActionButton(
+                            label: widget.isEditing
                                 ? strings.saveChanges
                                 : (_kind == StarKind.lit
                                       ? strings.lightThisStar
                                       : strings.placeThisStarAction),
+                            lit: canSave,
+                            onPressed: canSave
+                                ? _save
+                                : _showCannotSaveMessage,
                           );
                         },
                       ),
@@ -913,7 +913,7 @@ class _StarKindSwitch extends StatelessWidget {
               borderRadius: BorderRadius.circular(kRadiusField),
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: selectableDecoration(
+                decoration: flatSelectableDecoration(
                   colors,
                   selected: kinds[i] == selected,
                 ),

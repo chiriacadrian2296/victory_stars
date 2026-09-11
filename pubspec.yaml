@@ -20,6 +20,7 @@ dependencies:
   path_provider: ^2.1.6
   image: ^4.9.2
   share_plus: ^13.3.0
+  tooltip_card: ^2.9.0
 
 dev_dependencies:
   flutter_test:

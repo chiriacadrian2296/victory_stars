@@ -10,20 +10,20 @@ import 'constellation_shape.dart';
 /// JSON-encoded list under one [SharedPreferences] key, newest first —
 /// mirrors [ProjectRepository]'s shape exactly, since the same "small list,
 /// always read/written whole" reasoning applies here.
-class CustomConstellationRepository {
-  CustomConstellationRepository(this._prefs);
+class StarsShapeRepository {
+  StarsShapeRepository(this._prefs);
 
   static const _storageKey = 'custom-constellations-list';
 
   final SharedPreferences _prefs;
 
-  static Future<CustomConstellationRepository> create() async {
+  static Future<StarsShapeRepository> create() async {
     final prefs = await SharedPreferences.getInstance();
-    return CustomConstellationRepository(prefs);
+    return StarsShapeRepository(prefs);
   }
 
   /// All saved custom shapes, newest first.
-  List<CustomConstellation> getAll() {
+  List<StarsShape> getAll() {
     final raw = _prefs.getString(_storageKey);
     if (raw == null) return const [];
     try {
@@ -31,7 +31,7 @@ class CustomConstellationRepository {
       return decoded
           .map(
             (entry) =>
-                CustomConstellation.fromJson(entry as Map<String, dynamic>),
+                StarsShape.fromJson(entry as Map<String, dynamic>),
           )
           .toList();
     } catch (_) {
@@ -39,7 +39,7 @@ class CustomConstellationRepository {
     }
   }
 
-  CustomConstellation? getById(int id) {
+  StarsShape? getById(int id) {
     for (final shape in getAll()) {
       if (shape.id == id) return shape;
     }
@@ -49,8 +49,8 @@ class CustomConstellationRepository {
   /// The first shape saved from [presetId], or null if the library preset
   /// has never been picked. Only ever matches an *untouched* copy — [update]
   /// drops the tag as soon as the user edits one (see
-  /// [CustomConstellation.presetId]).
-  CustomConstellation? findByPresetId(String presetId) {
+  /// [StarsShape.presetId]).
+  StarsShape? findByPresetId(String presetId) {
     for (final shape in getAll()) {
       if (shape.presetId == presetId) return shape;
     }
@@ -61,8 +61,8 @@ class CustomConstellationRepository {
   /// library shape for a second project therefore reuses the first copy
   /// instead of stacking up identical entries named "Heart", "Heart",
   /// "Heart" in the user's own list.
-  Future<CustomConstellation> materializePreset(
-    ConstellationPreset preset, {
+  Future<StarsShape> materializePreset(
+    StarsShapePreset preset, {
     String? languageCode,
   }) async {
     final existing = findByPresetId(preset.id);
@@ -74,13 +74,13 @@ class CustomConstellationRepository {
     );
   }
 
-  Future<CustomConstellation> add({
+  Future<StarsShape> add({
     required String name,
     required ConstellationShape shape,
     String? presetId,
   }) async {
     final shapes = getAll();
-    final created = CustomConstellation(
+    final created = StarsShape(
       id: _nextId(shapes),
       name: name.trim(),
       shape: shape,
@@ -97,7 +97,7 @@ class CustomConstellationRepository {
   /// to whichever came first. Stepping past anything already taken makes
   /// back-to-back adds safe without callers having to sleep between them
   /// (which is exactly what `backfillMissingConstellations` used to do).
-  static int _nextId(List<CustomConstellation> existing) {
+  static int _nextId(List<StarsShape> existing) {
     var id = DateTime.now().millisecondsSinceEpoch;
     final taken = existing.map((s) => s.id).toSet();
     while (taken.contains(id)) {
@@ -107,16 +107,16 @@ class CustomConstellationRepository {
   }
 
   /// Replaces the name/shape of an existing custom constellation in place,
-  /// keeping its [CustomConstellation.id] (so any [Project.customConstellationId]
+  /// keeping its [StarsShape.id] (so any [Project.starsShapeId]
   /// referencing it keeps pointing at the right thing) and its position in
   /// the list (unlike [add], this doesn't move it to the front — editing
   /// isn't "creating something new"). Throws if [id] doesn't match anything
   /// saved.
   ///
-  /// Also drops any [CustomConstellation.presetId]: an edited copy is the
+  /// Also drops any [StarsShape.presetId]: an edited copy is the
   /// user's own shape now, and leaving the tag on would make the next
   /// project that picks that library shape silently inherit these edits.
-  Future<CustomConstellation> update({
+  Future<StarsShape> update({
     required int id,
     required String name,
     required ConstellationShape shape,
@@ -127,7 +127,7 @@ class CustomConstellationRepository {
       throw StateError('No custom constellation found with id $id');
     }
 
-    final updated = CustomConstellation(
+    final updated = StarsShape(
       id: id,
       name: name.trim(),
       shape: shape,
@@ -144,7 +144,7 @@ class CustomConstellationRepository {
     await _prefs.remove(_storageKey);
   }
 
-  Future<void> _saveAll(List<CustomConstellation> shapes) async {
+  Future<void> _saveAll(List<StarsShape> shapes) async {
     final encoded = jsonEncode(shapes.map((s) => s.toJson()).toList());
     await _prefs.setString(_storageKey, encoded);
   }

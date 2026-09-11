@@ -15,13 +15,13 @@ void main() {
   );
 
   test('starts empty when nothing has been saved yet', () async {
-    final repo = await CustomConstellationRepository.create();
+    final repo = await StarsShapeRepository.create();
 
     expect(repo.getAll(), isEmpty);
   });
 
   test('add() persists name, points, and edges', () async {
-    final repo = await CustomConstellationRepository.create();
+    final repo = await StarsShapeRepository.create();
 
     final created = await repo.add(name: 'My path', shape: shape);
 
@@ -31,7 +31,7 @@ void main() {
   });
 
   test('getById() finds a saved shape by id, or null if it does not exist', () async {
-    final repo = await CustomConstellationRepository.create();
+    final repo = await StarsShapeRepository.create();
     final created = await repo.add(name: 'My path', shape: shape);
 
     expect(repo.getById(created.id)?.name, 'My path');
@@ -39,10 +39,10 @@ void main() {
   });
 
   test('data survives reloading the repository from the same storage', () async {
-    final repo = await CustomConstellationRepository.create();
+    final repo = await StarsShapeRepository.create();
     await repo.add(name: 'My path', shape: shape);
 
-    final reloaded = await CustomConstellationRepository.create();
+    final reloaded = await StarsShapeRepository.create();
 
     expect(reloaded.getAll(), hasLength(1));
     final roundTripped = reloaded.getAll().first;
@@ -52,7 +52,7 @@ void main() {
   });
 
   test('update() replaces name and shape but keeps id and createdAt', () async {
-    final repo = await CustomConstellationRepository.create();
+    final repo = await StarsShapeRepository.create();
     final created = await repo.add(name: 'My path', shape: shape);
 
     const revisedShape = ConstellationShape(
@@ -72,7 +72,7 @@ void main() {
   });
 
   test('update() persists in place, without moving the shape to the front of the list', () async {
-    final repo = await CustomConstellationRepository.create();
+    final repo = await StarsShapeRepository.create();
     final first = await repo.add(name: 'First', shape: shape);
     // Ids are millisecondsSinceEpoch — without this, two adds this close
     // together could mint the same id, which update()'s id-based lookup
@@ -87,7 +87,7 @@ void main() {
   });
 
   test('update() throws for an id that does not exist', () async {
-    final repo = await CustomConstellationRepository.create();
+    final repo = await StarsShapeRepository.create();
 
     expect(
       () => repo.update(id: -1, name: 'Nope', shape: shape),
@@ -96,25 +96,25 @@ void main() {
   });
 
   test('clear() deletes every custom shape, including from a repository reloaded afterward', () async {
-    final repo = await CustomConstellationRepository.create();
+    final repo = await StarsShapeRepository.create();
     await repo.add(name: 'My path', shape: shape);
 
     await repo.clear();
 
     expect(repo.getAll(), isEmpty);
-    final reloaded = await CustomConstellationRepository.create();
+    final reloaded = await StarsShapeRepository.create();
     expect(reloaded.getAll(), isEmpty);
   });
 
-  test('CustomConstellation.fromJson/toJson round-trips points and edges exactly', () {
-    final original = CustomConstellation(
+  test('StarsShape.fromJson/toJson round-trips points and edges exactly', () {
+    final original = StarsShape(
       id: 1,
       name: 'My path',
       shape: shape,
       createdAt: DateTime(2026, 1, 1),
     );
 
-    final roundTripped = CustomConstellation.fromJson(original.toJson());
+    final roundTripped = StarsShape.fromJson(original.toJson());
 
     expect(roundTripped, original);
     expect(roundTripped.shape.points, original.shape.points);

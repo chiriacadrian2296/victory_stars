@@ -91,9 +91,10 @@ class SkyMenuDrawer extends StatelessWidget {
 /// - **Search** — [onSearch] alone, first: the fastest way off "wander and
 ///   hope" navigation deserves to be found before anything else, not
 ///   buried alongside the statistics page it used to share a section with.
-/// - **Activity** — the things you *make*: [onLightAStar]/[onNewConstellation]
-///   sit behind one entry ("Light Your Sky") that opens a small chooser
-///   rather than claiming two rows, [onVisions] ("Imagine Your Dreams"),
+/// - **Activity** — the things you *make*: [onLightAStar]/[onNewConstellation]/
+///   [onVisions] all sit behind one entry ("Light Your Sky") that opens a
+///   small chooser mirroring the sky's own three levels (Supernovas/
+///   Constellations/Stars) rather than claiming three rows of their own,
 ///   and [onShootingStars] — sketched in ahead of the feature existing.
 /// - **Crisis** — [onAdmire] ("Find Your Light"), right under Activity: what
 ///   it's *for* (a place to go when things are hard, reached in as few taps
@@ -171,56 +172,86 @@ class SkyMenuContent extends StatelessWidget {
           required String label,
           required VoidCallback onTap,
         }) {
-          return ListTile(
-            leading: Icon(icon, color: colors.gold),
-            title: Text(
-              label,
-              style: TextStyle(
-                color: colors.text,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+          return InkWell(
             onTap: () {
               Navigator.of(dialogContext).pop();
               onTap();
             },
+            // No ripple/highlight on these — Android's default press
+            // feedback is a light flash, which reads as a stray white
+            // flicker against this dark popup rather than a deliberate
+            // part of its look.
+            splashFactory: NoSplash.splashFactory,
+            highlightColor: Colors.transparent,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 10,
+              ),
+              // [mainAxisSize.min], not the Row default — the popup's own
+              // width comes from its widest child (see [Dialog] below,
+              // which shrink-wraps its [Column]), so a Row that instead
+              // stretches to fill whatever width it's *offered* would
+              // pull that width — and so the whole popup's background —
+              // out to nearly the full screen, with [mainAxisAlignment]
+              // then only centering the actual icon+label inside all
+              // that empty space rather than sizing to it.
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, color: colors.gold, size: 36),
+                  const SizedBox(width: 10),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: colors.text,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           );
         }
 
         // A popup rather than a sheet, per request — [Dialog] alone (not
-        // [AlertDialog]) since the content here is a pair of ListTiles,
-        // not a title/actions layout; it still picks up the app's own
-        // dialog theme (background, shape) automatically.
+        // [AlertDialog]) since the content here is a plain list of
+        // choices, not a title/actions layout; it still picks up the
+        // app's own dialog theme (background, shape) automatically. No
+        // title any more — the three choices, one per level of the sky
+        // itself, don't need one to make sense — and Cancel sits right
+        // below them, no divider: the muted color and plain-text
+        // [TextButton] treatment (versus the icon+label choices above
+        // it) already read as "the way out", not a fourth choice.
         return Dialog(
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      strings.lightYourSkyChooserTitle,
-                      style: TextStyle(
-                        color: colors.text,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
+                const SizedBox(height: 4),
+                choice(
+                  icon: Icons.flare,
+                  label: strings.lightYourSkyChooserSupernovaOption,
+                  onTap: onVisions,
+                ),
+                choice(
+                  icon: Icons.auto_awesome,
+                  label: strings.menuNewConstellation,
+                  onTap: onNewConstellation,
                 ),
                 choice(
                   icon: Icons.star,
                   label: strings.menuLightAStar,
                   onTap: onLightAStar,
                 ),
-                choice(
-                  icon: Icons.auto_awesome,
-                  label: strings.menuNewConstellation,
-                  onTap: onNewConstellation,
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(
+                    strings.cancel,
+                    style: TextStyle(color: colors.muted, fontSize: 24),
+                  ),
                 ),
               ],
             ),
@@ -263,6 +294,13 @@ class SkyMenuContent extends StatelessWidget {
       required String label,
       String? description,
       required VoidCallback onTap,
+      // Search is the one entry [detailed] mode's usual "stays open
+      // underneath" rule doesn't fit: its whole point is flying the
+      // camera to whatever gets picked, so landing back on the menu
+      // instead of the sky it just navigated to would defeat the
+      // action. Forces the same close-first behavior compact mode
+      // always gets, regardless of [detailed].
+      bool forceClose = false,
     }) {
       final tile = ListTile(
         leading: Icon(icon, color: colors.gold),
@@ -291,7 +329,8 @@ class SkyMenuContent extends StatelessWidget {
           // it, so coming back from that page — or closing that popup —
           // lands right back on the modal, open where it was left,
           // instead of dropping back onto the bare Sky underneath it.
-          if (!detailed) Navigator.of(context).pop();
+          // [forceClose] opts an entry out of that (see Search above).
+          if (!detailed || forceClose) Navigator.of(context).pop();
           onTap();
         },
       );
@@ -355,6 +394,7 @@ class SkyMenuContent extends StatelessWidget {
           label: strings.menuSearch,
           description: strings.menuSearchDescription,
           onTap: onSearch,
+          forceClose: true,
         ),
 
         if (!detailed) Divider(color: colors.nightBorder, height: 1),
@@ -377,12 +417,6 @@ class SkyMenuContent extends StatelessWidget {
               _openLightYourSkyChooser(context);
             });
           },
-        ),
-        entry(
-          icon: Icons.flare,
-          label: strings.menuImagineYourDreams,
-          description: strings.menuImagineYourDreamsDescription,
-          onTap: onVisions,
         ),
         entry(
           icon: Icons.auto_fix_high,

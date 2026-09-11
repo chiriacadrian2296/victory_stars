@@ -1,7 +1,7 @@
 // The app's own library of ready-made constellation shapes — 100 of them,
 // grouped into [PresetCategory]s, offered in `NewProjectScreen` so a
 // project can get a real shape immediately instead of every user having to
-// draw one from scratch in `ConstellationEditorScreen` first (drawing your
+// draw one from scratch in `StarsShapeEditorScreen` first (drawing your
 // own is still there, and still the only way to get something the library
 // doesn't already have).
 //
@@ -126,8 +126,8 @@ extension PresetCategoryX on PresetCategory {
 /// downstream actually wants, built once per preset on first access — cheap
 /// enough not to precompute, and this way the file stays readable as grid
 /// coordinates instead of a wall of fractions.
-class ConstellationPreset {
-  ConstellationPreset({
+class StarsShapePreset {
+  StarsShapePreset({
     required this.id,
     required this.category,
     required this.iconSlug,
@@ -137,7 +137,7 @@ class ConstellationPreset {
   });
 
   /// Stable, never translated, never shown — what a materialized copy is
-  /// tagged with (see [CustomConstellation.presetId]) so picking the same
+  /// tagged with (see [StarsShape.presetId]) so picking the same
   /// preset for a second project reuses the first copy instead of piling up
   /// duplicates in the user's own list.
   final String id;
@@ -167,11 +167,11 @@ class ConstellationPreset {
 }
 
 /// Every preset, in category order. Ids are unique, and so is every
-/// [ConstellationPreset.iconSlug] — one shape, one icon, no reuse — both
+/// [StarsShapePreset.iconSlug] — one shape, one icon, no reuse — both
 /// asserted by `constellation_presets_test.dart`.
-final List<ConstellationPreset> constellationPresets = [
+final List<StarsShapePreset> starsShapePresets = [
   // ---------------------------------------------------------------- nature
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'tree',
     category: PresetCategory.nature,
     iconSlug: 'park',
@@ -179,7 +179,7 @@ final List<ConstellationPreset> constellationPresets = [
     grid: [(5, 10), (5, 7), (2, 7), (8, 7), (3, 4), (7, 4), (5, 1)],
     edges: [(0, 1), (1, 2), (2, 4), (4, 6), (6, 5), (5, 3), (3, 1)],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'pine',
     category: PresetCategory.nature,
     iconSlug: 'forest',
@@ -195,7 +195,7 @@ final List<ConstellationPreset> constellationPresets = [
       (14, 0),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'flower',
     category: PresetCategory.nature,
     iconSlug: 'local_florist',
@@ -211,7 +211,7 @@ final List<ConstellationPreset> constellationPresets = [
       (12, 14), (12, 15),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'leaf',
     category: PresetCategory.nature,
     iconSlug: 'eco',
@@ -219,7 +219,7 @@ final List<ConstellationPreset> constellationPresets = [
     grid: [(5, 0), (8, 4), (5, 8), (2, 4), (5, 4), (5, 10)],
     edges: [(0, 1), (1, 2), (2, 3), (3, 0), (0, 4), (4, 2), (2, 5)],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'mountain',
     category: PresetCategory.nature,
     iconSlug: 'terrain',
@@ -227,7 +227,7 @@ final List<ConstellationPreset> constellationPresets = [
     grid: [(0, 10), (3, 3), (5, 6), (7, 1), (10, 10)],
     edges: [(0, 1), (1, 2), (2, 3), (3, 4), (4, 0)],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'wave',
     category: PresetCategory.nature,
     iconSlug: 'waves',
@@ -240,7 +240,7 @@ final List<ConstellationPreset> constellationPresets = [
       (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (4, 7), (7, 8),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'flame',
     category: PresetCategory.nature,
     iconSlug: 'local_fire_department',
@@ -254,7 +254,7 @@ final List<ConstellationPreset> constellationPresets = [
       (8, 0),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'sun',
     category: PresetCategory.nature,
     iconSlug: 'wb_sunny',
@@ -268,7 +268,7 @@ final List<ConstellationPreset> constellationPresets = [
       (0, 4), (1, 5), (2, 6), (3, 7),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'crescent_moon',
     category: PresetCategory.nature,
     iconSlug: 'nightlight',
@@ -279,7 +279,7 @@ final List<ConstellationPreset> constellationPresets = [
       (4, 5), (5, 6), (6, 7), (7, 0),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'rain_cloud',
     category: PresetCategory.nature,
     iconSlug: 'water_drop',
@@ -293,7 +293,7 @@ final List<ConstellationPreset> constellationPresets = [
       (9, 10), (11, 12),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'snowflake',
     category: PresetCategory.nature,
     iconSlug: 'ac_unit',
@@ -310,7 +310,7 @@ final List<ConstellationPreset> constellationPresets = [
   ),
 
   // --------------------------------------------------------------- animals
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'dog',
     category: PresetCategory.animals,
     iconSlug: 'pets',
@@ -324,7 +324,7 @@ final List<ConstellationPreset> constellationPresets = [
       (3, 7), (4, 8),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'bird',
     category: PresetCategory.animals,
     iconSlug: 'flutter_dash',
@@ -338,7 +338,7 @@ final List<ConstellationPreset> constellationPresets = [
       (4, 8),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'fish',
     category: PresetCategory.animals,
     iconSlug: 'set_meal',
@@ -349,7 +349,7 @@ final List<ConstellationPreset> constellationPresets = [
       (5, 0), (3, 6), (6, 7), (7, 3),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'bee',
     category: PresetCategory.animals,
     iconSlug: 'emoji_nature',
@@ -363,7 +363,7 @@ final List<ConstellationPreset> constellationPresets = [
       (6, 7), (6, 8), (6, 9), (1, 10),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'butterfly',
     category: PresetCategory.animals,
     iconSlug: 'filter_vintage',
@@ -378,7 +378,7 @@ final List<ConstellationPreset> constellationPresets = [
       (1, 7), (7, 2), (1, 8), (8, 2),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'rabbit',
     category: PresetCategory.animals,
     iconSlug: 'cruelty_free',
@@ -394,7 +394,7 @@ final List<ConstellationPreset> constellationPresets = [
   ),
 
   // ------------------------------------------------------------ bodySport
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'dumbbell',
     category: PresetCategory.bodySport,
     iconSlug: 'fitness_center',
@@ -408,7 +408,7 @@ final List<ConstellationPreset> constellationPresets = [
       (9, 4), (9, 5), (4, 6), (5, 7), (6, 7),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'runner',
     category: PresetCategory.bodySport,
     iconSlug: 'directions_run',
@@ -422,7 +422,7 @@ final List<ConstellationPreset> constellationPresets = [
       (2, 9), (9, 10),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'bicycle',
     category: PresetCategory.bodySport,
     iconSlug: 'directions_bike',
@@ -436,7 +436,7 @@ final List<ConstellationPreset> constellationPresets = [
       (0, 8), (8, 9), (9, 4), (0, 4), (9, 10),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'football',
     category: PresetCategory.bodySport,
     iconSlug: 'sports_soccer',
@@ -451,7 +451,7 @@ final List<ConstellationPreset> constellationPresets = [
       (6, 0), (7, 1), (8, 2), (9, 3), (10, 5),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'basketball_hoop',
     category: PresetCategory.bodySport,
     iconSlug: 'sports_basketball',
@@ -466,7 +466,7 @@ final List<ConstellationPreset> constellationPresets = [
       (4, 7), (7, 6), (5, 8), (8, 6), (7, 8),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'swimmer',
     category: PresetCategory.bodySport,
     iconSlug: 'pool',
@@ -480,7 +480,7 @@ final List<ConstellationPreset> constellationPresets = [
       (7, 8), (8, 9), (9, 10),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'yoga_pose',
     category: PresetCategory.bodySport,
     iconSlug: 'sports_gymnastics',
@@ -493,7 +493,7 @@ final List<ConstellationPreset> constellationPresets = [
       (2, 5), (2, 6), (5, 7), (6, 7),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'boxing_glove',
     category: PresetCategory.bodySport,
     iconSlug: 'sports_mma',
@@ -501,7 +501,7 @@ final List<ConstellationPreset> constellationPresets = [
     grid: [(2, 3), (6, 2), (9, 4), (9, 7), (6, 9), (3, 8), (1, 6)],
     edges: [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 0)],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'tennis_racket',
     category: PresetCategory.bodySport,
     iconSlug: 'sports_tennis',
@@ -515,7 +515,7 @@ final List<ConstellationPreset> constellationPresets = [
       (0, 4), (2, 6), (4, 8), (8, 9), (8, 10),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'heartbeat',
     category: PresetCategory.bodySport,
     iconSlug: 'monitor_heart',
@@ -531,7 +531,7 @@ final List<ConstellationPreset> constellationPresets = [
   ),
 
   // ------------------------------------------------------------ workStudy
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'briefcase',
     category: PresetCategory.workStudy,
     iconSlug: 'business_center',
@@ -545,7 +545,7 @@ final List<ConstellationPreset> constellationPresets = [
       (3, 0), (6, 4), (4, 5), (5, 7),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'laptop',
     category: PresetCategory.workStudy,
     iconSlug: 'laptop_mac',
@@ -553,7 +553,7 @@ final List<ConstellationPreset> constellationPresets = [
     grid: [(2, 1), (8, 1), (9, 6), (1, 6), (0, 8), (10, 8)],
     edges: [(0, 1), (1, 2), (2, 3), (3, 0), (3, 4), (2, 5), (4, 5)],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'graduation_cap',
     category: PresetCategory.workStudy,
     iconSlug: 'school',
@@ -561,7 +561,7 @@ final List<ConstellationPreset> constellationPresets = [
     grid: [(5, 1), (10, 4), (5, 7), (0, 4), (10, 8)],
     edges: [(0, 1), (1, 2), (2, 3), (3, 0), (1, 4)],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'open_book',
     category: PresetCategory.workStudy,
     iconSlug: 'menu_book',
@@ -569,7 +569,7 @@ final List<ConstellationPreset> constellationPresets = [
     grid: [(0, 3), (5, 4), (10, 3), (0, 8), (5, 9), (10, 8)],
     edges: [(0, 1), (1, 2), (0, 3), (3, 4), (4, 5), (2, 5), (1, 4)],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'pencil',
     category: PresetCategory.workStudy,
     iconSlug: 'edit',
@@ -580,7 +580,7 @@ final List<ConstellationPreset> constellationPresets = [
       (3, 4), (3, 5), (4, 6), (5, 6),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'gear',
     category: PresetCategory.workStudy,
     iconSlug: 'settings',
@@ -596,7 +596,7 @@ final List<ConstellationPreset> constellationPresets = [
       (6, 14), (14, 15), (15, 7), (7, 0),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'rising_chart',
     category: PresetCategory.workStudy,
     iconSlug: 'trending_up',
@@ -610,7 +610,7 @@ final List<ConstellationPreset> constellationPresets = [
       (4, 5), (4, 6), (0, 7), (7, 8),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'ladder',
     category: PresetCategory.workStudy,
     iconSlug: 'stairs',
@@ -626,7 +626,7 @@ final List<ConstellationPreset> constellationPresets = [
       (4, 8), (5, 9), (6, 10), (7, 11),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'tower',
     category: PresetCategory.workStudy,
     iconSlug: 'corporate_fare',
@@ -640,7 +640,7 @@ final List<ConstellationPreset> constellationPresets = [
       (7, 0), (2, 5), (1, 6), (8, 9),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'clock',
     category: PresetCategory.workStudy,
     iconSlug: 'schedule',
@@ -654,7 +654,7 @@ final List<ConstellationPreset> constellationPresets = [
       (5, 6), (6, 7), (7, 0), (8, 0), (8, 9),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'lightbulb',
     category: PresetCategory.workStudy,
     iconSlug: 'emoji_objects',
@@ -670,7 +670,7 @@ final List<ConstellationPreset> constellationPresets = [
   ),
 
   // ----------------------------------------------------------------- money
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'coins',
     category: PresetCategory.money,
     iconSlug: 'paid',
@@ -684,7 +684,7 @@ final List<ConstellationPreset> constellationPresets = [
       (6, 7), (7, 8), (8, 9), (9, 10), (10, 11), (11, 6),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'wallet',
     category: PresetCategory.money,
     iconSlug: 'account_balance_wallet',
@@ -698,7 +698,7 @@ final List<ConstellationPreset> constellationPresets = [
       (9, 6), (6, 7), (9, 8), (8, 7),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'bank',
     category: PresetCategory.money,
     iconSlug: 'account_balance',
@@ -714,7 +714,7 @@ final List<ConstellationPreset> constellationPresets = [
       (9, 11), (10, 12), (11, 12),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'credit_card',
     category: PresetCategory.money,
     iconSlug: 'credit_card',
@@ -728,7 +728,7 @@ final List<ConstellationPreset> constellationPresets = [
       (4, 0), (4, 5), (6, 7), (8, 9),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'diamond',
     category: PresetCategory.money,
     iconSlug: 'diamond',
@@ -739,7 +739,7 @@ final List<ConstellationPreset> constellationPresets = [
       (2, 4), (3, 4), (0, 4), (1, 4),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'shopping_cart',
     category: PresetCategory.money,
     iconSlug: 'shopping_cart',
@@ -747,7 +747,7 @@ final List<ConstellationPreset> constellationPresets = [
     grid: [(2, 3), (9, 3), (8, 7), (3, 7), (0, 1), (4, 9), (7, 9)],
     edges: [(0, 1), (1, 2), (2, 3), (3, 0), (4, 0), (3, 5), (2, 6)],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'scales',
     category: PresetCategory.money,
     iconSlug: 'balance',
@@ -761,7 +761,7 @@ final List<ConstellationPreset> constellationPresets = [
       (3, 6), (3, 7), (6, 7), (8, 0), (0, 9),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'key',
     category: PresetCategory.money,
     iconSlug: 'vpn_key',
@@ -777,7 +777,7 @@ final List<ConstellationPreset> constellationPresets = [
   ),
 
   // ------------------------------------------------------------------ home
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'house',
     category: PresetCategory.home,
     iconSlug: 'home',
@@ -791,7 +791,7 @@ final List<ConstellationPreset> constellationPresets = [
       (6, 5), (5, 3), (3, 0), (0, 4), (4, 1),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'bed',
     category: PresetCategory.home,
     iconSlug: 'king_bed',
@@ -805,7 +805,7 @@ final List<ConstellationPreset> constellationPresets = [
       (4, 6), (5, 7), (1, 8), (8, 9), (9, 10),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'armchair',
     category: PresetCategory.home,
     iconSlug: 'chair',
@@ -820,7 +820,7 @@ final List<ConstellationPreset> constellationPresets = [
       (8, 9), (8, 10), (9, 11),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'table_lamp',
     category: PresetCategory.home,
     iconSlug: 'light',
@@ -834,7 +834,7 @@ final List<ConstellationPreset> constellationPresets = [
       (4, 5), (5, 6), (5, 7), (6, 8), (7, 9), (8, 9),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'door',
     category: PresetCategory.home,
     iconSlug: 'door_front_door',
@@ -848,7 +848,7 @@ final List<ConstellationPreset> constellationPresets = [
       (4, 5), (5, 6), (6, 7), (7, 4), (8, 9),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'potted_plant',
     category: PresetCategory.home,
     iconSlug: 'yard',
@@ -862,7 +862,7 @@ final List<ConstellationPreset> constellationPresets = [
       (6, 10), (10, 8), (10, 9), (10, 7),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'umbrella',
     category: PresetCategory.home,
     iconSlug: 'umbrella',
@@ -876,7 +876,7 @@ final List<ConstellationPreset> constellationPresets = [
       (5, 6), (6, 7), (7, 4), (6, 8), (8, 9),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'tshirt',
     category: PresetCategory.home,
     iconSlug: 'checkroom',
@@ -890,7 +890,7 @@ final List<ConstellationPreset> constellationPresets = [
       (7, 8), (8, 6), (6, 5), (5, 1),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'broom',
     category: PresetCategory.home,
     iconSlug: 'cleaning_services',
@@ -903,7 +903,7 @@ final List<ConstellationPreset> constellationPresets = [
   ),
 
   // ------------------------------------------------------------------ food
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'coffee_cup',
     category: PresetCategory.food,
     iconSlug: 'local_cafe',
@@ -917,7 +917,7 @@ final List<ConstellationPreset> constellationPresets = [
       (7, 5), (3, 8), (2, 9), (8, 9), (10, 11), (12, 13),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'fork_knife',
     category: PresetCategory.food,
     iconSlug: 'restaurant',
@@ -931,7 +931,7 @@ final List<ConstellationPreset> constellationPresets = [
       (5, 6), (6, 7), (7, 5), (7, 8),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'wine_glass',
     category: PresetCategory.food,
     iconSlug: 'wine_bar',
@@ -942,7 +942,7 @@ final List<ConstellationPreset> constellationPresets = [
       (4, 5), (5, 6), (5, 7), (6, 7),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'pizza_slice',
     category: PresetCategory.food,
     iconSlug: 'local_pizza',
@@ -950,7 +950,7 @@ final List<ConstellationPreset> constellationPresets = [
     grid: [(5, 0), (1, 9), (9, 9), (5, 10), (5, 4), (3, 7), (7, 7)],
     edges: [(0, 1), (0, 2), (1, 3), (3, 2), (4, 5), (5, 6), (6, 4)],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'cake',
     category: PresetCategory.food,
     iconSlug: 'cake',
@@ -964,7 +964,7 @@ final List<ConstellationPreset> constellationPresets = [
       (4, 8), (8, 5), (5, 6), (6, 7), (7, 4), (8, 9),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'ice_cream',
     category: PresetCategory.food,
     iconSlug: 'icecream',
@@ -975,7 +975,7 @@ final List<ConstellationPreset> constellationPresets = [
       (7, 1),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'apple',
     category: PresetCategory.food,
     iconSlug: 'agriculture',
@@ -991,7 +991,7 @@ final List<ConstellationPreset> constellationPresets = [
   ),
 
   // --------------------------------------------------------------- artPlay
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'guitar',
     category: PresetCategory.artPlay,
     iconSlug: 'audiotrack',
@@ -1007,7 +1007,7 @@ final List<ConstellationPreset> constellationPresets = [
       (11, 4), (13, 14), (14, 15), (15, 16), (16, 13),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'piano_keys',
     category: PresetCategory.artPlay,
     iconSlug: 'piano',
@@ -1023,7 +1023,7 @@ final List<ConstellationPreset> constellationPresets = [
       (4, 5), (6, 7), (8, 9), (10, 11), (12, 13), (14, 15),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'music_note',
     category: PresetCategory.artPlay,
     iconSlug: 'music_note',
@@ -1031,7 +1031,7 @@ final List<ConstellationPreset> constellationPresets = [
     grid: [(2, 8), (4, 7), (5, 9), (3, 10), (5, 2), (8, 5)],
     edges: [(0, 1), (1, 2), (2, 3), (3, 0), (2, 4), (4, 5)],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'microphone',
     category: PresetCategory.artPlay,
     iconSlug: 'mic',
@@ -1045,7 +1045,7 @@ final List<ConstellationPreset> constellationPresets = [
       (6, 7), (7, 8), (7, 9), (8, 9),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'headphones',
     category: PresetCategory.artPlay,
     iconSlug: 'headphones',
@@ -1061,7 +1061,7 @@ final List<ConstellationPreset> constellationPresets = [
       (0, 8), (8, 9), (9, 10), (10, 5),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'paintbrush',
     category: PresetCategory.artPlay,
     iconSlug: 'brush',
@@ -1075,7 +1075,7 @@ final List<ConstellationPreset> constellationPresets = [
       (7, 5),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'palette',
     category: PresetCategory.artPlay,
     iconSlug: 'palette',
@@ -1089,7 +1089,7 @@ final List<ConstellationPreset> constellationPresets = [
       (7, 8), (8, 9), (9, 10), (10, 7),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'camera',
     category: PresetCategory.artPlay,
     iconSlug: 'photo_camera',
@@ -1103,7 +1103,7 @@ final List<ConstellationPreset> constellationPresets = [
       (8, 9), (9, 10), (10, 11), (11, 8),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'game_controller',
     category: PresetCategory.artPlay,
     iconSlug: 'sports_esports',
@@ -1117,7 +1117,7 @@ final List<ConstellationPreset> constellationPresets = [
       (8, 9), (10, 11), (12, 13),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'dice',
     category: PresetCategory.artPlay,
     iconSlug: 'casino',
@@ -1130,7 +1130,7 @@ final List<ConstellationPreset> constellationPresets = [
   ),
 
   // ---------------------------------------------------------------- travel
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'airplane',
     category: PresetCategory.travel,
     iconSlug: 'flight',
@@ -1144,7 +1144,7 @@ final List<ConstellationPreset> constellationPresets = [
       (8, 9), (9, 0),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'sailboat',
     category: PresetCategory.travel,
     iconSlug: 'sailing',
@@ -1155,7 +1155,7 @@ final List<ConstellationPreset> constellationPresets = [
       (4, 5), (5, 6), (6, 4), (5, 7), (7, 4),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'car',
     category: PresetCategory.travel,
     iconSlug: 'directions_car',
@@ -1171,7 +1171,7 @@ final List<ConstellationPreset> constellationPresets = [
       (14, 15), (15, 12),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'tent',
     category: PresetCategory.travel,
     iconSlug: 'cabin',
@@ -1179,7 +1179,7 @@ final List<ConstellationPreset> constellationPresets = [
     grid: [(0, 10), (5, 1), (10, 10), (3, 10), (5, 5), (7, 10), (5, 0)],
     edges: [(0, 1), (1, 2), (2, 5), (5, 4), (4, 3), (3, 0), (1, 6)],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'compass',
     category: PresetCategory.travel,
     iconSlug: 'explore',
@@ -1193,7 +1193,7 @@ final List<ConstellationPreset> constellationPresets = [
       (8, 9), (9, 10), (10, 11), (11, 8),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'backpack',
     category: PresetCategory.travel,
     iconSlug: 'backpack',
@@ -1208,7 +1208,7 @@ final List<ConstellationPreset> constellationPresets = [
       (10, 11), (11, 12), (12, 13), (13, 10),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'map_pin',
     category: PresetCategory.travel,
     iconSlug: 'place',
@@ -1222,7 +1222,7 @@ final List<ConstellationPreset> constellationPresets = [
       (6, 7), (7, 8), (8, 9), (9, 6),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'anchor',
     category: PresetCategory.travel,
     iconSlug: 'anchor',
@@ -1236,7 +1236,7 @@ final List<ConstellationPreset> constellationPresets = [
       (4, 9), (9, 10),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'rocket',
     category: PresetCategory.travel,
     iconSlug: 'rocket_launch',
@@ -1250,7 +1250,7 @@ final List<ConstellationPreset> constellationPresets = [
       (8, 9), (9, 10), (10, 11), (11, 8),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'suitcase',
     category: PresetCategory.travel,
     iconSlug: 'luggage',
@@ -1266,7 +1266,7 @@ final List<ConstellationPreset> constellationPresets = [
   ),
 
   // ---------------------------------------------------------------- people
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'heart',
     category: PresetCategory.people,
     iconSlug: 'favorite',
@@ -1277,7 +1277,7 @@ final List<ConstellationPreset> constellationPresets = [
       (4, 5), (5, 6), (6, 7), (7, 0),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'two_people',
     category: PresetCategory.people,
     iconSlug: 'people',
@@ -1291,7 +1291,7 @@ final List<ConstellationPreset> constellationPresets = [
       (6, 7), (7, 8), (7, 9), (7, 5), (7, 10),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'handshake',
     category: PresetCategory.people,
     iconSlug: 'handshake',
@@ -1302,7 +1302,7 @@ final List<ConstellationPreset> constellationPresets = [
       (1, 6), (6, 4), (1, 7), (7, 4),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'speech_bubble',
     category: PresetCategory.people,
     iconSlug: 'chat_bubble',
@@ -1310,7 +1310,7 @@ final List<ConstellationPreset> constellationPresets = [
     grid: [(1, 1), (9, 1), (9, 6), (4, 6), (3, 9), (3, 6)],
     edges: [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0)],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'gift',
     category: PresetCategory.people,
     iconSlug: 'redeem',
@@ -1324,7 +1324,7 @@ final List<ConstellationPreset> constellationPresets = [
       (4, 5), (6, 7), (4, 8), (4, 9), (8, 9),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'family',
     category: PresetCategory.people,
     iconSlug: 'family_restroom',
@@ -1340,7 +1340,7 @@ final List<ConstellationPreset> constellationPresets = [
       (9, 10), (10, 11), (10, 12), (10, 13), (10, 5),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'toast',
     category: PresetCategory.people,
     iconSlug: 'celebration',
@@ -1354,7 +1354,7 @@ final List<ConstellationPreset> constellationPresets = [
       (6, 7), (7, 8), (8, 6), (8, 9), (9, 10), (9, 11),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'envelope',
     category: PresetCategory.people,
     iconSlug: 'mail',
@@ -1362,7 +1362,7 @@ final List<ConstellationPreset> constellationPresets = [
     grid: [(0, 3), (10, 3), (10, 8), (0, 8), (5, 6)],
     edges: [(0, 1), (1, 2), (2, 3), (3, 0), (0, 4), (4, 1)],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'megaphone',
     category: PresetCategory.people,
     iconSlug: 'campaign',
@@ -1372,7 +1372,7 @@ final List<ConstellationPreset> constellationPresets = [
   ),
 
   // ---------------------------------------------------------------- spirit
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'candle',
     category: PresetCategory.spirit,
     iconSlug: 'wb_incandescent',
@@ -1386,7 +1386,7 @@ final List<ConstellationPreset> constellationPresets = [
       (4, 5), (5, 6), (6, 4), (2, 7), (3, 8), (7, 8),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'lotus',
     category: PresetCategory.spirit,
     iconSlug: 'spa',
@@ -1397,7 +1397,7 @@ final List<ConstellationPreset> constellationPresets = [
       (4, 2), (2, 1), (1, 3), (3, 5), (0, 6), (0, 7),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'temple',
     category: PresetCategory.spirit,
     iconSlug: 'temple_buddhist',
@@ -1411,7 +1411,7 @@ final List<ConstellationPreset> constellationPresets = [
       (5, 7), (7, 8), (8, 6), (5, 9), (6, 10), (9, 10),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'cross',
     category: PresetCategory.spirit,
     iconSlug: 'church',
@@ -1425,7 +1425,7 @@ final List<ConstellationPreset> constellationPresets = [
       (6, 7), (7, 8), (8, 9), (9, 10), (10, 11), (11, 0),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'crescent_star',
     category: PresetCategory.spirit,
     iconSlug: 'mosque',
@@ -1439,7 +1439,7 @@ final List<ConstellationPreset> constellationPresets = [
       (8, 10), (10, 12), (12, 9), (9, 11), (11, 8),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'star_of_david',
     category: PresetCategory.spirit,
     iconSlug: 'synagogue',
@@ -1447,7 +1447,7 @@ final List<ConstellationPreset> constellationPresets = [
     grid: [(5, 0), (9, 7), (1, 7), (5, 10), (1, 3), (9, 3)],
     edges: [(0, 1), (1, 2), (2, 0), (3, 4), (4, 5), (5, 3)],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'praying_hands',
     category: PresetCategory.spirit,
     iconSlug: 'front_hand',
@@ -1461,7 +1461,7 @@ final List<ConstellationPreset> constellationPresets = [
       (4, 5), (5, 6), (3, 7), (7, 6), (0, 7),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'eye',
     category: PresetCategory.spirit,
     iconSlug: 'visibility',
@@ -1475,7 +1475,7 @@ final List<ConstellationPreset> constellationPresets = [
       (6, 7), (7, 8), (8, 9), (9, 6),
     ],
   ),
-  ConstellationPreset(
+  StarsShapePreset(
     id: 'star',
     category: PresetCategory.spirit,
     iconSlug: 'star',
@@ -1493,16 +1493,16 @@ final List<ConstellationPreset> constellationPresets = [
 
 /// Every preset that belongs to [category], in catalogue order — what the
 /// library picker's per-category sections are built from.
-List<ConstellationPreset> presetsIn(PresetCategory category) =>
-    constellationPresets.where((p) => p.category == category).toList();
+List<StarsShapePreset> presetsIn(PresetCategory category) =>
+    starsShapePresets.where((p) => p.category == category).toList();
 
-/// The preset with this [ConstellationPreset.id], or null if it names one
-/// that no longer exists — a saved [CustomConstellation] keeps its own copy
+/// The preset with this [StarsShapePreset.id], or null if it names one
+/// that no longer exists — a saved [StarsShape] keeps its own copy
 /// of the points, so a retired id only ever costs the "this came from the
 /// library" tag, never the shape itself.
-ConstellationPreset? presetById(String? id) {
+StarsShapePreset? presetById(String? id) {
   if (id == null) return null;
-  for (final preset in constellationPresets) {
+  for (final preset in starsShapePresets) {
     if (preset.id == id) return preset;
   }
   return null;
@@ -1517,13 +1517,13 @@ ConstellationPreset? presetById(String? id) {
 /// The fallback hashes the slug rather than picking at random or always
 /// landing on the first entry, so two projects badged with the same retired
 /// icon still agree on their shape, run after run.
-ConstellationPreset presetForIconSlug(String iconSlug) {
-  for (final preset in constellationPresets) {
+StarsShapePreset presetForIconSlug(String iconSlug) {
+  for (final preset in starsShapePresets) {
     if (preset.iconSlug == iconSlug) return preset;
   }
   var hash = 0;
   for (final unit in iconSlug.codeUnits) {
     hash = (hash * 31 + unit) & 0x7fffffff;
   }
-  return constellationPresets[hash % constellationPresets.length];
+  return starsShapePresets[hash % starsShapePresets.length];
 }

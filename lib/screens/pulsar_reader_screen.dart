@@ -36,7 +36,7 @@ class PulsarReaderScreen extends StatefulWidget {
     required this.habitRepository,
     required this.habitCompletionRepository,
     required this.projectRepository,
-    required this.customConstellationRepository,
+    required this.starsShapeRepository,
   });
 
   final Habit habit;
@@ -44,7 +44,7 @@ class PulsarReaderScreen extends StatefulWidget {
   final HabitRepository habitRepository;
   final HabitCompletionRepository habitCompletionRepository;
   final ProjectRepository projectRepository;
-  final CustomConstellationRepository customConstellationRepository;
+  final StarsShapeRepository starsShapeRepository;
 
   @override
   State<PulsarReaderScreen> createState() => _PulsarReaderScreenState();
@@ -74,7 +74,7 @@ class _PulsarReaderScreenState extends State<PulsarReaderScreen> {
           existingHabit: _habit,
           contextProject: widget.project,
           projectRepository: widget.projectRepository,
-          customConstellationRepository: widget.customConstellationRepository,
+          starsShapeRepository: widget.starsShapeRepository,
         ),
       ),
     );
@@ -112,7 +112,7 @@ class _PulsarReaderScreenState extends State<PulsarReaderScreen> {
           existingHabit: _habit,
           contextProject: widget.project,
           projectRepository: widget.projectRepository,
-          customConstellationRepository: widget.customConstellationRepository,
+          starsShapeRepository: widget.starsShapeRepository,
           hideDelete: true,
         ),
       ),

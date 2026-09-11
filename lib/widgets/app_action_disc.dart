@@ -3,13 +3,20 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_style.dart';
 
+/// PARKED (2026-09-11): every call site now uses `SaveActionButton`/
+/// `PillActionButton` (pill_action_button.dart) instead — the round
+/// FAB-style disc didn't read as clearly against its background as the
+/// pill shape does. Kept here rather than deleted in case the round shape
+/// comes back; nothing in the app references this file right now.
+///
 /// The round primary action at the bottom of every form — save a star,
 /// create a constellation — and its destructive sibling.
 ///
 /// A form's disc is the clearest place in the app where the whole grammar
 /// shows up at once: it's dark and flat while the form is incomplete, and
 /// the moment everything required is there it fills gold and starts
-/// glowing. You light it the same way you light a star.
+/// glowing. You light it the same way you light a star — the same
+/// lit/glow mechanic `SaveActionButton` now carries forward.
 ///
 /// Was copy-pasted at three call sites with slightly different shadows.
 /// [lit] now decides fill, glow and foreground together, so there's no way

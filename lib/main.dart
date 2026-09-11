@@ -56,7 +56,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
   ProjectRepository? _projectRepository;
   HabitRepository? _habitRepository;
   HabitCompletionRepository? _habitCompletionRepository;
-  CustomConstellationRepository? _customConstellationRepository;
+  StarsShapeRepository? _starsShapeRepository;
   AreaVisionRepository? _areaVisionRepository;
   ReminderService? _reminderService;
 
@@ -81,8 +81,8 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
       final habitRepository = await HabitRepository.create();
       final habitCompletionRepository =
           await HabitCompletionRepository.create();
-      final customConstellationRepository =
-          await CustomConstellationRepository.create();
+      final starsShapeRepository =
+          await StarsShapeRepository.create();
       final areaVisionRepository = await AreaVisionRepository.create();
       final onboardingPrefs = await OnboardingPrefs.create();
 
@@ -107,10 +107,10 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
 
       // Idempotent — safe (and cheap once everything's migrated) to run on
       // every launch. Must finish before setState reveals the app below, so
-      // every Project any screen reads already has its customConstellationId.
+      // every Project any screen reads already has its starsShapeId.
       await backfillMissingConstellations(
         projectRepository: projectRepository,
-        customConstellationRepository: customConstellationRepository,
+        starsShapeRepository: starsShapeRepository,
       );
       // Wired here (not per-screen) since a second `initialize()` call from
       // another ReminderService instance would silently steal this tap
@@ -139,7 +139,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
         _projectRepository = projectRepository;
         _habitRepository = habitRepository;
         _habitCompletionRepository = habitCompletionRepository;
-        _customConstellationRepository = customConstellationRepository;
+        _starsShapeRepository = starsShapeRepository;
         _areaVisionRepository = areaVisionRepository;
         _reminderService = reminderService;
       });
@@ -175,11 +175,11 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
   Future<void> _openAddStarFromNotification() async {
     final starRepository = _starRepository;
     final projectRepository = _projectRepository;
-    final customConstellationRepository = _customConstellationRepository;
+    final starsShapeRepository = _starsShapeRepository;
     final navigator = _navigatorKey.currentState;
     if (starRepository == null ||
         projectRepository == null ||
-        customConstellationRepository == null ||
+        starsShapeRepository == null ||
         navigator == null) {
       return;
     }
@@ -188,7 +188,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
       MaterialPageRoute(
         builder: (_) => StarFormScreen(
           projectRepository: projectRepository,
-          customConstellationRepository: customConstellationRepository,
+          starsShapeRepository: starsShapeRepository,
         ),
       ),
     );
@@ -217,7 +217,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
     final projectRepository = _projectRepository;
     final habitRepository = _habitRepository;
     final habitCompletionRepository = _habitCompletionRepository;
-    final customConstellationRepository = _customConstellationRepository;
+    final starsShapeRepository = _starsShapeRepository;
     final areaVisionRepository = _areaVisionRepository;
     final reminderService = _reminderService;
     final loadError = _loadError;
@@ -245,7 +245,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
         projectRepository == null ||
         habitRepository == null ||
         habitCompletionRepository == null ||
-        customConstellationRepository == null ||
+        starsShapeRepository == null ||
         areaVisionRepository == null ||
         reminderService == null) {
       // Nothing is known yet — a neutral, static splash rather than
@@ -299,7 +299,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
           projectRepository: projectRepository,
           habitRepository: habitRepository,
           habitCompletionRepository: habitCompletionRepository,
-          customConstellationRepository: customConstellationRepository,
+          starsShapeRepository: starsShapeRepository,
           areaVisionRepository: areaVisionRepository,
           reminderService: reminderService,
         ),

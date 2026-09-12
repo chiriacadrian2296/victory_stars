@@ -21,7 +21,6 @@ dependencies:
   image: ^4.9.2
   share_plus: ^13.3.0
   tooltip_card: ^2.9.0
-  vibration: ^3.2.1
 
 dev_dependencies:
   flutter_test:

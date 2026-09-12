@@ -10,7 +10,6 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:share_plus/share_plus.dart';
 import 'package:tooltip_card/tooltip_card.dart';
-import 'package:vibration/vibration.dart';
 
 import '../data/area_vision_repository.dart';
 import '../data/constellation_layout.dart';
@@ -32,6 +31,7 @@ import '../settings/settings_controller.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_style.dart';
 import '../utils/habit_stats.dart';
+import '../utils/haptics.dart';
 import '../utils/responsive.dart';
 import '../utils/star_stats.dart';
 import '../widgets/constellation_field.dart';
@@ -1566,21 +1566,21 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   Timer? _holdRingArmTimer;
 
   /// One real, continuous motor vibration for the length of a hold, via
-  /// the `vibration` package's own platform channel — [HapticFeedback]
-  /// can only fire discrete, fixed-length system clicks, not a buzz of
-  /// arbitrary duration. Started with a duration equal to [_holdDuration]
-  /// the instant a hold begins charging (see [_handleTapDown]), it
-  /// naturally stops exactly when the hold fires with nothing further to
-  /// do; [_stopHoldHaptic] only has to cut it short for a release/cancel
-  /// that comes *before* that.
+  /// [Haptics]'s own native channel — [HapticFeedback] can only fire
+  /// discrete, fixed-length system clicks, not a buzz of arbitrary
+  /// duration. Started with a duration equal to [_holdDuration] the instant
+  /// a hold begins charging (see [_handleTapDown]), it naturally stops
+  /// exactly when the hold fires with nothing further to do;
+  /// [_stopHoldHaptic] only has to cut it short for a release/cancel that
+  /// comes *before* that.
   ///
-  /// [_hapticActive] guards every call to [Vibration.cancel] here — the
+  /// [_hapticActive] guards every call to [Haptics.cancel] here — the
   /// device only has one vibration motor, shared globally, not scoped per
   /// widget. [_handleTapDown]/[_handleTapCancel]/[_handleTapUp] all run
   /// for *every* touch on the sky's own full-screen `GestureDetector`,
   /// including one that lands on [_MenuStarButton] sitting on top of it
   /// (same hit-test chain, same pointer) — a touch [_hasHoldTarget] never
-  /// found a target for. Calling [Vibration.cancel] unconditionally from
+  /// found a target for. Calling [Haptics.cancel] unconditionally from
   /// those handlers used to cut the button's own, entirely unrelated
   /// hold-vibration short the moment this sky-side timer fired, since
   /// there's no way for the motor to know which caller's buzz it's
@@ -1588,27 +1588,36 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   /// vibration keeps it from ever touching a buzz it doesn't own.
   bool _hapticActive = false;
 
+  /// Out of [Haptics.vibrate]'s 1-255 range. On this project's own Xiaomi
+  /// test device, dialing this between 10 and 30 changed nothing at all —
+  /// turned out the `vibration` package's own `USAGE_ALARM` tag was the
+  /// real culprit (see `Haptics`' own doc comment): the OS was substituting
+  /// a fixed vendor haptic for that category regardless of what amplitude
+  /// the app asked for. Routing through `Haptics` (tagged `USAGE_TOUCH`
+  /// instead) is what made this constant the real dial it was meant to be.
+  static const _hapticAmplitude = 10;
+
   void _startHoldHaptic() {
     _hapticActive = true;
-    Vibration.vibrate(duration: _holdDuration.inMilliseconds);
+    Haptics.vibrate(duration: _holdDuration, amplitude: _hapticAmplitude);
   }
 
   void _stopHoldHaptic() {
     if (!_hapticActive) return;
     _hapticActive = false;
-    Vibration.cancel();
+    Haptics.cancel();
   }
 
   /// A short pulse for "a movement in the sky just started" (a plain tap
-  /// hit, or the double-tap zoom-out) — the same `vibration` mechanism as
-  /// the hold's own long buzz above, just far shorter, rather than
+  /// hit, or the double-tap zoom-out) — the same motor-vibration mechanism
+  /// as the hold's own long buzz above, just far shorter, rather than
   /// [HapticFeedback]'s separate, much lighter "system click" API: the two
   /// read as barely related in strength, which is exactly why this used
   /// to feel weak next to the hold's own buzz.
   static const _tapHapticDuration = Duration(milliseconds: 25);
 
   void _tapHaptic() {
-    Vibration.vibrate(duration: _tapHapticDuration.inMilliseconds);
+    Haptics.vibrate(duration: _tapHapticDuration, amplitude: _hapticAmplitude);
   }
 
   /// Same three-step lookup [_resolveTapTarget] does, but read-only — no
@@ -2807,7 +2816,7 @@ class _MenuStarButtonState extends State<_MenuStarButton>
   // Same real, continuous motor vibration as the sky's own hold, including
   // the same [_hapticActive]-guarded cancel — see
   // `_SkyScreenState._startHoldHaptic`'s own doc comment for why a blind
-  // `Vibration.cancel()` is dangerous (the motor is one global resource,
+  // `Haptics.cancel()` is dangerous (the motor is one global resource,
   // and this button sits on top of the sky's own full-screen
   // `GestureDetector`, sharing its hit-test chain — a stray cancel from
   // one side can silence a buzz the other side started for an unrelated
@@ -2815,15 +2824,20 @@ class _MenuStarButtonState extends State<_MenuStarButton>
   // widgets, so it's kept small and duplicated rather than factored out.
   bool _hapticActive = false;
 
+  // See `_SkyScreenState._hapticAmplitude`'s own doc comment for why this
+  // needs to be set explicitly at all — the same low value, so the button's
+  // own buzz matches the sky's.
+  static const _hapticAmplitude = 10;
+
   void _startHoldHaptic() {
     _hapticActive = true;
-    Vibration.vibrate(duration: _chargeDuration.inMilliseconds);
+    Haptics.vibrate(duration: _chargeDuration, amplitude: _hapticAmplitude);
   }
 
   void _stopHoldHaptic() {
     if (!_hapticActive) return;
     _hapticActive = false;
-    Vibration.cancel();
+    Haptics.cancel();
   }
 
   @override

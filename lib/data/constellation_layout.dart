@@ -194,10 +194,9 @@ buildConstellationRenderStars({
   }
 
   for (final habit in habits) {
-    final completedDays =
-        (completionsByHabit[habit.id] ?? const <HabitCompletion>[])
-            .map((c) => DateTime(c.date.year, c.date.month, c.date.day))
-            .toSet();
+    final countsByDay = habitCompletionCountsByDay(
+      completionsByHabit[habit.id] ?? const <HabitCompletion>[],
+    );
     renderStars.add(
       ConstellationStar(
         entityId: habit.id,
@@ -205,7 +204,7 @@ buildConstellationRenderStars({
         // A deleted pulsar keeps its scattered spot and becomes a dead
         // star, the same way a deleted star does — see [Habit.dead].
         kind: habit.dead ? StarKind.dead : StarKind.pulsar,
-        lit: !habit.dead && isHabitLit(completedDays),
+        lit: !habit.dead && isHabitLit(habit, countsByDay),
         label: habit.title,
       ),
     );

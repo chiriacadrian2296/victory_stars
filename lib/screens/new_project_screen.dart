@@ -169,6 +169,7 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
   Widget _buildIconField(AppColors colors, AppStrings strings) {
     return AppPickerField(
       label: strings.iconLabel,
+      requirement: FieldRequirement.required,
       hint: strings.iconLabel,
       // A fixed representative glyph while unselected — like the calendar/
       // clock icons on the date/time fields — not a "+", which only made
@@ -185,6 +186,7 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
   Widget _buildAreaField(AppColors colors, AppStrings strings) {
     return AppPickerField(
       label: strings.areaLabel,
+      requirement: FieldRequirement.required,
       hint: strings.areaLabel,
       icon: _selectedArea?.icon ?? Icons.explore_outlined,
       text: _selectedArea?.displayName(strings),
@@ -566,6 +568,8 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
+                const FieldRequirementLegend(),
+                const SizedBox(height: 16),
                 if (widget.presetArea == null)
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -584,7 +588,10 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
                 else
                   _buildIconField(colors, strings),
                 const SizedBox(height: 20),
-                AppFieldLabel(strings.nameLabel),
+                AppFieldLabel(
+                  strings.nameLabel,
+                  requirement: FieldRequirement.required,
+                ),
                 const SizedBox(height: 6),
                 AppTextField(
                   controller: _nameController,
@@ -592,7 +599,10 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
                   hintText: strings.newProjectNameHint,
                 ),
                 const SizedBox(height: 20),
-                AppFieldLabel(strings.projectDescriptionLabel),
+                AppFieldLabel(
+                  strings.projectDescriptionLabel,
+                  requirement: FieldRequirement.optional,
+                ),
                 const SizedBox(height: 6),
                 AppTextField(
                   controller: _descriptionController,
@@ -600,7 +610,10 @@ class _NewProjectScreenState extends State<NewProjectScreen> {
                   hintText: strings.projectDescriptionHint,
                 ),
                 const SizedBox(height: 20),
-                AppFieldLabel(strings.chooseShapeLabel),
+                AppFieldLabel(
+                  strings.chooseShapeLabel,
+                  requirement: FieldRequirement.required,
+                ),
                 const SizedBox(height: 8),
                 // The shape being committed to, on the left — always on
                 // screen, always editable (tapping it, blank or not,

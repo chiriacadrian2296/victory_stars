@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_strings.dart';
 import '../l10n/strings_scope.dart';
 import '../models/project.dart';
 import '../models/star.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_fonts.dart';
 import '../theme/app_style.dart';
 import '../utils/date_format.dart';
 import 'area_tag.dart';
 import 'intensity_bolts.dart';
 import 'project_tag.dart';
+import 'sky_tooltip_header.dart';
+import 'star_created_at.dart';
+import 'star_extra_badge.dart';
 
 /// The content shown inside the `tooltip_card` popup after tapping a star —
 /// replaces the old `StarQuickLookPanel` bottom sheet (never actually
@@ -41,90 +46,121 @@ class SkyStarTooltip extends StatelessWidget {
   final VoidCallback? onShare;
   final VoidCallback? onDelete;
 
+  /// The one fact unique to this star's own kind — same three-way split
+  /// [LitStarCard]/[UnlitStarCard]/[DeadStarCard] each show in their own
+  /// "extra badge" slot, reused here verbatim so this tooltip tells the
+  /// same story in the same order the search section's own cards do: a
+  /// lit star's photo (there's no separate "achieved date" badge on that
+  /// card either — [StarCreatedAt] below is as close as it gets), an
+  /// unlit star's target date, a dead star's own death date.
+  Widget _extraBadge(AppStrings strings) {
+    if (star.dead) {
+      return StarExtraBadge(
+        icon: Icons.church,
+        label: star.deadDate == null
+            ? strings.noDeadDateLabel
+            : strings.deadDateBadgeLabel,
+        value: star.deadDate == null
+            ? null
+            : formatDisplayDate(star.deadDate!, strings),
+        dimmed: star.deadDate == null,
+      );
+    }
+    if (star.isLit) {
+      return StarExtraBadge(
+        icon: Icons.photo_camera,
+        label: star.photoPath == null
+            ? strings.noPhotoLabel
+            : strings.photoBadgeLabel,
+        dimmed: star.photoPath == null,
+      );
+    }
+    return StarExtraBadge(
+      icon: Icons.event_outlined,
+      label: star.targetDate == null
+          ? strings.noTargetDateLabel
+          : strings.targetDateBadgeLabel,
+      value: star.targetDate == null
+          ? null
+          : formatDisplayDate(star.targetDate!, strings),
+      dimmed: star.targetDate == null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final strings = context.strings;
 
-    final dateLabel = star.achievedDate != null
-        ? formatDisplayDateTime(star.achievedDate!, strings)
-        : star.targetDate != null
-        ? formatDisplayDateTime(star.targetDate!, strings)
-        : null;
-
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
+      // Stretch, not the Column default start/center — every row below
+      // centers *itself* (a [Center], or a widget that already centers
+      // its own content, like [StarExtraBadge]/[StarCreatedAt]), which
+      // only actually reads as centered if it's handed the tooltip's
+      // full width to center within, the same reasoning the cards'
+      // own `CrossAxisAlignment.stretch` already relies on. Two tags on
+      // the same row still land as one centered *group*, not each tag
+      // centered on its own — the [Center] wraps the whole [Wrap], not
+      // each child of it.
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Icon(Icons.star, color: colors.gold, size: 20),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                star.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: colors.text,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            InkWell(
-              onTap: onClose,
-              borderRadius: BorderRadius.circular(999),
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Icon(Icons.close, color: colors.muted, size: 18),
-              ),
-            ),
-          ],
+        SkyTooltipHeader(
+          icon: Icons.star,
+          iconColor: colors.gold,
+          iconSize: 20,
+          title: star.title,
+          // Dimmed to match [DeadStarCard]'s own title treatment — every
+          // other kind keeps the full-brightness [colors.text] the card
+          // itself uses.
+          titleColor: star.dead ? colors.muted : colors.text,
+          titleFontSize: 18,
+          // Same [kFontStarTitle] (Newsreader) italic every star's own
+          // title uses on its card — the one font choice worth carrying
+          // over here, so a star reads as the same star whether it's
+          // met on a card or in this tooltip.
+          titleFontFamily: kFontStarTitle,
+          titleItalic: true,
+          onClose: onClose,
         ),
-        if (project != null || dateLabel != null) ...[
+        if (project != null) ...[
           const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.only(left: 28),
+          Center(
             child: Wrap(
+              alignment: WrapAlignment.center,
               spacing: 14,
               runSpacing: 6,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                if (project != null)
-                  ProjectTag(
-                    project: project!,
-                    textColor: colors.muted,
-                    iconSize: 14,
-                    fontSize: 13,
-                  ),
-                if (project != null)
-                  AreaTag(area: project!.area, iconSize: 14, fontSize: 13),
-                if (dateLabel != null)
-                  Text(
-                    dateLabel,
-                    style: TextStyle(color: colors.muted, fontSize: 13),
-                  ),
+                ProjectTag(
+                  project: project!,
+                  textColor: colors.muted,
+                  iconSize: 14,
+                  fontSize: 13,
+                ),
+                AreaTag(area: project!.area, iconSize: 14, fontSize: 13),
               ],
             ),
           ),
         ],
-        if (star.intensity != null) ...[
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.only(left: 28),
-            child: IntensityBolts(intensity: star.intensity!, size: 16),
-          ),
-        ],
         if (star.description != null) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
             star.description!,
+            textAlign: TextAlign.center,
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(color: colors.muted, fontSize: 14, height: 1.4),
           ),
         ],
+        const SizedBox(height: 12),
+        _extraBadge(strings),
+        if (star.intensity != null) ...[
+          const SizedBox(height: 12),
+          Center(child: IntensityBolts(intensity: star.intensity!, size: 16)),
+        ],
+        const SizedBox(height: 12),
+        StarCreatedAt(createdAt: star.createdAt),
         const SizedBox(height: 14),
         // One row, always — up to four [_TooltipAction]s sharing it
         // evenly via [Expanded] rather than each reporting a fixed width

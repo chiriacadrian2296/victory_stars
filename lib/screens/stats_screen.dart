@@ -10,6 +10,7 @@ import '../data/project_repository.dart';
 import '../data/star_repository.dart';
 import '../l10n/app_strings.dart';
 import '../l10n/strings_scope.dart';
+import '../models/habit.dart';
 import '../models/project.dart';
 import '../models/star.dart';
 import '../models/star_kind.dart';
@@ -111,6 +112,8 @@ class _StatsScreenState extends State<StatsScreen> {
         description: result.description,
         projectId: result.projectId,
         intensity: result.intensity ?? 3,
+        frequency: result.habitFrequency ?? HabitFrequency.daily,
+        targetPerPeriod: result.habitTargetPerPeriod ?? 1,
         reminderHour: result.reminderHour,
         reminderMinute: result.reminderMinute,
       );

@@ -9,6 +9,7 @@ import '../data/project_repository.dart';
 import '../l10n/app_strings.dart';
 import '../l10n/strings_scope.dart';
 import '../models/habit.dart';
+import '../models/life_area.dart';
 import '../models/project.dart';
 import '../models/star.dart';
 import '../models/star_kind.dart';
@@ -43,6 +44,8 @@ class StarFormResult {
     this.photoPath,
     this.reminderHour,
     this.reminderMinute,
+    this.habitFrequency,
+    this.habitTargetPerPeriod,
   });
 
   /// Which kind of star was chosen — always one of [kCreatableStarKinds].
@@ -79,6 +82,11 @@ class StarFormResult {
   /// reminder time.
   final int? reminderHour;
   final int? reminderMinute;
+
+  /// [StarKind.pulsar] only — see [Habit.frequency]/[Habit.targetPerPeriod]
+  /// for what each means. Null for every other kind.
+  final HabitFrequency? habitFrequency;
+  final int? habitTargetPerPeriod;
 }
 
 /// Popped instead of [StarFormResult] when editing and the user deleted the
@@ -189,6 +197,14 @@ class _StarFormScreenState extends State<StarFormScreen> {
   late StarKind _kind = _resolveInitialKind();
   late Project? _selectedProject =
       widget.lockedProject ?? widget.contextProject;
+
+  /// The supernova field's own selection — purely a picker convenience,
+  /// never saved on its own (a star only ever stores a project id, never
+  /// an area), so it's not part of the `_initial*`/`_hasUnsavedChanges`
+  /// tracking below the way [_selectedProject] is. Seeded from whichever
+  /// project already applies, same as that field; [_openAreaPicker]/
+  /// [_openProjectPicker] are what keep the two in sync afterward.
+  late LifeArea? _selectedArea = _selectedProject?.area;
   late int _intensity =
       widget.existingStar?.intensity ?? widget.existingHabit?.intensity ?? 3;
 
@@ -202,6 +218,10 @@ class _StarFormScreenState extends State<StarFormScreen> {
   late bool _customReminder = widget.existingHabit?.reminderHour != null;
   late int _reminderHour = widget.existingHabit?.reminderHour ?? 9;
   late int _reminderMinute = widget.existingHabit?.reminderMinute ?? 0;
+  late HabitFrequency _habitFrequency =
+      widget.existingHabit?.frequency ?? HabitFrequency.daily;
+  late int _habitTargetPerPeriod =
+      widget.existingHabit?.targetPerPeriod ?? 1;
 
   // What the form above started out as — captured once, alongside it, so
   // _hasUnsavedChanges has something to compare against regardless of
@@ -217,6 +237,8 @@ class _StarFormScreenState extends State<StarFormScreen> {
   late final bool _initialCustomReminder = _customReminder;
   late final int _initialReminderHour = _reminderHour;
   late final int _initialReminderMinute = _reminderMinute;
+  late final HabitFrequency _initialHabitFrequency = _habitFrequency;
+  late final int _initialHabitTargetPerPeriod = _habitTargetPerPeriod;
 
   String get _initialTitle =>
       widget.existingStar?.title ?? widget.existingHabit?.title ?? '';
@@ -277,7 +299,9 @@ class _StarFormScreenState extends State<StarFormScreen> {
                 _photoPath != _initialPhotoPath)) ||
         (_kind == StarKind.unlit && _targetDate != _initialTargetDate) ||
         (_kind == StarKind.pulsar &&
-            (_customReminder != _initialCustomReminder ||
+            (_habitFrequency != _initialHabitFrequency ||
+                _habitTargetPerPeriod != _initialHabitTargetPerPeriod ||
+                _customReminder != _initialCustomReminder ||
                 (_customReminder &&
                     (_reminderHour != _initialReminderHour ||
                         _reminderMinute != _initialReminderMinute))));
@@ -370,6 +394,10 @@ class _StarFormScreenState extends State<StarFormScreen> {
         reminderMinute: _kind == StarKind.pulsar && _customReminder
             ? _reminderMinute
             : null,
+        habitFrequency: _kind == StarKind.pulsar ? _habitFrequency : null,
+        habitTargetPerPeriod: _kind == StarKind.pulsar
+            ? _habitTargetPerPeriod
+            : null,
       ),
     );
   }
@@ -394,35 +422,89 @@ class _StarFormScreenState extends State<StarFormScreen> {
   /// Offers camera vs. gallery, sends whatever's picked through
   /// [PhotoCropScreen] to force it into 9:16, and copies the cropped result
   /// into app-private storage (see [PhotoStorage]).
+  ///
+  /// A popup (see `SkyMenuDrawer._openLightYourSkyChooser`'s own doc
+  /// comment), not a bottom sheet, per request — same [Dialog] with empty
+  /// [BoxConstraints] shrink-wrapped to its own two choices, same
+  /// icon+label row treatment, same plain-text Cancel underneath. Kept
+  /// local rather than factored into a shared helper — there's no third
+  /// caller yet to justify one, and the two are already small enough to
+  /// duplicate without it costing much.
   Future<void> _pickPhoto() async {
     final colors = context.colors;
     final strings = context.strings;
 
-    final source = await showModalBottomSheet<ImageSource>(
+    final source = await showDialog<ImageSource>(
       context: context,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: Icon(Icons.photo_camera_outlined, color: colors.gold),
-                title: Text(
-                  strings.takePhotoOption,
-                  style: TextStyle(color: colors.text),
-                ),
-                onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
+      builder: (dialogContext) {
+        Widget choice({
+          required IconData icon,
+          required String label,
+          required ImageSource source,
+        }) {
+          return InkWell(
+            onTap: () => Navigator.of(dialogContext).pop(source),
+            splashFactory: NoSplash.splashFactory,
+            highlightColor: Colors.transparent,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 32,
+                vertical: 12,
               ),
-              ListTile(
-                leading: Icon(Icons.photo_library_outlined, color: colors.gold),
-                title: Text(
-                  strings.choosePhotoOption,
-                  style: TextStyle(color: colors.text),
-                ),
-                onTap: () =>
-                    Navigator.of(sheetContext).pop(ImageSource.gallery),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, color: colors.gold),
+                  const SizedBox(width: 12),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: colors.text,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
+          );
+        }
+
+        return Dialog(
+          constraints: const BoxConstraints(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 4),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    choice(
+                      icon: Icons.photo_camera_outlined,
+                      label: strings.takePhotoOption,
+                      source: ImageSource.camera,
+                    ),
+                    choice(
+                      icon: Icons.photo_library_outlined,
+                      label: strings.choosePhotoOption,
+                      source: ImageSource.gallery,
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: Text(
+                      strings.cancel,
+                      style: TextStyle(color: colors.muted),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -526,6 +608,22 @@ class _StarFormScreenState extends State<StarFormScreen> {
     });
   }
 
+  /// The supernova field's own picker — a plain [pickArea], no constellation
+  /// step (that's [_openProjectPicker]'s job, filtered by whatever this
+  /// picks). Changing to an area the current constellation doesn't belong
+  /// to clears it rather than leaving the two fields disagreeing about
+  /// which supernova the star is actually under.
+  Future<void> _openAreaPicker() async {
+    final picked = await pickArea(context);
+    if (picked == null || !mounted) return;
+    setState(() {
+      _selectedArea = picked;
+      if (_selectedProject != null && _selectedProject!.area != picked) {
+        _selectedProject = null;
+      }
+    });
+  }
+
   Future<void> _openProjectPicker() async {
     final repository = widget.projectRepository;
     final starsShapeRepository = widget.starsShapeRepository;
@@ -534,9 +632,17 @@ class _StarFormScreenState extends State<StarFormScreen> {
       context,
       repository,
       starsShapeRepository,
+      area: _selectedArea,
     );
     if (picked != null && mounted) {
-      setState(() => _selectedProject = picked);
+      // A constellation picked without a supernova chosen first (the flat,
+      // every-area list — see [pickProject]) fills this field in from its
+      // own area automatically, rather than leaving it looking unanswered
+      // when it's really just implied by what was just picked.
+      setState(() {
+        _selectedProject = picked;
+        _selectedArea ??= picked.area;
+      });
     }
   }
 
@@ -546,6 +652,22 @@ class _StarFormScreenState extends State<StarFormScreen> {
     StarKind.pulsar => strings.pulsarQuestion,
     // Neither is ever the form's own kind — see [_availableKinds].
     StarKind.nascent || StarKind.dead => strings.litStarQuestion,
+  };
+
+  // One running example carried across every kind — see
+  // [AppStrings.litTitleHint]'s own doc comment.
+  String _titleHint(AppStrings strings) => switch (_kind) {
+    StarKind.lit => strings.litTitleHint,
+    StarKind.unlit => strings.unlitTitleHint,
+    StarKind.pulsar => strings.pulsarTitleHint,
+    StarKind.nascent || StarKind.dead => strings.litTitleHint,
+  };
+
+  String _detailsHint(AppStrings strings) => switch (_kind) {
+    StarKind.lit => strings.litDetailsHint,
+    StarKind.unlit => strings.unlitDetailsHint,
+    StarKind.pulsar => strings.pulsarDetailsHint,
+    StarKind.nascent || StarKind.dead => strings.litDetailsHint,
   };
 
   String _eyebrow(AppStrings strings) {
@@ -628,9 +750,33 @@ class _StarFormScreenState extends State<StarFormScreen> {
                   ),
                 ],
                 const SizedBox(height: 24),
+                // Sits here rather than at the very top of the form so it
+                // reads as introducing the fields, not the question above
+                // them — right before whichever field ends up first,
+                // whether that's Supernova (below) or, when
+                // [widget.lockedProject] hides both picker fields, Title
+                // further down.
+                const FieldRequirementLegend(),
+                const SizedBox(height: 16),
                 if (widget.lockedProject == null) ...[
                   AppPickerField(
+                    label: strings.areaLabel,
+                    // Not itself checked by [_save]/`canSave` — picking a
+                    // Constellation fills it in on its own (see
+                    // [_openProjectPicker]) — but there's no real path to
+                    // saving a star without one ending up set, so it reads
+                    // as required same as the field that actually is.
+                    requirement: FieldRequirement.required,
+                    hint: strings.selectASupernova,
+                    icon: _selectedArea?.icon ?? Icons.auto_awesome_outlined,
+                    text: _selectedArea?.displayName(strings),
+                    onTap: _openAreaPicker,
+                    trailing: Icon(Icons.expand_more, color: colors.muted),
+                  ),
+                  const SizedBox(height: 20),
+                  AppPickerField(
                     label: strings.projectLabel,
+                    requirement: FieldRequirement.required,
                     hint: strings.selectAProject,
                     icon: _selectedProject == null
                         ? Icons.auto_awesome_outlined
@@ -641,13 +787,44 @@ class _StarFormScreenState extends State<StarFormScreen> {
                   ),
                   const SizedBox(height: 20),
                 ],
+                AppFieldLabel(
+                  strings.titleFieldLabel,
+                  requirement: FieldRequirement.required,
+                ),
+                const SizedBox(height: 6),
+                AppTextField(
+                  controller: _titleController,
+                  textInputAction: TextInputAction.next,
+                  hintText: _titleHint(strings),
+                  onChanged: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 20),
+                AppFieldLabel(
+                  strings.detailsLabel,
+                  requirement: FieldRequirement.optional,
+                ),
+                const SizedBox(height: 6),
+                AppTextField(
+                  controller: _descriptionController,
+                  minLines: 4,
+                  maxLines: 6,
+                  hintText: _detailsHint(strings),
+                  onChanged: (_) => setState(() {}),
+                ),
                 if (_kind == StarKind.lit) ...[
+                  const SizedBox(height: 20),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: AppPickerField(
                           label: strings.dateLabel,
+                          // Not checked by [_save] either — an unset date
+                          // silently becomes `DateTime.now()` rather than
+                          // blocking save — but a lit star's whole point is
+                          // recording *when* the victory happened, so this
+                          // reads as required same as Supernova above.
+                          requirement: FieldRequirement.required,
                           hint: strings.selectADateHint,
                           icon: Icons.calendar_today,
                           text: _date == null
@@ -660,6 +837,7 @@ class _StarFormScreenState extends State<StarFormScreen> {
                       Expanded(
                         child: AppPickerField(
                           label: strings.timeLabel,
+                          requirement: FieldRequirement.required,
                           hint: strings.selectATimeHint,
                           icon: Icons.access_time,
                           text: _date == null
@@ -670,10 +848,11 @@ class _StarFormScreenState extends State<StarFormScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
                 ] else if (_kind == StarKind.unlit) ...[
+                  const SizedBox(height: 20),
                   AppPickerField(
                     label: strings.targetDateLabel,
+                    requirement: FieldRequirement.optional,
                     hint: strings.selectATargetDateHint,
                     icon: Icons.flag_outlined,
                     text: _targetDate == null
@@ -681,41 +860,21 @@ class _StarFormScreenState extends State<StarFormScreen> {
                         : formatDisplayDate(_targetDate!, strings),
                     onTap: _pickTargetDate,
                   ),
-                  const SizedBox(height: 20),
                 ],
-                AppFieldLabel(strings.titleFieldLabel),
-                const SizedBox(height: 6),
-                AppTextField(
-                  controller: _titleController,
-                  textInputAction: TextInputAction.next,
-                  hintText: _kind == StarKind.pulsar
-                      ? strings.pulsarTitleHint
-                      : strings.titleHint,
-                  onChanged: (_) => setState(() {}),
-                ),
-                const SizedBox(height: 20),
-                AppFieldLabel(strings.detailsLabel),
-                const SizedBox(height: 6),
-                AppTextField(
-                  controller: _descriptionController,
-                  minLines: _kind == StarKind.pulsar ? 3 : 4,
-                  maxLines: 6,
-                  hintText: strings.detailsHint,
-                  onChanged: (_) => setState(() {}),
-                ),
                 // Every kind that's already burning carries an intensity —
                 // a lit star's is what the effort cost once, a pulsar's
                 // what it costs each day. An unlit star has none yet: it
                 // gets one the moment it's lit.
                 if (_kind != StarKind.unlit) ...[
                   const SizedBox(height: 20),
-                  AppFieldLabel(strings.intensityLabel),
-                  const SizedBox(height: 4),
-                  Text(
-                    strings.intensityCaption,
-                    style: TextStyle(fontSize: 12, color: colors.muted),
+                  AppFieldLabel(
+                    strings.intensityLabel,
+                    requirement: FieldRequirement.required,
                   ),
-                  const SizedBox(height: 10),
+                  // Same label-to-content gap every other field uses (6),
+                  // not this section's own one-off 10 — kept it from
+                  // reading as more loosely spaced than its neighbors.
+                  const SizedBox(height: 6),
                   Center(
                     child: IntensityBolts(
                       intensity: _intensity,
@@ -729,53 +888,118 @@ class _StarFormScreenState extends State<StarFormScreen> {
                   Center(
                     child: FractionallySizedBox(
                       widthFactor: 0.7,
-                      child: Slider(
-                        value: _intensity.toDouble(),
-                        min: 1,
-                        max: 5,
-                        divisions: 4,
-                        onChanged: (value) =>
-                            setState(() => _intensity = value.round()),
+                      // A plain [Slider]'s own vertical padding defaults to
+                      // the height of its overlay shape (the halo around
+                      // the thumb) — invisible space that made the gap down
+                      // to whatever field comes next read as much bigger
+                      // than the standard 20 between every other pair of
+                      // fields, even with the same explicit `SizedBox` in
+                      // between. Zeroing it here makes this widget's own
+                      // bounding box actually match what's visible.
+                      child: SliderTheme(
+                        data: SliderTheme.of(
+                          context,
+                        ).copyWith(padding: EdgeInsets.zero),
+                        child: Slider(
+                          value: _intensity.toDouble(),
+                          min: 1,
+                          max: 5,
+                          divisions: 4,
+                          onChanged: (value) =>
+                              setState(() => _intensity = value.round()),
+                        ),
                       ),
                     ),
                   ),
                 ],
-                if (_kind == StarKind.lit) ...[
-                  const SizedBox(height: 20),
-                  AppFieldLabel(strings.photoLabel),
-                  const SizedBox(height: 6),
-                  PhotoPicker(
-                    photoPath: _photoPath,
-                    onPick: _pickPhoto,
-                    onRemove: _removePhoto,
-                  ),
-                ],
                 if (_kind == StarKind.pulsar) ...[
                   const SizedBox(height: 20),
-                  AppFieldLabel(strings.habitFrequencyLabel),
+                  AppFieldLabel(
+                    strings.habitFrequencyLabel,
+                    requirement: FieldRequirement.required,
+                  ),
                   const SizedBox(height: 6),
-                  // Fixed to daily in v1, so it's shown as a filled field
-                  // rather than a picker — it already holds its answer.
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                    decoration: fieldDecoration(colors, FieldState.filled),
-                    child: Row(
-                      children: [
-                        Icon(Icons.repeat, size: 20, color: colors.gold),
-                        const SizedBox(width: 10),
-                        Text(
-                          strings.habitFrequencyDaily,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _HabitFrequencyChip(
+                          label: strings.habitFrequencyDaily,
+                          selected: _habitFrequency == HabitFrequency.daily,
+                          onTap: () => setState(() {
+                            _habitFrequency = HabitFrequency.daily;
+                            if (_habitTargetPerPeriod > 50) {
+                              _habitTargetPerPeriod = 50;
+                            }
+                          }),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _HabitFrequencyChip(
+                          label: strings.habitFrequencyWeekly,
+                          selected: _habitFrequency == HabitFrequency.weekly,
+                          onTap: () => setState(() {
+                            _habitFrequency = HabitFrequency.weekly;
+                            if (_habitTargetPerPeriod > 7) {
+                              _habitTargetPerPeriod = 7;
+                            }
+                          }),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        onPressed: _habitTargetPerPeriod > 1
+                            ? () => setState(() => _habitTargetPerPeriod--)
+                            : null,
+                        icon: Icon(
+                          Icons.remove_circle_outline,
+                          color: colors.gold,
+                        ),
+                      ),
+                      SizedBox(
+                        width: 48,
+                        child: Text(
+                          '$_habitTargetPerPeriod',
+                          textAlign: TextAlign.center,
                           style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
                             color: colors.text,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ],
+                      ),
+                      IconButton(
+                        onPressed:
+                            _habitTargetPerPeriod <
+                                (_habitFrequency == HabitFrequency.weekly
+                                    ? 7
+                                    : 50)
+                            ? () => setState(() => _habitTargetPerPeriod++)
+                            : null,
+                        icon: Icon(Icons.add_circle_outline, color: colors.gold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Center(
+                    child: Text(
+                      _habitFrequency == HabitFrequency.daily
+                          ? strings.habitFrequencySummaryDaily(
+                              _habitTargetPerPeriod,
+                            )
+                          : strings.habitFrequencySummaryWeekly(
+                              _habitTargetPerPeriod,
+                            ),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: colors.muted,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -825,7 +1049,24 @@ class _StarFormScreenState extends State<StarFormScreen> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 20),
+                if (_kind == StarKind.lit) ...[
+                  const SizedBox(height: 20),
+                  AppFieldLabel(
+                    strings.photoLabel,
+                    requirement: FieldRequirement.optional,
+                  ),
+                  const SizedBox(height: 6),
+                  PhotoPicker(
+                    photoPath: _photoPath,
+                    onPick: _pickPhoto,
+                    onRemove: _removePhoto,
+                  ),
+                ],
+                // Wider than the standard 20 between fields — this is the
+                // form's own action row, not one more field, and reads as
+                // such better with a bit of extra air separating it from
+                // whatever field happens to be last above it.
+                const SizedBox(height: 44),
                 Center(
                   child: Wrap(
                     alignment: WrapAlignment.center,
@@ -881,6 +1122,44 @@ class _StarFormScreenState extends State<StarFormScreen> {
   }
 }
 
+/// One of the two habit-frequency toggle chips ("Every day"/"Every week")
+/// in the pulsar-only frequency picker — same flat selectable look
+/// ([flatSelectableDecoration]) the star-kind switch below already uses,
+/// for one consistent "pick one of a few" control style across this form.
+class _HabitFrequencyChip extends StatelessWidget {
+  const _HabitFrequencyChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(kRadiusField),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: flatSelectableDecoration(colors, selected: selected),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            color: selected ? colors.text : colors.muted,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// The kind switch at the top of the form — one card per available kind,
 /// each showing that kind the way the sky shows it ([StarGlyph]) above its
 /// name and what it means. Deliberately not a `SegmentedButton`: the whole
@@ -903,50 +1182,63 @@ class _StarKindSwitch extends StatelessWidget {
     final colors = context.colors;
     final strings = context.strings;
 
-    return Row(
-      children: [
-        for (var i = 0; i < kinds.length; i++) ...[
-          if (i > 0) const SizedBox(width: 8),
-          Expanded(
-            child: InkWell(
-              onTap: () => onChanged(kinds[i]),
-              borderRadius: BorderRadius.circular(kRadiusField),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: flatSelectableDecoration(
-                  colors,
-                  selected: kinds[i] == selected,
-                ),
-                child: Column(
-                  children: [
-                    StarGlyph(kind: kinds[i], size: 22),
-                    const SizedBox(height: 4),
-                    Text(
-                      kinds[i].label(strings),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: kinds[i] == selected
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                        color: kinds[i] == selected
-                            ? colors.text
-                            : colors.muted,
+    // This Row sits in an unconstrained Column (the form's own scroll
+    // view), which hands it unbounded height — `CrossAxisAlignment.stretch`
+    // alone in that context tries to stretch every tile to *infinite*
+    // height (a real crash, confirmed live: it blanked the whole screen).
+    // `IntrinsicHeight` measures the row's children first and hands the
+    // Row back a finite height equal to the tallest of them, which is what
+    // stretch actually needs to work — without this, each `Expanded` sized
+    // to its own content, so three meaning texts of different lengths
+    // (wrapping to one line here, two there) left the tiles visibly uneven.
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < kinds.length; i++) ...[
+            if (i > 0) const SizedBox(width: 8),
+            Expanded(
+              child: InkWell(
+                onTap: () => onChanged(kinds[i]),
+                borderRadius: BorderRadius.circular(kRadiusField),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: flatSelectableDecoration(
+                    colors,
+                    selected: kinds[i] == selected,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      StarGlyph(kind: kinds[i], size: 22),
+                      const SizedBox(height: 4),
+                      Text(
+                        kinds[i].label(strings),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: kinds[i] == selected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: kinds[i] == selected
+                              ? colors.text
+                              : colors.muted,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      kinds[i].meaning(strings),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 11, color: colors.muted),
-                    ),
-                  ],
+                      const SizedBox(height: 2),
+                      Text(
+                        kinds[i].meaning(strings),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 11, color: colors.muted),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -9,6 +10,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:share_plus/share_plus.dart';
 import 'package:tooltip_card/tooltip_card.dart';
+import 'package:vibration/vibration.dart';
 
 import '../data/area_vision_repository.dart';
 import '../data/constellation_layout.dart';
@@ -18,6 +20,7 @@ import '../data/habit_repository.dart';
 import '../data/project_repository.dart';
 import '../data/star_repository.dart';
 import '../l10n/strings_scope.dart';
+import '../models/habit.dart';
 import '../models/habit_completion.dart';
 import '../models/life_area.dart';
 import '../models/project.dart';
@@ -27,6 +30,7 @@ import '../notifications/reminder_service.dart';
 import '../settings/settings_controller.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_style.dart';
+import '../utils/habit_stats.dart';
 import '../utils/responsive.dart';
 import '../utils/star_stats.dart';
 import '../widgets/constellation_field.dart';
@@ -44,6 +48,7 @@ import '../widgets/sky_area_tooltip.dart';
 import '../widgets/sky_constellation_tooltip.dart';
 import '../widgets/sky_menu_drawer.dart';
 import '../widgets/sky_navigation_target.dart';
+import '../widgets/sky_pulsar_tooltip.dart';
 import '../widgets/sky_star_tooltip.dart';
 import '../widgets/sky_supernova.dart';
 import 'admire_stars_screen.dart';
@@ -70,6 +75,17 @@ import 'visions_screen.dart';
 /// squared-off rectangle.
 const double _bottomPillHeight = 44.0;
 const double _bottomPillRadius = 22.0;
+
+/// Shared by every hold-to-activate gesture on this screen — the sky's own
+/// hold-to-peek (see `_SkyScreenState._holdDuration`) and the menu button's
+/// hold-to-open charge (see `_MenuStarButtonState._chargeDuration`) — so
+/// the two read as one consistent gesture across the screen rather than
+/// two independently-tuned numbers that happen to be close. Everything
+/// else timed off a hold (the charging ring's own animation, the
+/// duration-matched vibration) already derives from whichever of those two
+/// constants applies, so bumping this one number retunes all of it at
+/// once, everywhere, in lockstep.
+const kHoldGestureDuration = Duration(milliseconds: 600);
 
 /// The Sky: the app's one and only screen. Every constellation, scattered
 /// across a single pannable/zoomable sky over the animated nebula
@@ -113,8 +129,8 @@ class SkyScreen extends StatefulWidget {
 }
 
 /// What [_SkyScreenState._skyTooltipController] is showing — a star's
-/// quick-look, a constellation's, or a supernova's, one per level of the
-/// sky the same way the "Light Your Sky" chooser is (see
+/// quick-look, a pulsar's, a constellation's, or a supernova's, one per
+/// level of the sky the same way the "Light Your Sky" chooser is (see
 /// `SkyMenuContent._openLightYourSkyChooser`).
 sealed class _SkyTooltip {
   const _SkyTooltip();
@@ -124,6 +140,18 @@ class _StarTooltip extends _SkyTooltip {
   const _StarTooltip(this.constellation, this.starIndex);
   final PlacedConstellation constellation;
   final int starIndex;
+}
+
+/// A pulsar's own tooltip — [habit] rather than an index into
+/// [constellation]'s own star list, since (unlike a real star) a pulsar
+/// isn't part of the shape at all (see [ConstellationStar.slotSequence]'s
+/// own doc comment) and so has no stable slot to re-look-up by; the
+/// [Habit] itself is what [PlacedConstellation.habits] already hands
+/// back at hit-test time.
+class _PulsarTooltip extends _SkyTooltip {
+  const _PulsarTooltip(this.constellation, this.habit);
+  final PlacedConstellation constellation;
+  final Habit habit;
 }
 
 class _ConstellationTooltip extends _SkyTooltip {
@@ -266,6 +294,20 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   double _flyStartZoom = 0;
   double _flyTargetZoom = 0;
 
+  /// Extra roll (radians) [_onFlyTick] ramps in on top of the ordinary
+  /// [SkyCamera.rotatedToAlignFraction] sweep, reaching its full value
+  /// exactly as the flight lands — see [_flyToWorld]'s own
+  /// `straightenRoll` for what sets this to something other than the
+  /// default 0 (a constellation hold, so its shape lands upright — see
+  /// [_holdConstellation]) and, importantly, *what* it's computed
+  /// against: the sphere's own curvature means [SkyCamera.rotatedToAlign]
+  /// doesn't preserve the *reading* [cameraRollAngle] gives at the
+  /// destination (only that the transport itself adds no extra twist of
+  /// its own) — the correction has to target the destination's actual
+  /// roll, not the roll the flight started with. Every flight that
+  /// doesn't ask for straightening explicitly resets this back to 0.
+  double _flyRollCorrection = 0;
+
   @override
   void initState() {
     super.initState();
@@ -273,6 +315,10 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..addListener(_onFlyTick);
+    _holdRingController = AnimationController(
+      vsync: this,
+      duration: _holdDuration,
+    );
     // Every read of [_quickLookConstellation]/[_quickLookStar] below is a
     // plain synchronous getter over this controller's own `data`, same as
     // when they were separate `setState`-managed fields — this listener
@@ -314,7 +360,10 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     _holdTimer?.cancel();
+    _holdRingArmTimer?.cancel();
+    _stopHoldHaptic();
     _flyController.dispose();
+    _holdRingController.dispose();
     _inertiaTicker?.dispose();
     _skyTooltipController.dispose();
     super.dispose();
@@ -457,15 +506,13 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     });
   }
 
-  /// [showTooltip] tells the real-star branch (the only one with a
-  /// tooltip at all) whether to open it as the camera flies there (see
+  /// [showTooltip] tells the real-star and pulsar branches (the two with
+  /// a tooltip at all) whether to open it as the camera flies there (see
   /// [_openTooltipDuringFlight]) — false for a plain tap (see
-  /// [_handleTapUp], which only ever flies the camera),
-  /// true for a hold (see [_handleHold]). The nascent/pulsar
-  /// branches below never had a tooltip to begin with — they still act on
-  /// a plain tap exactly as before, tap or hold, since holding a moment
-  /// longer on an empty slot or a pulsar isn't asking to *peek* at
-  /// anything, it's the same "open it" gesture either way.
+  /// [_handleTapUp], which only ever flies the camera), true for a hold
+  /// (see [_handleHold]). The nascent branch never had a tooltip to begin
+  /// with (there's nothing yet to peek at) and still acts on a plain tap
+  /// exactly as before, tap or hold alike.
   Future<void> _openStar(
     PlacedConstellation constellation,
     ConstellationStar star, {
@@ -485,19 +532,11 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
       final habit = constellation.habits.firstWhere(
         (h) => h.id == star.entityId,
       );
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => PulsarReaderScreen(
-            habit: habit,
-            project: constellation.project,
-            habitRepository: widget.habitRepository,
-            habitCompletionRepository: widget.habitCompletionRepository,
-            projectRepository: widget.projectRepository,
-            starsShapeRepository: widget.starsShapeRepository,
-          ),
-        ),
-      );
-      _refresh();
+      if (showTooltip) {
+        _openPulsarQuickLook(constellation, habit, star);
+      } else {
+        _flyToStar(constellation, star);
+      }
       return;
     }
 
@@ -564,6 +603,36 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// A pulsar's own hold half — same shape as [_openStarQuickLook], just
+  /// for a pulsar's tooltip (see [SkyPulsarTooltip]) instead of a real
+  /// star's. The full [PulsarReaderScreen] page is still just one tap
+  /// away from there (see [_viewQuickLookPulsar]).
+  void _openPulsarQuickLook(
+    PlacedConstellation constellation,
+    Habit habit,
+    ConstellationStar renderStar,
+  ) {
+    final size = context.size;
+    if (size == null) return;
+    final world = starWorldPosition(
+      constellation,
+      renderStar,
+      _camera,
+      _zoom,
+      size,
+    );
+    if (world == null) return;
+    _openTooltipDuringFlight(
+      _flyToWorld(
+        world,
+        zoomFromPercent(
+          _starZoomPercent,
+        ).clamp(minZoomWithoutRepeats, _maxZoom),
+      ),
+      _PulsarTooltip(constellation, habit),
+    );
+  }
+
   void _closeSkyTooltip() => _skyTooltipController.close();
 
   /// The actual [Star] the quick-look tooltip is showing — re-read from
@@ -578,13 +647,15 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     return constellation.stars[data.starIndex];
   }
 
-  /// The constellation the open tooltip is about — a star's, or a
-  /// constellation's own; null while neither is showing (including while
-  /// a supernova's is, which has no single constellation to point to).
+  /// The constellation the open tooltip is about — a star's, a pulsar's,
+  /// or a constellation's own; null while neither is showing (including
+  /// while a supernova's is, which has no single constellation to point
+  /// to).
   PlacedConstellation? get _quickLookConstellation => switch (
     _skyTooltipController.data
   ) {
     _StarTooltip(:final constellation) => constellation,
+    _PulsarTooltip(:final constellation) => constellation,
     _ConstellationTooltip(:final constellation) => constellation,
     _AreaTooltip() || null => null,
   };
@@ -607,6 +678,29 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
           starsShapeRepository: widget.starsShapeRepository,
           refreshStars: () =>
               widget.starRepository.getAllForProject(constellation.project.id),
+        ),
+      ),
+    );
+    _refresh();
+  }
+
+  /// Same shape as [_viewQuickLookStar], for a pulsar — the tooltip's own
+  /// [SkyPulsarTooltip.onView].
+  Future<void> _viewQuickLookPulsar() async {
+    final data = _skyTooltipController.data;
+    if (data is! _PulsarTooltip) return;
+    final constellation = data.constellation;
+    final habit = data.habit;
+    _closeSkyTooltip();
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PulsarReaderScreen(
+          habit: habit,
+          project: constellation.project,
+          habitRepository: widget.habitRepository,
+          habitCompletionRepository: widget.habitCompletionRepository,
+          projectRepository: widget.projectRepository,
+          starsShapeRepository: widget.starsShapeRepository,
         ),
       ),
     );
@@ -806,6 +900,8 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
         description: result.description,
         projectId: result.projectId,
         intensity: result.intensity ?? 3,
+        frequency: result.habitFrequency ?? HabitFrequency.daily,
+        targetPerPeriod: result.habitTargetPerPeriod ?? 1,
         reminderHour: result.reminderHour,
         reminderMinute: result.reminderMinute,
       );
@@ -923,8 +1019,14 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
       backgroundColor: Colors.transparent,
       elevation: 0,
       enableDrag: false,
+      // `showModalBottomSheet` aligns via `Alignment.bottomCenter`, so
+      // bounding `maxWidth` here is also what centers this horizontally
+      // on a wide viewport — with no cap at all it stretched edge to
+      // edge, which read as far too wide on desktop/web (a phone screen
+      // is already narrower than this cap, so nothing changes there).
       constraints: BoxConstraints(
         maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+        maxWidth: 480,
       ),
       builder: (_) => SkyMenuModalFrame(
         builder: (scrollController, physics) => SkyMenuContent(
@@ -1019,6 +1121,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   TickerFuture _flyTo(
     SkyNavigationTarget target, {
     Offset anchorFraction = const Offset(0.5, 0.5),
+    bool straightenRoll = false,
   }) {
     final size = context.size;
     if (size == null) return TickerFuture.complete();
@@ -1028,6 +1131,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
       world,
       _zoomFor(target, size),
       anchorFraction: anchorFraction,
+      straightenRoll: straightenRoll,
     );
   }
 
@@ -1040,6 +1144,10 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     Offset world,
     double targetZoom, {
     Offset anchorFraction = const Offset(0.5, 0.5),
+    // See [_flyRollCorrection]'s own doc comment — true only for a
+    // constellation hold, so its shape lands upright rather than however
+    // the camera happened to be twisted from an earlier manual rotation.
+    bool straightenRoll = false,
   }) {
     final size = context.size;
     if (size == null) return TickerFuture.complete();
@@ -1071,6 +1179,27 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     _flyTargetForward = targetForward;
     _flyStartZoom = _zoom;
     _flyTargetZoom = targetZoom;
+    // Computed against the *fully-swept* (t=1) target camera, not the
+    // current one — verified by hand (see the scratch test this was
+    // checked with): [rotatedToAlignFraction] does NOT preserve the roll
+    // *reading* at a new direction the way its own doc comment first
+    // suggested. It avoids adding any *extra* twist during the transport
+    // itself, but the sphere's curvature (holonomy) still changes what
+    // [cameraRollAngle] reads at a different point — so correcting
+    // against the start camera's own roll landed at the wrong angle
+    // entirely; only the destination's actual roll reading gives the
+    // right correction.
+    //
+    // Targets [math.pi], not 0 — a zero-roll camera actually rendered a
+    // constellation upside down (confirmed live), a full half-turn off
+    // from [ConstellationPainter]'s own idea of "upright". [cameraRollAngle]'s
+    // own "canonical" reference frame and the painter's don't agree on
+    // which way is up; landing on the *opposite* pole of that reading is
+    // what actually matches the shape editor's own orientation.
+    _flyRollCorrection = straightenRoll
+        ? math.pi -
+              cameraRollAngle(_camera.rotatedToAlign(_camera.forward, targetForward))
+        : 0;
     _flyController
       ..stop()
       ..reset();
@@ -1083,11 +1212,20 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     if (startCamera == null || targetForward == null) return;
     final t = Curves.easeInOutCubic.transform(_flyController.value);
     setState(() {
-      _camera = startCamera.rotatedToAlignFraction(
+      var camera = startCamera.rotatedToAlignFraction(
         startCamera.forward,
         targetForward,
         t,
       );
+      // [_flyRollCorrection] (see its own doc comment for how it's
+      // computed and why plain [rotatedToAlignFraction] alone doesn't
+      // already land level) — ramped in step with the same [t] so a
+      // constellation hold finishes exactly level right as the camera
+      // finishes arriving, not in a separate, visually disconnected step.
+      if (_flyRollCorrection != 0) {
+        camera = camera.rolled(_flyRollCorrection * t);
+      }
+      _camera = camera;
       _zoom = _flyStartZoom + (_flyTargetZoom - _flyStartZoom) * t;
     });
   }
@@ -1167,6 +1305,10 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     _StarTooltip(:final constellation, :final starIndex) => _StarTooltip(
       constellation,
       starIndex,
+    ),
+    _PulsarTooltip(:final constellation, :final habit) => _PulsarTooltip(
+      constellation,
+      habit,
     ),
     _ConstellationTooltip(:final constellation) => _ConstellationTooltip(
       constellation,
@@ -1374,26 +1516,143 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   /// arena fight entirely — proven safe because [onTapUp] already
   /// coexisted fine with the button's own before this. Not tied to
   /// `kLongPressTimeout` at all any more, in fact — see [_holdDuration],
-  /// its own separate, shorter number.
+  /// itself just [kHoldGestureDuration].
   Timer? _holdTimer;
 
   /// How long a touch has to stay down before it counts as a hold rather
-  /// than a tap — shorter than Flutter's own default long-press timing
-  /// (`kLongPressTimeout`, 500ms) so the hold-to-peek gesture feels quick
-  /// to trigger rather than sluggish.
-  static const _holdDuration = Duration(milliseconds: 300);
+  /// than a tap — see [kHoldGestureDuration], shared with the menu
+  /// button's own hold so the two gestures feel like one consistent
+  /// timing across the screen.
+  static const _holdDuration = kHoldGestureDuration;
 
   /// True once [_holdTimer] has actually fired for the touch currently
   /// down — [_handleTapUp] checks this to know the release is just the
   /// tail end of a hold that already acted, not a fresh plain tap.
   bool _holdFired = false;
 
+  /// Drives [_HoldRingPainter]'s charging ring — runs in lockstep with
+  /// [_holdTimer] (same [_holdDuration]) so the ring closes exactly as the
+  /// hold fires, rather than as a separate, only-approximately-matching
+  /// animation of its own.
+  late final AnimationController _holdRingController;
+
+  /// Screen position the ring is centered on — set once per touch in
+  /// [_handleTapDown] (never moved while that touch stays down, same as
+  /// [_holdTimer]'s own target) and only meaningful while
+  /// [_holdRingController]'s value is above 0.
+  Offset? _holdRingCenter;
+
+  /// [_handleTapDown] doesn't start [_holdRingController] moving straight
+  /// away — it waits this long first (see [_holdRingArmTimer]). A plain
+  /// tap/click released before this elapses never gets the ring at all,
+  /// which is the point: without this delay, a tap-down/up pair that
+  /// lands and releases inside a single frame can leave the controller's
+  /// `forward()` still scheduled with nothing left to cancel it — its
+  /// value is still exactly 0 (the ticker hasn't ticked yet) when
+  /// [_collapseHoldRing]'s old value-based guard ran, so that guard saw
+  /// nothing to collapse and the forward animation then played out in
+  /// full on the *next* frame with no release event left to stop it —
+  /// the ring would finish closing and just sit there until some other
+  /// gesture (a further tap, a pan/zoom) happened to reset it. Arming
+  /// only after a short delay sidesteps the race entirely: nothing is
+  /// ever scheduled for a genuinely quick tap to race against.
+  static const _holdRingArmDelay = Duration(milliseconds: 100);
+  Timer? _holdRingArmTimer;
+
+  /// One real, continuous motor vibration for the length of a hold, via
+  /// the `vibration` package's own platform channel — [HapticFeedback]
+  /// can only fire discrete, fixed-length system clicks, not a buzz of
+  /// arbitrary duration. Started with a duration equal to [_holdDuration]
+  /// the instant a hold begins charging (see [_handleTapDown]), it
+  /// naturally stops exactly when the hold fires with nothing further to
+  /// do; [_stopHoldHaptic] only has to cut it short for a release/cancel
+  /// that comes *before* that.
+  ///
+  /// [_hapticActive] guards every call to [Vibration.cancel] here — the
+  /// device only has one vibration motor, shared globally, not scoped per
+  /// widget. [_handleTapDown]/[_handleTapCancel]/[_handleTapUp] all run
+  /// for *every* touch on the sky's own full-screen `GestureDetector`,
+  /// including one that lands on [_MenuStarButton] sitting on top of it
+  /// (same hit-test chain, same pointer) — a touch [_hasHoldTarget] never
+  /// found a target for. Calling [Vibration.cancel] unconditionally from
+  /// those handlers used to cut the button's own, entirely unrelated
+  /// hold-vibration short the moment this sky-side timer fired, since
+  /// there's no way for the motor to know which caller's buzz it's
+  /// silencing. Only cancelling when *this* class actually started the
+  /// vibration keeps it from ever touching a buzz it doesn't own.
+  bool _hapticActive = false;
+
+  void _startHoldHaptic() {
+    _hapticActive = true;
+    Vibration.vibrate(duration: _holdDuration.inMilliseconds);
+  }
+
+  void _stopHoldHaptic() {
+    if (!_hapticActive) return;
+    _hapticActive = false;
+    Vibration.cancel();
+  }
+
+  /// A short pulse for "a movement in the sky just started" (a plain tap
+  /// hit, or the double-tap zoom-out) — the same `vibration` mechanism as
+  /// the hold's own long buzz above, just far shorter, rather than
+  /// [HapticFeedback]'s separate, much lighter "system click" API: the two
+  /// read as barely related in strength, which is exactly why this used
+  /// to feel weak next to the hold's own buzz.
+  static const _tapHapticDuration = Duration(milliseconds: 25);
+
+  void _tapHaptic() {
+    Vibration.vibrate(duration: _tapHapticDuration.inMilliseconds);
+  }
+
+  /// Same three-step lookup [_resolveTapTarget] does, but read-only — no
+  /// tooltip/flight side effects — so [_handleTapDown] can tell whether a
+  /// hold starting here would actually land on something *before* the
+  /// hold fires, purely to decide whether the charging ring/haptic are
+  /// worth starting at all (never on empty sky).
+  bool _hasHoldTarget(Offset position, Size size) {
+    final hit = zoomPercent(_zoom) >= _starTapMinZoomPercent
+        ? hitTestField(position, _placed, _camera, _zoom, size)
+        : null;
+    if (hit != null) return true;
+    if (hitTestSupernovas(position, _camera, _zoom, size) != null) {
+      return true;
+    }
+    return hitTestConstellations(position, _placed, _camera, _zoom, size) !=
+        null;
+  }
+
   void _handleTapDown(TapDownDetails details) {
     _holdFired = false;
     _holdTimer?.cancel();
+    _holdRingArmTimer?.cancel();
+    _holdRingArmTimer = null;
+    _stopHoldHaptic();
+    final size = context.size;
+    final hasTarget = size != null && _hasHoldTarget(details.localPosition, size);
+    if (hasTarget) {
+      _holdRingCenter = details.localPosition;
+      _holdRingArmTimer = Timer(_holdRingArmDelay, () {
+        _holdRingArmTimer = null;
+        _holdRingController.animateTo(
+          1,
+          duration: _holdDuration - _holdRingArmDelay,
+        );
+      });
+      if (isTouchOnlyMobile) _startHoldHaptic();
+    } else {
+      _holdRingController.stop();
+      _holdRingController.value = 0;
+    }
     _holdTimer = Timer(_holdDuration, () {
       _holdTimer = null;
       _holdFired = true;
+      // The ring's own job — showing the hold charging up — is done the
+      // instant it fires; snapping it away rather than fading lets it read
+      // as *becoming* the tooltip/flight that starts right here, instead
+      // of lingering on top of it.
+      _holdRingController.value = 0;
+      _stopHoldHaptic();
       _handleHold(details.localPosition);
     });
   }
@@ -1407,6 +1666,27 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   void _handleTapCancel() {
     _holdTimer?.cancel();
     _holdTimer = null;
+    _holdRingArmTimer?.cancel();
+    _holdRingArmTimer = null;
+    _stopHoldHaptic();
+    _collapseHoldRing();
+  }
+
+  /// Shared by [_handleTapCancel] and [_handleTapUp] — fades the charging
+  /// ring away quickly (well under [_holdDuration]) rather than either
+  /// snapping it off or letting it play out its own slower forward
+  /// timing in reverse, which read as sluggish for a touch that's already
+  /// gone. Checks [AnimationController.isAnimating], not just `value > 0`
+  /// — see [_holdRingArmDelay]'s own doc comment for the race a
+  /// value-only guard missed.
+  void _collapseHoldRing() {
+    if (_holdRingController.value > 0 || _holdRingController.isAnimating) {
+      _holdRingController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   /// Shared by [_handleTapUp] and [_handleHold] — both resolve a
@@ -1459,10 +1739,26 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   void _handleTapUp(TapUpDetails details) {
     _holdTimer?.cancel();
     _holdTimer = null;
+    _holdRingArmTimer?.cancel();
+    _holdRingArmTimer = null;
+    _stopHoldHaptic();
+    // Captured before [_collapseHoldRing] below, which starts its own
+    // reverse animation and would otherwise make `isAnimating` read true
+    // regardless of whether a charge was actually in progress here.
+    final holdWasCharging =
+        _holdRingController.value > 0 || _holdRingController.isAnimating;
+    _collapseHoldRing();
     // The hold already fired (and already did whatever it does — see
     // [_handleHold]) before this release arrived; the release itself is
     // not a second, separate tap on top of that.
     if (_holdFired) return;
+    // A hold that started charging — the ring was already visibly on
+    // screen — but let go before firing isn't a tap either: it's an
+    // abandoned hold, and should read as exactly that. Falling through to
+    // plain-tap handling here used to fly the camera (or close an open
+    // tooltip) right after the user watched the ring cancel, which read
+    // as the sky ignoring the cancellation instead of honoring it.
+    if (holdWasCharging) return;
     final size = context.size;
     if (size == null) return;
     // While a tooltip is showing, the first tap anywhere else only
@@ -1479,6 +1775,10 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
       return;
     }
     if (_resolveTapTarget(details.localPosition, size, showTooltip: false)) {
+      // A short buzz for "a movement in the sky just started" — the
+      // hold's own long buzz (see [_startHoldHaptic]) means "a tooltip
+      // just opened" instead, so this only ever fires from a plain tap.
+      if (isTouchOnlyMobile) _tapHaptic();
       _lastEmptyTapTime = null;
       return;
     }
@@ -1494,6 +1794,10 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
         (details.localPosition - lastPosition).distance < _doubleTapMaxDistance) {
       _lastEmptyTapTime = null;
       _lastEmptyTapPosition = null;
+      // Same "a movement just started" buzz as a direct hit above — the
+      // zoom-out this triggers is exactly that, just aimed at empty sky
+      // instead of a target.
+      if (isTouchOnlyMobile) _tapHaptic();
       _zoomOutOneLevel();
       return;
     }
@@ -1505,24 +1809,27 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   /// its own doc comment for why this is a plain timer rather than
   /// `onLongPressStart`) — same hit test (see [_resolveTapTarget]), but a
   /// hit's tooltip opens partway through the resulting flight (see
-  /// [_openTooltipDuringFlight]) rather than staying suppressed. A hold
-  /// on empty sky does nothing (no tooltip to show,
-  /// and the double-tap-to-zoom-out gesture is a tap-only affordance —
-  /// see [_lastEmptyTapTime]'s own doc comment for why that one is
-  /// tracked by hand rather than through a real recognizer).
+  /// [_openTooltipDuringFlight]) rather than staying suppressed.
+  ///
+  /// Unlike [_handleTapUp], an already-open tooltip does *not*
+  /// unconditionally swallow this — only a hold that misses every real
+  /// target (empty sky) behaves like the tap-only "first interaction
+  /// outside just closes it" rule. A hold that lands on a genuine
+  /// star/pulsar/constellation/supernova is a deliberate "go there
+  /// instead": whatever tooltip was already open just gets replaced by
+  /// the new one once the resulting flight lands there (`open()` with
+  /// different data already handles that transition on its own — see
+  /// [TooltipCardController.open]'s own doc comment — so this never needs
+  /// an explicit close first).
   void _handleHold(Offset position) {
     final size = context.size;
     if (size == null) return;
-    // Same "first interaction outside just closes it" rule as
-    // [_handleTapUp] — holding elsewhere while a tooltip is open
-    // shouldn't also open a *different* one.
-    if (_skyTooltipController.isOpen) {
+    final hit = _resolveTapTarget(position, size, showTooltip: true);
+    if (!hit && _skyTooltipController.isOpen) {
       _skyTooltipController.close();
       _lastEmptyTapTime = null;
       _lastEmptyTapPosition = null;
-      return;
     }
-    _resolveTapTarget(position, size, showTooltip: true);
   }
 
   /// The plain-tap half of a supernova hit — just the "take me there"
@@ -1548,10 +1855,14 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     _flyTo(SkyProjectTarget(constellation.project));
   }
 
-  /// See [_holdArea]'s own note — same change, for constellations.
+  /// See [_holdArea]'s own note — same change, for constellations. Also
+  /// straightens the camera's roll as it flies there (see
+  /// [_flyToWorld]'s own `straightenRoll`), so the shape lands reading
+  /// upright — the way it does in the shape editor — rather than however
+  /// the camera happened to be twisted from an earlier manual rotation.
   void _holdConstellation(PlacedConstellation constellation) {
     _openTooltipDuringFlight(
-      _flyTo(SkyProjectTarget(constellation.project)),
+      _flyTo(SkyProjectTarget(constellation.project), straightenRoll: true),
       _ConstellationTooltip(constellation),
     );
   }
@@ -1590,6 +1901,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     _flyTargetForward = _camera.forward;
     _flyStartZoom = _zoom;
     _flyTargetZoom = targetZoom;
+    _flyRollCorrection = 0;
     _flyController
       ..stop()
       ..reset()
@@ -1746,32 +2058,6 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
                       // that isn't.
                       palette: kSkyStarPalette,
                       revision: _revision,
-                    ),
-                    // A quiet reminder of the tap/hold split above (see
-                    // [_handleTapUp]/[_handleHold]) — small,
-                    // muted, and [IgnorePointer]-wrapped so it never
-                    // competes with the sky underneath it for a gesture,
-                    // just sits there to be read.
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: SafeArea(
-                        child: IgnorePointer(
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Center(
-                              child: Text(
-                                strings.skyTapHoldHint,
-                                style: TextStyle(
-                                  color: colors.muted.withValues(alpha: 0.7),
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
                     ),
                     // The way into everything that isn't the sky itself — same
                     // disc/navy/gold styling as every other overlay control.
@@ -2078,6 +2364,25 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
                         ),
                       ),
                     ),
+                    // The hold-charging ring (see [_handleTapDown]/
+                    // [_holdRingController]) — last so it paints above
+                    // every star/constellation/control here, never under
+                    // them. Purely decorative: [IgnorePointer] keeps it out
+                    // of hit-testing entirely, so it can't itself become
+                    // one more thing competing for the gesture arena (see
+                    // [_holdTimer]'s own doc comment on why that's worth
+                    // avoiding).
+                    IgnorePointer(
+                      child: AnimatedBuilder(
+                        animation: _holdRingController,
+                        builder: (context, _) => CustomPaint(
+                          painter: _HoldRingPainter(
+                            center: _holdRingCenter,
+                            progress: _holdRingController.value,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -2182,21 +2487,41 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
           maxWidth: math.min(380, MediaQuery.sizeOf(context).width - 48),
         ),
         padding: const EdgeInsets.all(20),
+        // `TooltipCard`'s own default (`WhenContentHide.goAway`) auto-closes
+        // on the pointer leaving the panel — meant for a *hover*-triggered
+        // tooltip, but it applies to any "press-like" trigger mode
+        // (including this one's default, `pressButton`, even though this
+        // controller only ever opens/closes it by hand, never via the
+        // trigger's own tap). On web that reads as the tooltip vanishing
+        // the instant the mouse drifts off it while reading, with no
+        // click involved at all. `pressOutSide` turns that auto-close off;
+        // pairing it with an explicit `barrierDismissible: false` stops it
+        // from also inserting `tooltip_card`'s own dismiss-on-outside-tap
+        // barrier, which — being a full-screen `HitTestBehavior.opaque`
+        // `GestureDetector` sitting above everything in the root overlay —
+        // would otherwise swallow every tap before the sky's own
+        // hand-rolled tap/hold arena handling (see [_holdTimer]'s doc
+        // comment) ever saw it. Dismissal here stays exactly what it
+        // already was: this screen's own explicit `close()` calls.
+        whenContentHide: WhenContentHide.pressOutSide,
+        barrierDismissible: false,
         child: const SizedBox.shrink(),
         builder: (context, close) => _buildSkyTooltip(),
       ),
     );
   }
 
-  /// The tooltip's own content — a star's quick-look, a constellation's,
-  /// or a supernova's — chosen by [_skyTooltipController]'s current
-  /// `data`. `null` (nothing open, or the exit-animation frame after a
-  /// close) renders empty: `TooltipCard` itself decides whether that's
-  /// ever actually visible.
+  /// The tooltip's own content — a star's quick-look, a pulsar's, a
+  /// constellation's, or a supernova's — chosen by
+  /// [_skyTooltipController]'s current `data`. `null` (nothing open, or
+  /// the exit-animation frame after a close) renders empty: `TooltipCard`
+  /// itself decides whether that's ever actually visible.
   Widget _buildSkyTooltip() {
     return switch (_skyTooltipController.data) {
       _StarTooltip(:final constellation, :final starIndex) =>
         _buildStarTooltip(constellation, starIndex),
+      _PulsarTooltip(:final constellation, :final habit) =>
+        _buildPulsarTooltip(constellation, habit),
       _ConstellationTooltip(:final constellation) => SkyConstellationTooltip(
         project: constellation.project,
         stars: constellation.stars,
@@ -2233,9 +2558,28 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
   Offset _tooltipAnchorOffset(_SkyTooltip? data) => switch (data) {
     _ConstellationTooltip() => const Offset(0, _constellationTooltipDrop),
     _AreaTooltip() => const Offset(0, _areaTooltipDrop),
-    _StarTooltip() => const Offset(0, _starTooltipDrop),
+    _StarTooltip() || _PulsarTooltip() => const Offset(0, _starTooltipDrop),
     null => Offset.zero,
   };
+
+  /// A pulsar's own version of [_buildStarTooltip] — no stale-index guard
+  /// needed here (unlike a star, [_PulsarTooltip] carries the [Habit]
+  /// itself, not an index to re-look-up), but streak/lit are recomputed
+  /// fresh from [HabitCompletionRepository] every build rather than
+  /// cached at hold-time, same "never show stale content" reasoning.
+  Widget _buildPulsarTooltip(PlacedConstellation constellation, Habit habit) {
+    final countsByDay = habitCompletionCountsByDay(
+      widget.habitCompletionRepository.getAllForHabit(habit.id),
+    );
+    return SkyPulsarTooltip(
+      habit: habit,
+      project: constellation.project,
+      currentStreak: habitCurrentStreak(habit, countsByDay),
+      isLit: !habit.dead && isHabitLit(habit, countsByDay),
+      onClose: _closeSkyTooltip,
+      onView: _viewQuickLookPulsar,
+    );
+  }
 
   /// Split out from [_buildSkyTooltip] only because a [_StarTooltip]'s own
   /// [starIndex] can go stale (the star it pointed to was deleted
@@ -2289,6 +2633,72 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
     );
     _refresh();
   }
+}
+
+/// Paints the hold-charging ring (see [_SkyScreenState._holdRingController])
+/// — a single white arc that grows clockwise from a point at [center] and
+/// closes into a full circle exactly as [progress] reaches 1, with a soft
+/// white glow trailing behind the same stroke.
+class _HoldRingPainter extends CustomPainter {
+  const _HoldRingPainter({required this.center, required this.progress});
+
+  final Offset? center;
+  final double progress;
+
+  // Three different pointers, three different sizes: native mobile touch
+  // is a fingertip wide enough to cover the original size outright (bumped
+  // up here), web's is a small mouse cursor (shrunk so the ring wraps it
+  // closely instead of reading as oversized), and native desktop's mouse
+  // keeps the size this had before either of those were split out.
+  static double get _radius => isTouchOnlyMobile ? 50.0 : (kIsWeb ? 14.0 : 28.0);
+  static double get _strokeWidth =>
+      isTouchOnlyMobile ? 4.5 : (kIsWeb ? 2.0 : 3.0);
+  static double get _glowBlur =>
+      isTouchOnlyMobile ? 16.0 : (kIsWeb ? 6.0 : 10.0);
+  // Starts straight up, same convention as a clock/loading-spinner face,
+  // so the point it grows from and reconnects at reads as a fixed anchor
+  // rather than an arbitrary spot on the ring.
+  static const _startAngle = -math.pi / 2;
+
+  // [center] is the raw pointer position — for a mouse that's the arrow
+  // cursor's own hotspot, right at its tip, not the middle of the glyph
+  // people actually see. Only on web does anything paint an OS cursor on
+  // top of this at all (mobile has a finger, desktop native hides the
+  // cursor while a button is held), so only there does the ring need
+  // nudging down by roughly the arrow's own tip-to-visual-center offset
+  // for the cursor to end up looking centered inside it, rather than
+  // poking out through its top edge. Horizontally left near 0 — an
+  // earlier rightward nudge here overshot and left the cursor reading as
+  // stuck against the ring's own left edge instead of centered.
+  static const _webCursorOffset = Offset(1, 8);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rawCenter = this.center;
+    if (rawCenter == null || progress <= 0) return;
+    final center = kIsWeb ? rawCenter + _webCursorOffset : rawCenter;
+    final sweep = progress * 2 * math.pi;
+    final rect = Rect.fromCircle(center: center, radius: _radius);
+
+    final glow = Paint()
+      ..color = Colors.white.withValues(alpha: 0.5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _strokeWidth * 4
+      ..strokeCap = StrokeCap.round
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, _glowBlur);
+    canvas.drawArc(rect, _startAngle, sweep, false, glow);
+
+    final ring = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _strokeWidth
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(rect, _startAngle, sweep, false, ring);
+  }
+
+  @override
+  bool shouldRepaint(covariant _HoldRingPainter oldDelegate) =>
+      oldDelegate.center != center || oldDelegate.progress != progress;
 }
 
 /// The FAB's own dedicated supernova — the same glow [SkySupernova] draws
@@ -2356,11 +2766,11 @@ class _MenuStarButtonState extends State<_MenuStarButton>
   // The "MENU" caption under the button, off for now — not deleted, see
   // [_showStarRingIcon] just above for the same pattern.
   static const _showMenuLabel = false;
-  // Short enough that a deliberate hold doesn't feel like it's waiting on
-  // anything, long enough that a stray touch while panning/zooming the
-  // sky underneath this button has a real window to read as "not
-  // actually a hold on this" before the menu opens.
-  static const _chargeDuration = Duration(milliseconds: 500);
+  // See [kHoldGestureDuration] — shared with the sky's own hold-to-peek
+  // so the two gestures feel like one consistent timing across the
+  // screen, rather than two independently-tuned numbers that happened to
+  // be close.
+  static const _chargeDuration = kHoldGestureDuration;
 
   ui.FragmentShader? _shader;
   // Decoded once and kept around rather than reloaded every frame — drawn
@@ -2387,6 +2797,28 @@ class _MenuStarButtonState extends State<_MenuStarButton>
   Timer? _hintTimer;
   static const _hintVisibleDuration = Duration(milliseconds: 1100);
 
+  // Same real, continuous motor vibration as the sky's own hold, including
+  // the same [_hapticActive]-guarded cancel — see
+  // `_SkyScreenState._startHoldHaptic`'s own doc comment for why a blind
+  // `Vibration.cancel()` is dangerous (the motor is one global resource,
+  // and this button sits on top of the sky's own full-screen
+  // `GestureDetector`, sharing its hit-test chain — a stray cancel from
+  // one side can silence a buzz the other side started for an unrelated
+  // touch). There's no shared home for this between the two unrelated
+  // widgets, so it's kept small and duplicated rather than factored out.
+  bool _hapticActive = false;
+
+  void _startHoldHaptic() {
+    _hapticActive = true;
+    Vibration.vibrate(duration: _chargeDuration.inMilliseconds);
+  }
+
+  void _stopHoldHaptic() {
+    if (!_hapticActive) return;
+    _hapticActive = false;
+    Vibration.cancel();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -2397,6 +2829,7 @@ class _MenuStarButtonState extends State<_MenuStarButton>
           ..addStatusListener((status) {
             if (status == AnimationStatus.completed) {
               _chargeController.reset();
+              _stopHoldHaptic();
               widget.onTap();
             }
           });
@@ -2422,6 +2855,7 @@ class _MenuStarButtonState extends State<_MenuStarButton>
 
   void _handlePressStart() {
     _chargeController.forward();
+    if (isTouchOnlyMobile) _startHoldHaptic();
   }
 
   // Shared by both onTapUp (a genuine release) and onTapCancel (the
@@ -2432,6 +2866,7 @@ class _MenuStarButtonState extends State<_MenuStarButton>
   // showing — the press genuinely wasn't held long enough to open
   // anything.
   void _handlePressEnd() {
+    _stopHoldHaptic();
     if (_chargeController.status == AnimationStatus.forward) {
       _chargeController.reverse();
       _hintTimer?.cancel();
@@ -2447,6 +2882,7 @@ class _MenuStarButtonState extends State<_MenuStarButton>
     _ticker.dispose();
     _chargeController.dispose();
     _hintTimer?.cancel();
+    _stopHoldHaptic();
     _shader?.dispose();
     _logoImage?.dispose();
     super.dispose();
@@ -2528,77 +2964,97 @@ class _MenuStarButtonState extends State<_MenuStarButton>
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Material(
-          color: Colors.transparent,
-          shape: const CircleBorder(),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            // The real logic lives in onTapDown/onTapUp/onTapCancel
-            // below — [onTap] itself stays a no-op, kept only because
-            // InkWell needs at least one tap handler set to wire up its
-            // tap recognizer at all (so onTapDown/onTapUp/onTapCancel
-            // actually fire).
-            onTap: () {},
-            onTapDown: (_) => _handlePressStart(),
-            onTapUp: (_) => _handlePressEnd(),
-            onTapCancel: _handlePressEnd,
-            // No ripple/highlight of its own — [supernovaGlow]'s own
-            // [chargeGlow] is the only feedback a press gets here;
-            // Android's default translucent disc underneath would just
-            // double up on it, off-center from the actual glow and in
-            // a flat white that doesn't match.
-            splashColor: Colors.transparent,
-            highlightColor: Colors.transparent,
-            splashFactory: NoSplash.splashFactory,
-            child: SizedBox(
-              width: _tapTargetSize,
-              height: _tapTargetSize,
-              child: Stack(
-                alignment: Alignment.center,
-                clipBehavior: Clip.none,
-                children: [
-                  if (shader != null)
-                    IgnorePointer(
-                      // A plain [SizedBox] here doesn't actually work:
-                      // this sits inside a Stack that's inside a tight
-                      // 110x110 SizedBox, and Stack's own
-                      // StackFit.loose only loosens the *minimum* it
-                      // passes to non-positioned children — the maximum
-                      // stays 110, so a 384x384 SizedBox got silently
-                      // clamped down to 110x110 despite the Stack's own
-                      // `clipBehavior: Clip.none` (nothing was ever
-                      // actually laid out bigger, so there was nothing
-                      // to overflow). [OverflowBox] overrides its
-                      // child's constraints outright, regardless of
-                      // what it itself was given, which is what
-                      // actually lets this canvas be bigger than the
-                      // tap target around it.
-                      child: OverflowBox(
-                        minWidth: _glowCanvasSize,
-                        maxWidth: _glowCanvasSize,
-                        minHeight: _glowCanvasSize,
-                        maxHeight: _glowCanvasSize,
-                        child: CustomPaint(
-                          painter: _MenuStarSupernovaPainter(
-                            shader: shader,
-                            time:
-                                _elapsed.inMicroseconds /
-                                Duration.microsecondsPerSecond,
-                            scale: _scale,
-                            starGlyphSize: _starGlyphSize,
-                            charge: _chargeController.value,
-                            showStarAndRing: _showStarRingIcon,
-                            logoImage: _showStarRingIcon ? null : _logoImage,
-                            logoSize: _logoSize,
-                            logoOpacity: _logoOverlayOpacity,
-                          ),
-                        ),
-                      ),
+        Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            if (shader != null)
+              // A [Positioned] child with only width/height set (no
+              // left/top/right/bottom) — it's centered per this Stack's
+              // own `alignment` instead, same as a non-positioned child
+              // would be, but explicitly sized regardless of the Stack's
+              // own reported bounds. A Stack's own size only ever comes
+              // from its *non*-positioned children (the tap target
+              // below), so this can be arbitrarily bigger without
+              // needing to escape any constraint at all — the same
+              // mechanism the hold-hint label elsewhere in this widget
+              // already relies on to paint above this whole button's own
+              // bounds. [OverflowBox] was tried first here and worked
+              // fine on mobile, but clipped this glow down to the tap
+              // target's own small 110×110 footprint specifically on the
+              // deployed web build (confirmed on the live GitHub Pages
+              // site, not reproducible from the app itself) — switching
+              // to the approach already proven to work everywhere else
+              // in this widget is what actually fixed it.
+              Positioned(
+                width: _glowCanvasSize,
+                height: _glowCanvasSize,
+                child: IgnorePointer(
+                  child: CustomPaint(
+                    painter: _MenuStarSupernovaPainter(
+                      shader: shader,
+                      time:
+                          _elapsed.inMicroseconds /
+                          Duration.microsecondsPerSecond,
+                      scale: _scale,
+                      starGlyphSize: _starGlyphSize,
+                      charge: _chargeController.value,
+                      showStarAndRing: _showStarRingIcon,
+                      logoImage: _showStarRingIcon ? null : _logoImage,
+                      logoSize: _logoSize,
+                      logoOpacity: _logoOverlayOpacity,
                     ),
-                ],
+                  ),
+                ),
+              ),
+            Material(
+              color: Colors.transparent,
+              shape: const CircleBorder(),
+              // [Clip.none] is this widget's own default, which only ever
+              // matters once there's something for it to clip: this
+              // Material paints nothing of its own (transparent, no
+              // elevation), so on mobile/touch there was nothing to see
+              // either way. On the web, the [InkWell] below gets a real,
+              // persistent hover state from the mouse — with clipping off,
+              // that hover highlight painted as a full, hard-edged square
+              // over this whole tap target instead of following its own
+              // [CircleBorder], since an unclipped Material doesn't
+              // constrain its child's ink features to the shape at all.
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                // The real logic lives in onTapDown/onTapUp/onTapCancel
+                // below — [onTap] itself stays a no-op, kept only because
+                // InkWell needs at least one tap handler set to wire up its
+                // tap recognizer at all (so onTapDown/onTapUp/onTapCancel
+                // actually fire).
+                onTap: () {},
+                onTapDown: (_) => _handlePressStart(),
+                onTapUp: (_) => _handlePressEnd(),
+                onTapCancel: _handlePressEnd,
+                // No ripple/highlight of its own — [supernovaGlow]'s own
+                // [chargeGlow] is the only feedback a press gets here;
+                // Android's default translucent disc underneath would just
+                // double up on it, off-center from the actual glow and in
+                // a flat white that doesn't match. [hoverColor]/[focusColor]
+                // join [splashColor]/[highlightColor] here for the same
+                // reason — touch has no hover/focus state to speak of, but
+                // a mouse on the web does, and left at their defaults they
+                // were the actual visible square reported on the web build
+                // (see the [clipBehavior] note above for why it was square
+                // rather than round in the first place).
+                splashColor: Colors.transparent,
+                highlightColor: Colors.transparent,
+                hoverColor: Colors.transparent,
+                focusColor: Colors.transparent,
+                splashFactory: NoSplash.splashFactory,
+                child: const SizedBox(
+                  width: _tapTargetSize,
+                  height: _tapTargetSize,
+                ),
               ),
             ),
-          ),
+          ],
         ),
         // Just a plain caption — makes it clear at a glance that this
         // is a menu button, not another life-area supernova or a

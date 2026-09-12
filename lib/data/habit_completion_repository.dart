@@ -73,6 +73,38 @@ class HabitCompletionRepository {
     await _saveAll(nextCompletions);
   }
 
+  /// For a daily habit whose `targetPerPeriod` is more than 1 (e.g. "3 times
+  /// a day") — unlike [markDone], always appends a new record for [date]
+  /// (defaults to today) rather than refusing a second one; that day's count
+  /// (see `habitCompletionCountsByDay`) is simply how many rows exist for it.
+  /// Not idempotent on purpose — each tap is one more instance logged.
+  Future<void> logInstance(int habitId, {DateTime? date}) async {
+    final day = _dateOnly(date ?? DateTime.now());
+    final completion = HabitCompletion(
+      id: DateTime.now().microsecondsSinceEpoch,
+      habitId: habitId,
+      date: day,
+    );
+    await _saveAll([completion, ...getAll()]);
+  }
+
+  /// [logInstance]'s own undo — removes just the most recently logged
+  /// instance for [habitId] on [date] (the highest `id`, since ids are
+  /// `microsecondsSinceEpoch`), leaving any earlier same-day instances
+  /// alone. Unlike [unmarkDone], never clears the whole day at once.
+  Future<void> unlogLastInstance(int habitId, DateTime date) async {
+    final day = _dateOnly(date);
+    final completions = getAll();
+    HabitCompletion? latest;
+    for (final completion in completions) {
+      if (completion.habitId != habitId || completion.date != day) continue;
+      if (latest == null || completion.id > latest.id) latest = completion;
+    }
+    if (latest == null) return;
+    final target = latest;
+    await _saveAll(completions.where((c) => c.id != target.id).toList());
+  }
+
   /// Permanently removes every completion for [habitId] — called by
   /// [HabitRepository.delete], since a deleted habit has no tombstone to
   /// keep its history attached to.

@@ -8,16 +8,17 @@ import '../data/project_repository.dart';
 import '../data/star_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../theme/app_colors.dart';
-import '../theme/app_style.dart';
+import '../widgets/responsive_content.dart';
 import '../widgets/sky_explorer_view.dart';
 
 /// A full-screen popup opened from the Sky's sky-search overlay
-/// button — search/filter/3-level browsing ([SkyExplorerView]) over the
-/// same close-button-only header every other popup page in the app uses,
-/// with the selected level's name (Supernovas/Constellations/Stars) as this
-/// header's own title — see [_modeLabel] — rather than drawn inline in the
-/// body, freeing space below for the list itself. Every card's "take me
-/// there" button pops this page with a `SkyNavigationTarget` for
+/// button — search/filter/3-level browsing ([SkyExplorerView]), under the
+/// same back-arrow/eyebrow/title header every other standalone screen in
+/// the app uses ([SettingsScreen], [StatsScreen], [PlaceholderScreen]),
+/// with the selected level's name (Supernovas/Constellations/Stars) as
+/// this header's own title — see [_modeLabel] — rather than drawn inline
+/// in the body, freeing space below for the list itself. Every card's
+/// "take me there" button pops this page with a `SkyNavigationTarget` for
 /// `NebulaScreen` to fly its camera to.
 class SkySearchScreen extends StatefulWidget {
   const SkySearchScreen({
@@ -58,44 +59,43 @@ class _SkySearchScreenState extends State<SkySearchScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(6, 6, 6, 0),
-              child: Row(
-                children: [
-                  Material(
-                    color: colors.nightPanel.withValues(alpha: 0.75),
-                    shape: CircleBorder(
-                      side: BorderSide(
-                        color: colors.gold,
-                        width: kBorderWidthActive,
-                      ),
-                    ),
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: () => Navigator.of(context).pop(),
-                      child: SizedBox(
-                        width: 42,
-                        height: 42,
-                        child: Icon(Icons.close, color: colors.gold, size: 22),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        _modeLabel ?? strings.skyModeSupernovas,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: colors.gold,
+            ResponsiveContent(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          icon: Icon(Icons.arrow_back, color: colors.muted),
                         ),
+                        const SizedBox(width: 12),
+                        Text(
+                          strings.searchScreenEyebrow,
+                          style: TextStyle(
+                            fontSize: 12,
+                            letterSpacing: 2,
+                            fontWeight: FontWeight.w600,
+                            color: colors.accentDim,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _modeLabel ?? strings.skyModeSupernovas,
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w700,
+                        color: colors.text,
                       ),
                     ),
-                  ),
-                  // Balances the close button's own width so the title
-                  // above stays visually centered instead of skewed right.
-                  const SizedBox(width: 42),
-                ],
+                  ],
+                ),
               ),
             ),
             Expanded(

@@ -1,21 +1,128 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/strings_scope.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_style.dart';
+
+/// Whether a field must be filled in to submit its form — shown as a small
+/// dot beside that field's own [AppFieldLabel]/[AppPickerField] rather than
+/// spelled out in words at every field. [FieldRequirementLegend] is the one
+/// place the words themselves appear, once per form.
+enum FieldRequirement {
+  required,
+  optional;
+
+  IconData get _icon =>
+      this == FieldRequirement.required ? Icons.circle : Icons.circle_outlined;
+
+  Color _color(AppColors colors) =>
+      this == FieldRequirement.required ? colors.gold : colors.muted;
+}
 
 /// The small muted caption that sits above every field. Its own widget
 /// because it appeared, hand-written and very slightly different, above
 /// roughly fifteen fields across the app.
+///
+/// [requirement] is null for the handful of fields it doesn't meaningfully
+/// apply to (a slider that's never empty, a static non-editable box) —
+/// those render with no dot at all rather than an arbitrary guess.
 class AppFieldLabel extends StatelessWidget {
-  const AppFieldLabel(this.label, {super.key});
+  const AppFieldLabel(this.label, {super.key, this.requirement});
 
   final String label;
+  final FieldRequirement? requirement;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: TextStyle(fontSize: 13, color: context.colors.muted),
+    final colors = context.colors;
+    final requirement = this.requirement;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Before the text, not after — so the dot sits in the same column
+        // for every field regardless of how long each one's own label is,
+        // rather than trailing off at a different point per field.
+        if (requirement != null) ...[
+          Icon(requirement._icon, size: 8, color: requirement._color(colors)),
+          const SizedBox(width: 5),
+        ],
+        Text(label, style: TextStyle(fontSize: 13, color: colors.muted)),
+      ],
+    );
+  }
+}
+
+/// The one-line key explaining [FieldRequirement]'s two dots — shown once,
+/// centered, above a form that uses them on its own fields, right before
+/// the first one. Keeps every per-field marker icon-only instead of
+/// repeating "required"/"optional" at each one.
+class FieldRequirementLegend extends StatelessWidget {
+  const FieldRequirementLegend({super.key});
+
+  Widget _item(AppColors colors, FieldRequirement requirement, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(requirement._icon, size: 8, color: requirement._color(colors)),
+        const SizedBox(width: 5),
+        Text(text, style: TextStyle(fontSize: 12, color: colors.muted)),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final strings = context.strings;
+    return Center(
+      // Shrink-wrapped, not [width]: double.infinity like the fields below
+      // it — this card is a caption for the form, not one more field
+      // matching their own full-width shape, so its own background only
+      // needs to be as wide as "Info" plus the two dots actually require.
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        // Same surface as the fields it's explaining — a plain panel, not
+        // one more field of its own (no [fieldDecoration]/focus behavior;
+        // it never holds a value or gets tapped).
+        decoration: panelDecoration(colors),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.info_outline, size: 18, color: colors.gold),
+                const SizedBox(width: 8),
+                Text(
+                  strings.fieldLegendTitle,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: colors.text,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _item(
+                  colors,
+                  FieldRequirement.required,
+                  strings.requiredFieldLegend,
+                ),
+                const SizedBox(width: 16),
+                _item(
+                  colors,
+                  FieldRequirement.optional,
+                  strings.optionalFieldLegend,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -131,6 +238,7 @@ class AppPickerField extends StatelessWidget {
   const AppPickerField({
     super.key,
     this.label,
+    this.requirement,
     required this.hint,
     required this.icon,
     required this.text,
@@ -142,6 +250,9 @@ class AppPickerField extends StatelessWidget {
   /// Omitted when the surrounding form already labels this field some other
   /// way (a section heading, a row of two).
   final String? label;
+
+  /// Forwarded straight to [AppFieldLabel] — meaningless without [label].
+  final FieldRequirement? requirement;
 
   final String hint;
   final IconData icon;
@@ -204,7 +315,7 @@ class AppPickerField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AppFieldLabel(label!),
+        AppFieldLabel(label!, requirement: requirement),
         const SizedBox(height: 6),
         field,
       ],

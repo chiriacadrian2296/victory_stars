@@ -58,12 +58,34 @@ class _PulsarReaderScreenState extends State<PulsarReaderScreen> {
     return DateTime(now.year, now.month, now.day);
   }
 
+  /// The binary path — a [HabitFrequency.weekly] habit's own day is still a
+  /// plain yes/no (only the week-level count has a target), and so is any
+  /// daily habit whose target is exactly 1. See [_logInstance]/
+  /// [_unlogInstance] for the daily-N-times stepper this doesn't cover.
   Future<void> _toggleToday(bool done) async {
     if (done) {
       await widget.habitCompletionRepository.unmarkDone(_habit.id, _today);
     } else {
       await widget.habitCompletionRepository.markDone(_habit.id);
     }
+    setState(() {});
+  }
+
+  /// The stepper path — a [HabitFrequency.daily] habit whose target is more
+  /// than 1 (e.g. "3 times a day"). Each tap logs one more instance today
+  /// regardless of how many already exist; there's no upper cap, so
+  /// exceeding the target (25 pages instead of 20) still just reads as
+  /// "25/20" rather than being refused.
+  Future<void> _logInstance() async {
+    await widget.habitCompletionRepository.logInstance(_habit.id);
+    setState(() {});
+  }
+
+  Future<void> _unlogInstance() async {
+    await widget.habitCompletionRepository.unlogLastInstance(
+      _habit.id,
+      _today,
+    );
     setState(() {});
   }
 
@@ -96,6 +118,9 @@ class _PulsarReaderScreenState extends State<PulsarReaderScreen> {
       description: formResult.description,
       projectId: formResult.projectId,
       intensity: formResult.intensity ?? _habit.intensity,
+      frequency: formResult.habitFrequency ?? _habit.frequency,
+      targetPerPeriod:
+          formResult.habitTargetPerPeriod ?? _habit.targetPerPeriod,
       reminderHour: formResult.reminderHour,
       reminderMinute: formResult.reminderMinute,
     );
@@ -124,6 +149,8 @@ class _PulsarReaderScreenState extends State<PulsarReaderScreen> {
       description: result.description,
       projectId: result.projectId,
       intensity: result.intensity ?? _habit.intensity,
+      frequency: result.habitFrequency ?? _habit.frequency,
+      targetPerPeriod: result.habitTargetPerPeriod ?? _habit.targetPerPeriod,
       reminderHour: result.reminderHour,
       reminderMinute: result.reminderMinute,
       completionRepository: widget.habitCompletionRepository,
@@ -139,9 +166,15 @@ class _PulsarReaderScreenState extends State<PulsarReaderScreen> {
       _habit.id,
     );
     final countsByDay = habitCompletionCountsByDay(completions);
-    final completedDays = countsByDay.keys.toSet();
-    final streak = habitCurrentStreak(completedDays);
+    final streak = habitCurrentStreak(_habit, countsByDay);
+    final isWeekly = _habit.frequency == HabitFrequency.weekly;
+    final isDailyStepper =
+        !isWeekly && _habit.targetPerPeriod > 1;
+    final todayCount = habitDailyProgress(_habit, countsByDay);
     final doneToday = countsByDay.containsKey(_today);
+    final weekProgress = isWeekly
+        ? habitWeeklyProgress(_habit, countsByDay)
+        : 0;
 
     return Scaffold(
       backgroundColor: colors.night,
@@ -256,6 +289,20 @@ class _PulsarReaderScreenState extends State<PulsarReaderScreen> {
                             letterSpacing: 1.2,
                           ),
                         ),
+                        if (isWeekly) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            strings.habitProgressThisWeek(
+                              weekProgress,
+                              _habit.targetPerPeriod,
+                            ),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: colors.muted,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 16),
                         // What keeping this up costs you on any given day —
                         // the same 1-5 scale every other kind of star
@@ -282,34 +329,77 @@ class _PulsarReaderScreenState extends State<PulsarReaderScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    // Done today reads as the secondary (outlined) form of
-                    // the same action: the pulsar is already burning, so
-                    // the button stops being the thing to reach for.
-                    child: doneToday
-                        ? OutlinedButton.icon(
-                            onPressed: () => _toggleToday(true),
-                            icon: const Icon(Icons.check_circle),
-                            label: Text(strings.habitDoneTodayLabel),
-                          )
-                        : ElevatedButton.icon(
-                            onPressed: () => _toggleToday(false),
-                            icon: const Icon(Icons.radio_button_unchecked),
-                            label: Text(strings.markHabitDoneAction),
-                          ),
-                  ),
-                  if (doneToday) ...[
-                    const SizedBox(height: 8),
+                  if (isDailyStepper) ...[
+                    // A daily habit whose target is more than 1 (e.g. "3
+                    // times a day") isn't a plain done/not-done toggle —
+                    // each tap logs one more instance, with no cap on
+                    // exceeding the target.
                     Center(
-                      child: TextButton(
-                        onPressed: () => _toggleToday(true),
-                        child: Text(
-                          strings.undoHabitTodayAction,
-                          style: TextStyle(color: colors.muted),
+                      child: Text(
+                        strings.habitProgressToday(
+                          todayCount,
+                          _habit.targetPerPeriod,
+                        ),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: colors.text,
                         ),
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          onPressed: todayCount > 0 ? _unlogInstance : null,
+                          icon: Icon(
+                            Icons.remove_circle_outline,
+                            color: colors.gold,
+                            size: 32,
+                          ),
+                        ),
+                        const SizedBox(width: 24),
+                        IconButton(
+                          onPressed: _logInstance,
+                          icon: Icon(
+                            Icons.add_circle,
+                            color: colors.gold,
+                            size: 32,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ] else ...[
+                    SizedBox(
+                      width: double.infinity,
+                      // Done today reads as the secondary (outlined) form
+                      // of the same action: the pulsar is already burning,
+                      // so the button stops being the thing to reach for.
+                      child: doneToday
+                          ? OutlinedButton.icon(
+                              onPressed: () => _toggleToday(true),
+                              icon: const Icon(Icons.check_circle),
+                              label: Text(strings.habitDoneTodayLabel),
+                            )
+                          : ElevatedButton.icon(
+                              onPressed: () => _toggleToday(false),
+                              icon: const Icon(Icons.radio_button_unchecked),
+                              label: Text(strings.markHabitDoneAction),
+                            ),
+                    ),
+                    if (doneToday) ...[
+                      const SizedBox(height: 8),
+                      Center(
+                        child: TextButton(
+                          onPressed: () => _toggleToday(true),
+                          child: Text(
+                            strings.undoHabitTodayAction,
+                            style: TextStyle(color: colors.muted),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                   ],
                 ],

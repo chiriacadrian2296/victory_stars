@@ -33,11 +33,10 @@ int litHabitsInArea(
   var total = 0;
   for (final project in projectRepository.getProjectsForArea(area)) {
     for (final habit in habitRepository.getAllForProject(project.id)) {
-      final completedDays = habitCompletionRepository
-          .getAllForHabit(habit.id)
-          .map((c) => DateTime(c.date.year, c.date.month, c.date.day))
-          .toSet();
-      if (isHabitLit(completedDays)) total++;
+      final countsByDay = habitCompletionCountsByDay(
+        habitCompletionRepository.getAllForHabit(habit.id),
+      );
+      if (isHabitLit(habit, countsByDay)) total++;
     }
   }
   return total;

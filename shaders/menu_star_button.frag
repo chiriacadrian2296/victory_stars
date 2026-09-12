@@ -216,5 +216,29 @@ void main() {
   float maxRadius = uResolution.x * 0.5 / uScale;
 
   vec3 total = supernovaGlow(uv, midColor, outerColor, maxRadius, uCharge);
-  fragColor = vec4(total, 1.0);
+
+  // The canvas is much bigger than the glow itself (see
+  // `_MenuStarButton._glowCanvasSize`'s own doc comment) specifically so
+  // the glow can fade to nothing well before the canvas edge — but with
+  // alpha hardcoded to 1.0 here, "fade to nothing" only ever actually
+  // happened via `BlendMode.plus` in the caller: additive blending makes
+  // adding near-black a no-op, so the fully-opaque-but-near-black edge
+  // quietly disappeared into whatever was behind it. That's true on
+  // mobile, but confirmed live on the web build (screenshot from the
+  // user): additive blending isn't reliably applied there, so this
+  // canvas painted as a real, visible dark square sitting right over the
+  // sky behind it instead of fading away.
+  //
+  // Alpha now fades on the exact same radial taper `brightness` itself
+  // already uses inside `supernovaGlow` (recomputed here since that
+  // taper is local to that function) — same curve, so this doesn't
+  // double up on the falloff already baked into `total`, it just also
+  // makes the *canvas itself* properly transparent past the glow's own
+  // reach. That's correct under ordinary alpha compositing regardless of
+  // blend mode, which a blend-mode trick alone was never a reliable way
+  // to guarantee everywhere.
+  float dist = length(uv);
+  float alpha = 1.0 - smoothstep(maxRadius * 0.18, maxRadius, dist);
+
+  fragColor = vec4(total, alpha);
 }

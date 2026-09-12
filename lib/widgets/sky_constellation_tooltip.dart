@@ -7,6 +7,8 @@ import '../theme/app_colors.dart';
 import '../theme/app_style.dart';
 import '../utils/icon_for_slug.dart';
 import 'area_tag.dart';
+import 'sky_tooltip_header.dart';
+import 'star_created_at.dart';
 
 /// The content shown inside the `tooltip_card` popup after tapping a
 /// constellation's shape (but not one of its stars specifically, which
@@ -42,38 +44,23 @@ class SkyConstellationTooltip extends StatelessWidget {
 
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
+      // See [SkyStarTooltip]'s own doc comment on its Column for why
+      // `stretch` — same reasoning, so the tag row and the created-date
+      // row below both actually get the full width they need to center
+      // themselves within.
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Icon(iconForSlug(project.iconSlug), color: colors.gold, size: 18),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                project.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: colors.text,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            InkWell(
-              onTap: onClose,
-              borderRadius: BorderRadius.circular(999),
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Icon(Icons.close, color: colors.muted, size: 16),
-              ),
-            ),
-          ],
+        SkyTooltipHeader(
+          icon: iconForSlug(project.iconSlug),
+          iconColor: colors.gold,
+          title: project.name,
+          titleColor: colors.text,
+          onClose: onClose,
         ),
-        const SizedBox(height: 6),
-        Padding(
-          padding: const EdgeInsets.only(left: 26),
+        const SizedBox(height: 8),
+        Center(
           child: Wrap(
+            alignment: WrapAlignment.center,
             spacing: 12,
             runSpacing: 4,
             crossAxisAlignment: WrapCrossAlignment.center,
@@ -86,6 +73,8 @@ class SkyConstellationTooltip extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(height: 10),
+        StarCreatedAt(createdAt: project.createdAt),
         const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,

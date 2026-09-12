@@ -76,6 +76,8 @@ class StringsRo implements AppStrings {
   @override
   String get menuFindYourLight => 'Găsește-ți Lumina';
   @override
+  String get menuChallengesSection => 'Provocări';
+  @override
   String get socialSection => 'Social';
   @override
   String get menuFriends => 'Prieteni';
@@ -247,8 +249,7 @@ class StringsRo implements AppStrings {
   @override
   String get takeMeThereAction => 'Du-mă acolo';
   @override
-  String get skyTapHoldHint => 'Atinge pentru a te deplasa · ține apăsat pentru detalii';
-
+  String get searchScreenEyebrow => 'CAUTĂ';
   @override
   String get areaVisionLabel => 'Viziunea ta pentru această zonă';
   @override
@@ -292,6 +293,9 @@ class StringsRo implements AppStrings {
   @override
   String areaEmptyProjects(String areaName) =>
       'Încă nicio constelație în $areaName. Începe una pentru a aprinde primele stele aici.';
+  @override
+  String get noProjectsYet =>
+      'Încă nicio constelație. Începe una pentru a aprinde primele stele.';
 
   @override
   String get constellationShapeMissing =>
@@ -380,6 +384,13 @@ class StringsRo implements AppStrings {
   String get editSelectedShapeAction => 'Editează această formă';
 
   @override
+  String get fieldLegendTitle => 'Info';
+  @override
+  String get requiredFieldLegend => 'Obligatoriu';
+  @override
+  String get optionalFieldLegend => 'Opțional';
+
+  @override
   String get newProjectEyebrow => 'CONSTELAȚIE NOUĂ';
   @override
   String get newProjectQuestion => 'Despre ce constelație e vorba?';
@@ -390,7 +401,7 @@ class StringsRo implements AppStrings {
   @override
   String get newProjectNameHint => 'Ex. Construiesc această aplicație';
   @override
-  String get projectDescriptionLabel => 'Descriere (opțional)';
+  String get projectDescriptionLabel => 'Descriere';
   @override
   String get projectDescriptionHint => 'Despre ce este acest proiect?';
   @override
@@ -423,6 +434,8 @@ class StringsRo implements AppStrings {
   @override
   String get selectAProject => 'Selectează o constelație';
   @override
+  String get selectASupernova => 'Selectează o supernovă';
+  @override
   String get dateLabel => 'Dată';
   @override
   String get selectADateHint => 'Selectează o dată';
@@ -431,21 +444,26 @@ class StringsRo implements AppStrings {
   @override
   String get selectATimeHint => 'Selectează o oră';
   @override
-  String get titleFieldLabel => 'În câteva cuvinte';
+  String get titleFieldLabel => 'Titlu';
   @override
-  String get titleHint => 'Ex. Am rezistat după o respingere și am continuat';
+  String get litTitleHint => 'Ex. Am alergat primul meu 5K';
   @override
-  String get detailsLabel => 'Detalii (opțional)';
+  String get unlitTitleHint => 'Ex. Aleargă un 5K';
   @override
-  String get detailsHint =>
-      'Ce a făcut acest moment dificil și cum ai trecut peste el';
+  String get pulsarTitleHint => 'Ex. Ieși la alergat';
+  @override
+  String get litDetailsHint => 'Ex. Mă dureau picioarele, dar am terminat';
+  @override
+  String get unlitDetailsHint =>
+      'Ex. Înscrie-te la o cursă și antrenează-te pentru ea';
+  @override
+  String get pulsarDetailsHint => 'Ex. În fiecare dimineață înainte de muncă';
+  @override
+  String get detailsLabel => 'Detalii';
   @override
   String get intensityLabel => 'Intensitate';
   @override
-  String get intensityCaption =>
-      'Cât te costă acest efort — 1 e ușor, 5 e foarte mult.';
-  @override
-  String get photoLabel => 'Fotografie (opțional)';
+  String get photoLabel => 'Fotografie';
   @override
   String get addPhotoHint => 'Adaugă o fotografie';
   @override
@@ -493,7 +511,7 @@ class StringsRo implements AppStrings {
   String get discardChangesAction => 'Renunță la modificări';
 
   @override
-  String get targetDateLabel => 'Dată țintă (opțional)';
+  String get targetDateLabel => 'Dată țintă';
   @override
   String get selectATargetDateHint => 'Selectează o dată';
 
@@ -517,11 +535,18 @@ class StringsRo implements AppStrings {
   String get reigniteAction => 'Reaprinde această stea';
 
   @override
-  String get pulsarTitleHint => 'Ex. Zece minute de stretching';
-  @override
   String get habitFrequencyLabel => 'Frecvență';
   @override
   String get habitFrequencyDaily => 'În fiecare zi';
+  @override
+  String get habitFrequencyWeekly => 'În fiecare săptămână';
+  @override
+  String habitFrequencySummaryDaily(int times) =>
+      times == 1 ? 'O dată pe zi' : 'De $times ori pe zi';
+  @override
+  String habitFrequencySummaryWeekly(int times) => times == 1
+      ? 'O dată pe săptămână'
+      : 'De $times ori pe săptămână, în $times zile diferite';
   @override
   String get customReminderToggleLabel => 'Oră de memento personalizată';
 
@@ -533,6 +558,11 @@ class StringsRo implements AppStrings {
   String get habitDoneTodayLabel => 'Făcut azi';
   @override
   String get undoHabitTodayAction => 'Anulează';
+  @override
+  String habitProgressToday(int done, int target) => '$done/$target azi';
+  @override
+  String habitProgressThisWeek(int done, int target) =>
+      '$done/$target săptămâna aceasta';
 
   @override
   String unlitStarsBadge(int count) =>
@@ -555,7 +585,7 @@ class StringsRo implements AppStrings {
   @override
   String get starKindLitPlural => 'Stele aprinse';
   @override
-  String get starKindLitMeaning => 'O victorie — deja făcută';
+  String get starKindLitMeaning => 'Victorie — făcută';
   @override
   String get starKindLitExample =>
       'Am dus interviul până la capăt, deși eram îngrozit.';
@@ -564,7 +594,7 @@ class StringsRo implements AppStrings {
   @override
   String get starKindUnlitPlural => 'Stele neaprinse';
   @override
-  String get starKindUnlitMeaning => 'Un obiectiv — încă în față';
+  String get starKindUnlitMeaning => 'Obiectiv — de făcut';
   @override
   String get starKindUnlitExample => 'Să alerg primii mei 10 km.';
   @override
@@ -572,7 +602,7 @@ class StringsRo implements AppStrings {
   @override
   String get starKindPulsarPlural => 'Pulsari';
   @override
-  String get starKindPulsarMeaning => 'Un obicei — zi de zi';
+  String get starKindPulsarMeaning => 'Obicei — în curs';
   @override
   String get starKindPulsarExample => 'Zece minute de stretching, în fiecare zi.';
   @override

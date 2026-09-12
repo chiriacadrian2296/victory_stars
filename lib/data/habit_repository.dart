@@ -51,6 +51,8 @@ class HabitRepository {
     String? description,
     required int projectId,
     int intensity = 3,
+    HabitFrequency frequency = HabitFrequency.daily,
+    int targetPerPeriod = 1,
     int? reminderHour,
     int? reminderMinute,
   }) async {
@@ -65,6 +67,8 @@ class HabitRepository {
           : trimmedDescription,
       createdAt: DateTime.now(),
       intensity: intensity,
+      frequency: frequency,
+      targetPerPeriod: targetPerPeriod,
       reminderHour: reminderHour,
       reminderMinute: reminderMinute,
     );
@@ -79,6 +83,8 @@ class HabitRepository {
     String? description,
     required int projectId,
     int intensity = 3,
+    HabitFrequency frequency = HabitFrequency.daily,
+    int targetPerPeriod = 1,
     int? reminderHour,
     int? reminderMinute,
   }) async {
@@ -98,6 +104,8 @@ class HabitRepository {
           : trimmedDescription,
       createdAt: existing.createdAt,
       intensity: intensity,
+      frequency: frequency,
+      targetPerPeriod: targetPerPeriod,
       reminderHour: reminderHour,
       reminderMinute: reminderMinute,
       dead: existing.dead,
@@ -145,6 +153,8 @@ class HabitRepository {
     String? description,
     required int projectId,
     int intensity = 3,
+    HabitFrequency frequency = HabitFrequency.daily,
+    int targetPerPeriod = 1,
     int? reminderHour,
     int? reminderMinute,
     required HabitCompletionRepository completionRepository,
@@ -165,6 +175,8 @@ class HabitRepository {
           : trimmedDescription,
       createdAt: existing.createdAt,
       intensity: intensity,
+      frequency: frequency,
+      targetPerPeriod: targetPerPeriod,
       reminderHour: reminderHour,
       reminderMinute: reminderMinute,
     );

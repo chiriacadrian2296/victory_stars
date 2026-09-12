@@ -48,6 +48,7 @@ abstract class AppStrings {
   String get menuStatistics;
   String get menuCrisisSection;
   String get menuFindYourLight;
+  String get menuChallengesSection;
   String get socialSection;
   String get menuFriends;
   String get menuSettings;
@@ -149,6 +150,12 @@ abstract class AppStrings {
   // Sky + area projects
   String starsCount(int count);
   String areaEmptyProjects(String areaName);
+
+  /// Shown in the constellation picker when no supernova has been chosen
+  /// yet, so it lists every constellation across every area — the
+  /// area-scoped [areaEmptyProjects] doesn't apply since there's no single
+  /// area to name.
+  String get noProjectsYet;
   String get constellationsModeLabel;
   String get listModeLabel;
   String get skyModeSupernovas;
@@ -158,7 +165,7 @@ abstract class AppStrings {
   String get allKindsLabel;
   String get searchButtonLabel;
   String get takeMeThereAction;
-  String get skyTapHoldHint;
+  String get searchScreenEyebrow;
 
   // Area detail (the vision text, description, and big stat numbers for a
   // single Supernova)
@@ -225,6 +232,13 @@ abstract class AppStrings {
   String get noCustomShapesYetHint;
   String get editSelectedShapeAction;
 
+  // Shared by every form that marks its own fields required/optional (see
+  // `FieldRequirementLegend` in `widgets/app_field.dart`) — the one place
+  // those words are spelled out; every per-field marker is icon-only.
+  String get fieldLegendTitle;
+  String get requiredFieldLegend;
+  String get optionalFieldLegend;
+
   // New project
   String get newProjectEyebrow;
   String get newProjectQuestion;
@@ -254,20 +268,32 @@ abstract class AppStrings {
   String get pulsarQuestion;
   String get projectLabel;
   String get selectAProject;
+
+  /// The star form's own supernova field — separate from [areaLabel]
+  /// (the new-project screen's own field for the same thing) only because
+  /// this one needs its own hint text alongside [selectAProject]'s.
+  String get selectASupernova;
   String get dateLabel;
   String get selectADateHint;
   String get timeLabel;
   String get selectATimeHint;
   String get titleFieldLabel;
-  String get titleHint;
+
+  // Title/Details placeholders — one consistent example (running) carried
+  // across all three kinds, each tense-matched to what that kind actually
+  // records: a lit star already happened, an unlit one hasn't yet, a
+  // pulsar is a standing routine. Kept as one running example throughout
+  // rather than a different topic per kind so the three read as the same
+  // idea at different stages, not unrelated placeholder text.
+  String get litTitleHint;
+  String get unlitTitleHint;
+  String get pulsarTitleHint;
+  String get litDetailsHint;
+  String get unlitDetailsHint;
+  String get pulsarDetailsHint;
+
   String get detailsLabel;
-  String get detailsHint;
   String get intensityLabel;
-
-  /// One line under [intensityLabel] explaining what the 1-5 scale means —
-  /// the intensity of the effort itself, the same on every kind of star.
-  String get intensityCaption;
-
   String get photoLabel;
   String get addPhotoHint;
   String get takePhotoOption;
@@ -312,9 +338,20 @@ abstract class AppStrings {
   String get reigniteAction;
 
   // Pulsar-only fields on the star form
-  String get pulsarTitleHint;
   String get habitFrequencyLabel;
   String get habitFrequencyDaily;
+  String get habitFrequencyWeekly;
+
+  /// "Once a day" for 1, "N times a day" for more — the live summary under
+  /// the frequency picker's own stepper.
+  String habitFrequencySummaryDaily(int times);
+
+  /// "Once a week" for 1, "N times a week, on N different days" for more —
+  /// spelling out that repeats on the same day don't count twice, since
+  /// that's the one thing about a weekly habit that isn't obvious from the
+  /// number alone.
+  String habitFrequencySummaryWeekly(int times);
+
   String get customReminderToggleLabel;
 
   // Habit reader
@@ -322,6 +359,16 @@ abstract class AppStrings {
   String get markHabitDoneAction;
   String get habitDoneTodayLabel;
   String get undoHabitTodayAction;
+
+  /// "2/3 today" — the daily-N-times stepper's own progress line, shown
+  /// instead of [habitDoneTodayLabel]/[markHabitDoneAction] once the
+  /// habit's target is more than 1.
+  String habitProgressToday(int done, int target);
+
+  /// "2/3 this week" — a weekly habit's own progress line, shown alongside
+  /// [habitCurrentStreakLabel] rather than instead of it (the day itself is
+  /// still a plain done/not-done toggle; only the week total is a count).
+  String habitProgressThisWeek(int done, int target);
 
   // Constellation card badges, alongside the existing star count
   String unlitStarsBadge(int count);

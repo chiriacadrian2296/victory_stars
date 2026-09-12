@@ -76,6 +76,8 @@ class StringsEn implements AppStrings {
   @override
   String get menuFindYourLight => 'Find Your Light';
   @override
+  String get menuChallengesSection => 'Challenges';
+  @override
   String get socialSection => 'Social';
   @override
   String get menuFriends => 'Friends';
@@ -245,8 +247,7 @@ class StringsEn implements AppStrings {
   @override
   String get takeMeThereAction => 'Take me there';
   @override
-  String get skyTapHoldHint => 'Tap to Move & Hold for Details';
-
+  String get searchScreenEyebrow => 'SEARCH';
   @override
   String get areaVisionLabel => 'Your vision for this area';
   @override
@@ -290,6 +291,9 @@ class StringsEn implements AppStrings {
   @override
   String areaEmptyProjects(String areaName) =>
       'No constellations yet in $areaName. Start one to begin lighting stars here.';
+  @override
+  String get noProjectsYet =>
+      'No constellations yet. Start one to begin lighting stars.';
 
   @override
   String get constellationShapeMissing =>
@@ -377,6 +381,13 @@ class StringsEn implements AppStrings {
   String get editSelectedShapeAction => 'Edit this shape';
 
   @override
+  String get fieldLegendTitle => 'Info';
+  @override
+  String get requiredFieldLegend => 'Required';
+  @override
+  String get optionalFieldLegend => 'Optional';
+
+  @override
   String get newProjectEyebrow => 'NEW CONSTELLATION';
   @override
   String get newProjectQuestion => 'What constellation is this?';
@@ -387,7 +398,7 @@ class StringsEn implements AppStrings {
   @override
   String get newProjectNameHint => 'E.g. Build this app';
   @override
-  String get projectDescriptionLabel => 'Description (optional)';
+  String get projectDescriptionLabel => 'Description';
   @override
   String get projectDescriptionHint => "What's this project about?";
   @override
@@ -420,6 +431,8 @@ class StringsEn implements AppStrings {
   @override
   String get selectAProject => 'Select a constellation';
   @override
+  String get selectASupernova => 'Select a supernova';
+  @override
   String get dateLabel => 'Date';
   @override
   String get selectADateHint => 'Select a date';
@@ -428,21 +441,25 @@ class StringsEn implements AppStrings {
   @override
   String get selectATimeHint => 'Select a time';
   @override
-  String get titleFieldLabel => 'In a few words';
+  String get titleFieldLabel => 'Title';
   @override
-  String get titleHint => 'E.g. I held on after a rejection and kept going';
+  String get litTitleHint => 'E.g. Ran my first 5K';
   @override
-  String get detailsLabel => 'Details (optional)';
+  String get unlitTitleHint => 'E.g. Run a 5K';
   @override
-  String get detailsHint =>
-      'What made this moment hard, and how you got through it';
+  String get pulsarTitleHint => 'E.g. Go for a run';
+  @override
+  String get litDetailsHint => 'E.g. My legs were sore, but I finished';
+  @override
+  String get unlitDetailsHint => 'E.g. Sign up for a race and train for it';
+  @override
+  String get pulsarDetailsHint => 'E.g. Every morning before work';
+  @override
+  String get detailsLabel => 'Details';
   @override
   String get intensityLabel => 'Intensity';
   @override
-  String get intensityCaption =>
-      'How much this effort costs you — 1 is light, 5 is a lot.';
-  @override
-  String get photoLabel => 'Photo (optional)';
+  String get photoLabel => 'Photo';
   @override
   String get addPhotoHint => 'Add a photo';
   @override
@@ -488,7 +505,7 @@ class StringsEn implements AppStrings {
   String get discardChangesAction => 'Discard';
 
   @override
-  String get targetDateLabel => 'Target date (optional)';
+  String get targetDateLabel => 'Target date';
   @override
   String get selectATargetDateHint => 'Select a date';
 
@@ -512,11 +529,18 @@ class StringsEn implements AppStrings {
   String get reigniteAction => 'Reignite this star';
 
   @override
-  String get pulsarTitleHint => 'E.g. Ten minutes of stretching';
-  @override
   String get habitFrequencyLabel => 'Frequency';
   @override
   String get habitFrequencyDaily => 'Every day';
+  @override
+  String get habitFrequencyWeekly => 'Every week';
+  @override
+  String habitFrequencySummaryDaily(int times) =>
+      times == 1 ? 'Once a day' : '$times times a day';
+  @override
+  String habitFrequencySummaryWeekly(int times) => times == 1
+      ? 'Once a week'
+      : '$times times a week, on $times different days';
   @override
   String get customReminderToggleLabel => 'Custom reminder time';
 
@@ -528,6 +552,11 @@ class StringsEn implements AppStrings {
   String get habitDoneTodayLabel => 'Done today';
   @override
   String get undoHabitTodayAction => 'Undo';
+  @override
+  String habitProgressToday(int done, int target) => '$done/$target today';
+  @override
+  String habitProgressThisWeek(int done, int target) =>
+      '$done/$target this week';
 
   @override
   String unlitStarsBadge(int count) =>
@@ -550,7 +579,7 @@ class StringsEn implements AppStrings {
   @override
   String get starKindLitPlural => 'Lit stars';
   @override
-  String get starKindLitMeaning => 'A victory — already made';
+  String get starKindLitMeaning => 'Victory — done';
   @override
   String get starKindLitExample =>
       'I got through the interview even though I was terrified.';
@@ -559,7 +588,7 @@ class StringsEn implements AppStrings {
   @override
   String get starKindUnlitPlural => 'Unlit stars';
   @override
-  String get starKindUnlitMeaning => 'A goal — still ahead';
+  String get starKindUnlitMeaning => 'Goal — to do';
   @override
   String get starKindUnlitExample => 'Run my first 10 km.';
   @override
@@ -567,7 +596,7 @@ class StringsEn implements AppStrings {
   @override
   String get starKindPulsarPlural => 'Pulsars';
   @override
-  String get starKindPulsarMeaning => 'A habit — day by day';
+  String get starKindPulsarMeaning => 'Habit — doing';
   @override
   String get starKindPulsarExample => 'Ten minutes of stretching, every day.';
   @override

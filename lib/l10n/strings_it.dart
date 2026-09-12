@@ -76,6 +76,8 @@ class StringsIt implements AppStrings {
   @override
   String get menuFindYourLight => 'Trova La Tua Luce';
   @override
+  String get menuChallengesSection => 'Sfide';
+  @override
   String get socialSection => 'Social';
   @override
   String get menuFriends => 'Amici';
@@ -247,8 +249,7 @@ class StringsIt implements AppStrings {
   @override
   String get takeMeThereAction => 'Portami lì';
   @override
-  String get skyTapHoldHint => 'Tocca per spostarti · tieni premuto per i dettagli';
-
+  String get searchScreenEyebrow => 'CERCA';
   @override
   String get areaVisionLabel => 'La tua visione per quest\'area';
   @override
@@ -292,6 +293,9 @@ class StringsIt implements AppStrings {
   @override
   String areaEmptyProjects(String areaName) =>
       'Ancora nessuna costellazione in $areaName. Iniziane una per accendere le prime stelle qui.';
+  @override
+  String get noProjectsYet =>
+      'Ancora nessuna costellazione. Iniziane una per accendere le prime stelle.';
 
   @override
   String get constellationShapeMissing =>
@@ -380,6 +384,13 @@ class StringsIt implements AppStrings {
   String get editSelectedShapeAction => 'Modifica questa forma';
 
   @override
+  String get fieldLegendTitle => 'Info';
+  @override
+  String get requiredFieldLegend => 'Obbligatorio';
+  @override
+  String get optionalFieldLegend => 'Facoltativo';
+
+  @override
   String get newProjectEyebrow => 'NUOVA COSTELLAZIONE';
   @override
   String get newProjectQuestion => 'Di che costellazione si tratta?';
@@ -390,7 +401,7 @@ class StringsIt implements AppStrings {
   @override
   String get newProjectNameHint => 'Es. Costruire questa app';
   @override
-  String get projectDescriptionLabel => 'Descrizione (opzionale)';
+  String get projectDescriptionLabel => 'Descrizione';
   @override
   String get projectDescriptionHint => 'Di cosa parla questo progetto?';
   @override
@@ -424,6 +435,8 @@ class StringsIt implements AppStrings {
   @override
   String get selectAProject => 'Seleziona una costellazione';
   @override
+  String get selectASupernova => 'Seleziona una supernova';
+  @override
   String get dateLabel => 'Data';
   @override
   String get selectADateHint => 'Seleziona una data';
@@ -432,21 +445,26 @@ class StringsIt implements AppStrings {
   @override
   String get selectATimeHint => 'Seleziona un orario';
   @override
-  String get titleFieldLabel => 'In poche parole';
+  String get titleFieldLabel => 'Titolo';
   @override
-  String get titleHint => 'Es. Ho retto dopo un rifiuto e sono andato avanti';
+  String get litTitleHint => 'Es. Ho corso la mia prima 5K';
   @override
-  String get detailsLabel => 'Dettagli (opzionale)';
+  String get unlitTitleHint => 'Es. Correre una 5K';
   @override
-  String get detailsHint =>
-      'Cosa ha reso difficile questo momento e come l\'hai superato';
+  String get pulsarTitleHint => 'Es. Andare a correre';
+  @override
+  String get litDetailsHint => 'Es. Le gambe mi facevano male, ma ce l\'ho fatta';
+  @override
+  String get unlitDetailsHint =>
+      'Es. Iscriviti a una gara e allenati per affrontarla';
+  @override
+  String get pulsarDetailsHint => 'Es. Ogni mattina prima del lavoro';
+  @override
+  String get detailsLabel => 'Dettagli';
   @override
   String get intensityLabel => 'Intensità';
   @override
-  String get intensityCaption =>
-      'Quanto ti costa questo sforzo — 1 è leggero, 5 è tantissimo.';
-  @override
-  String get photoLabel => 'Foto (opzionale)';
+  String get photoLabel => 'Foto';
   @override
   String get addPhotoHint => 'Aggiungi una foto';
   @override
@@ -495,7 +513,7 @@ class StringsIt implements AppStrings {
   String get discardChangesAction => 'Scarta modifiche';
 
   @override
-  String get targetDateLabel => 'Data obbiettivo (opzionale)';
+  String get targetDateLabel => 'Data obbiettivo';
   @override
   String get selectATargetDateHint => 'Seleziona una data';
 
@@ -519,11 +537,18 @@ class StringsIt implements AppStrings {
   String get reigniteAction => 'Riaccendi questa stella';
 
   @override
-  String get pulsarTitleHint => 'Es. Dieci minuti di stretching';
-  @override
   String get habitFrequencyLabel => 'Frequenza';
   @override
   String get habitFrequencyDaily => 'Ogni giorno';
+  @override
+  String get habitFrequencyWeekly => 'Ogni settimana';
+  @override
+  String habitFrequencySummaryDaily(int times) =>
+      times == 1 ? 'Una volta al giorno' : '$times volte al giorno';
+  @override
+  String habitFrequencySummaryWeekly(int times) => times == 1
+      ? 'Una volta alla settimana'
+      : '$times volte alla settimana, in $times giorni diversi';
   @override
   String get customReminderToggleLabel => 'Orario promemoria personalizzato';
 
@@ -535,6 +560,11 @@ class StringsIt implements AppStrings {
   String get habitDoneTodayLabel => 'Fatto oggi';
   @override
   String get undoHabitTodayAction => 'Annulla';
+  @override
+  String habitProgressToday(int done, int target) => '$done/$target oggi';
+  @override
+  String habitProgressThisWeek(int done, int target) =>
+      '$done/$target questa settimana';
 
   @override
   String unlitStarsBadge(int count) => count == 1
@@ -558,7 +588,7 @@ class StringsIt implements AppStrings {
   @override
   String get starKindLitPlural => 'Stelle accese';
   @override
-  String get starKindLitMeaning => 'Una vittoria — già fatta';
+  String get starKindLitMeaning => 'Vittoria — fatta';
   @override
   String get starKindLitExample =>
       'Ho retto il colloquio anche se ero terrorizzato.';
@@ -567,7 +597,7 @@ class StringsIt implements AppStrings {
   @override
   String get starKindUnlitPlural => 'Stelle non accese';
   @override
-  String get starKindUnlitMeaning => 'Un obiettivo — ancora davanti';
+  String get starKindUnlitMeaning => 'Obiettivo — da fare';
   @override
   String get starKindUnlitExample => 'Correre i miei primi 10 km.';
   @override
@@ -575,7 +605,7 @@ class StringsIt implements AppStrings {
   @override
   String get starKindPulsarPlural => 'Pulsar';
   @override
-  String get starKindPulsarMeaning => "Un'abitudine — giorno dopo giorno";
+  String get starKindPulsarMeaning => 'Abitudine — in corso';
   @override
   String get starKindPulsarExample => 'Dieci minuti di stretching, ogni giorno.';
   @override

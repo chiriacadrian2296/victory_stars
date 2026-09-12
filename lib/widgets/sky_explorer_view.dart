@@ -135,16 +135,15 @@ class _SkyExplorerViewState extends State<SkyExplorerView> {
   int _activePulsarCountForProject(int projectId) {
     var count = 0;
     for (final habit in widget.habitRepository.getActiveForProject(projectId)) {
-      if (isHabitLit(_completedDaysFor(habit.id))) count++;
+      if (isHabitLit(habit, _countsByDayFor(habit.id))) count++;
     }
     return count;
   }
 
-  Set<DateTime> _completedDaysFor(int habitId) {
-    return widget.habitCompletionRepository
-        .getAllForHabit(habitId)
-        .map((c) => DateTime(c.date.year, c.date.month, c.date.day))
-        .toSet();
+  Map<DateTime, int> _countsByDayFor(int habitId) {
+    return habitCompletionCountsByDay(
+      widget.habitCompletionRepository.getAllForHabit(habitId),
+    );
   }
 
   List<Project> get _filteredProjects {
@@ -424,7 +423,7 @@ class _SkyExplorerViewState extends State<SkyExplorerView> {
                 hasAnyEntries: allEntries.isNotEmpty,
                 entries: filteredEntries,
                 projectsById: _projectsById,
-                completedDaysFor: _completedDaysFor,
+                countsByDayFor: _countsByDayFor,
                 onOpenStar: (entry) => _openStarReader(
                   _filteredStarsOnly().indexWhere(
                     (s) => s.id == entry.star!.id,
@@ -637,7 +636,7 @@ class _FlatList extends StatelessWidget {
     required this.hasAnyEntries,
     required this.entries,
     required this.projectsById,
-    required this.completedDaysFor,
+    required this.countsByDayFor,
     required this.onOpenStar,
     required this.onOpenHabit,
     required this.onNavigateTo,
@@ -646,7 +645,7 @@ class _FlatList extends StatelessWidget {
   final bool hasAnyEntries;
   final List<_SkyEntry> entries;
   final Map<int, Project> projectsById;
-  final Set<DateTime> Function(int habitId) completedDaysFor;
+  final Map<DateTime, int> Function(int habitId) countsByDayFor;
   final void Function(_SkyEntry entry) onOpenStar;
   final void Function(Habit habit) onOpenHabit;
   final ValueChanged<SkyNavigationTarget> onNavigateTo;
@@ -730,12 +729,12 @@ class _FlatList extends StatelessWidget {
                   );
           case StarKind.pulsar:
             final habit = entry.habit!;
-            final completedDays = completedDaysFor(habit.id);
+            final countsByDay = countsByDayFor(habit.id);
             card = PulsarCard(
               habit: habit,
               project: project,
-              currentStreak: habitCurrentStreak(completedDays),
-              isLit: isHabitLit(completedDays),
+              currentStreak: habitCurrentStreak(habit, countsByDay),
+              isLit: isHabitLit(habit, countsByDay),
               onTap: () => onOpenHabit(habit),
               onNavigateTo: navigateTo,
             );

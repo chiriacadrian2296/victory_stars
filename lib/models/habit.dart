@@ -1,7 +1,9 @@
-/// v1 supports only [daily] — kept as an enum (rather than hardcoding "once a
-/// day" straight into the logic) so a future weekly/custom frequency is a new
-/// value plus new handling, not a schema rewrite.
-enum HabitFrequency { daily }
+/// [daily]: `targetPerPeriod` times *that day* (reset every midnight).
+/// [weekly]: `targetPerPeriod` times on that many *distinct* days within one
+/// calendar week (Monday–Sunday) — two sessions the same day still count as
+/// one day toward the target, not two. See `habit_stats.dart` for exactly
+/// how each is scored.
+enum HabitFrequency { daily, weekly }
 
 /// A pulsar: the *present* effort — something you keep doing day by day,
 /// tracked separately from a constellation's own shape as its own small,
@@ -41,11 +43,10 @@ class Habit {
   final String? description;
   final DateTime createdAt;
 
-  /// Always [HabitFrequency.daily] in v1.
   final HabitFrequency frequency;
 
-  /// Always 1 in v1 — stored explicitly rather than assumed, so "twice a
-  /// day" is a value change later, not a schema rewrite.
+  /// How many times [frequency]'s own period asks for — see
+  /// [HabitFrequency]'s own doc comment for what that means per value.
   final int targetPerPeriod;
 
   /// How much effort keeping this up costs on a given day, 1 (light) to 5

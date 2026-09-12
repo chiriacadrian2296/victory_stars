@@ -184,9 +184,15 @@ class SkyMenuContent extends StatelessWidget {
             splashFactory: NoSplash.splashFactory,
             highlightColor: Colors.transparent,
             child: Padding(
+              // Horizontal is wider than these labels strictly need —
+              // deliberately: with the popup's own width coming straight
+              // from this padding (see the comment below), this is what
+              // actually keeps it from reading as *too* tightly
+              // shrink-wrapped now that [Dialog]'s own 280 default
+              // minWidth is off.
               padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 10,
+                horizontal: 32,
+                vertical: 12,
               ),
               // [mainAxisSize.min], not the Row default — the popup's own
               // width comes from its widest child (see [Dialog] below,
@@ -199,13 +205,12 @@ class SkyMenuContent extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icon, color: colors.gold, size: 36),
-                  const SizedBox(width: 10),
+                  Icon(icon, color: colors.gold),
+                  const SizedBox(width: 12),
                   Text(
                     label,
                     style: TextStyle(
                       color: colors.text,
-                      fontSize: 22,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -225,32 +230,56 @@ class SkyMenuContent extends StatelessWidget {
         // [TextButton] treatment (versus the icon+label choices above
         // it) already read as "the way out", not a fourth choice.
         return Dialog(
+          // [Dialog]'s own default constraints impose a 280 minWidth
+          // regardless of content — wider than these three short
+          // options actually need, which is exactly why this kept
+          // looking too wide no matter how tightly the content itself
+          // was sized. An empty [BoxConstraints] (no minimum at all)
+          // is what actually lets it shrink to fit.
+          constraints: const BoxConstraints(),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const SizedBox(height: 4),
-                choice(
-                  icon: Icons.flare,
-                  label: strings.lightYourSkyChooserSupernovaOption,
-                  onTap: onVisions,
+                // Left-aligned, not the Column default center — with each
+                // [choice] row sized to its own label (see its own
+                // `mainAxisSize.min`), centering left the shorter labels
+                // adrift under the widest one instead of all three
+                // lining up on the same left edge. Scoped to just these
+                // three (a nested Column) rather than the whole dialog,
+                // so Cancel below stays centered on its own — it isn't
+                // one of the icon+label choices this is about.
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    choice(
+                      icon: Icons.flare,
+                      label: strings.lightYourSkyChooserSupernovaOption,
+                      onTap: onVisions,
+                    ),
+                    choice(
+                      icon: Icons.auto_awesome,
+                      label: strings.menuNewConstellation,
+                      onTap: onNewConstellation,
+                    ),
+                    choice(
+                      icon: Icons.star,
+                      label: strings.menuLightAStar,
+                      onTap: onLightAStar,
+                    ),
+                  ],
                 ),
-                choice(
-                  icon: Icons.auto_awesome,
-                  label: strings.menuNewConstellation,
-                  onTap: onNewConstellation,
-                ),
-                choice(
-                  icon: Icons.star,
-                  label: strings.menuLightAStar,
-                  onTap: onLightAStar,
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: Text(
-                    strings.cancel,
-                    style: TextStyle(color: colors.muted, fontSize: 24),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: Text(
+                      strings.cancel,
+                      style: TextStyle(color: colors.muted),
+                    ),
                   ),
                 ),
               ],
@@ -418,12 +447,6 @@ class SkyMenuContent extends StatelessWidget {
             });
           },
         ),
-        entry(
-          icon: Icons.auto_fix_high,
-          label: strings.menuShootingStars,
-          description: strings.menuShootingStarsDescription,
-          onTap: onShootingStars,
-        ),
 
         if (!detailed) Divider(color: colors.nightBorder, height: 1),
         sectionHeader(strings.menuCrisisSection),
@@ -433,6 +456,16 @@ class SkyMenuContent extends StatelessWidget {
           label: strings.menuFindYourLight,
           description: strings.menuFindYourLightDescription,
           onTap: onAdmire,
+        ),
+
+        if (!detailed) Divider(color: colors.nightBorder, height: 1),
+        sectionHeader(strings.menuChallengesSection),
+        if (!detailed) const SizedBox(height: 8),
+        entry(
+          icon: Icons.auto_fix_high,
+          label: strings.menuShootingStars,
+          description: strings.menuShootingStarsDescription,
+          onTap: onShootingStars,
         ),
 
         if (!detailed) Divider(color: colors.nightBorder, height: 1),

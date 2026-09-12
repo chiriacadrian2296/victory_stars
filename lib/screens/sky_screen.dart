@@ -18,6 +18,7 @@ import '../data/custom_constellation_repository.dart';
 import '../data/habit_completion_repository.dart';
 import '../data/habit_repository.dart';
 import '../data/project_repository.dart';
+import '../data/reflection_answer_repository.dart';
 import '../data/star_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../models/habit.dart';
@@ -112,6 +113,7 @@ class SkyScreen extends StatefulWidget {
     required this.habitCompletionRepository,
     required this.starsShapeRepository,
     required this.areaVisionRepository,
+    required this.reflectionAnswerRepository,
     required this.reminderService,
   });
 
@@ -122,6 +124,7 @@ class SkyScreen extends StatefulWidget {
   final HabitCompletionRepository habitCompletionRepository;
   final StarsShapeRepository starsShapeRepository;
   final AreaVisionRepository areaVisionRepository;
+  final ReflectionAnswerRepository reflectionAnswerRepository;
   final ReminderService reminderService;
 
   @override
@@ -936,6 +939,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
       MaterialPageRoute(
         builder: (_) => VisionsScreen(
           areaVisionRepository: widget.areaVisionRepository,
+          reflectionAnswerRepository: widget.reflectionAnswerRepository,
           projectRepository: widget.projectRepository,
           starRepository: widget.starRepository,
         ),
@@ -996,6 +1000,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
           habitCompletionRepository: widget.habitCompletionRepository,
           starsShapeRepository: widget.starsShapeRepository,
           areaVisionRepository: widget.areaVisionRepository,
+          reflectionAnswerRepository: widget.reflectionAnswerRepository,
           reminderService: widget.reminderService,
         ),
       ),
@@ -1061,6 +1066,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
           habitCompletionRepository: widget.habitCompletionRepository,
           starsShapeRepository: widget.starsShapeRepository,
           areaVisionRepository: widget.areaVisionRepository,
+          reflectionAnswerRepository: widget.reflectionAnswerRepository,
         ),
       ),
     );
@@ -2626,6 +2632,7 @@ class _SkyScreenState extends State<SkyScreen> with TickerProviderStateMixin {
         builder: (_) => AreaDetailScreen(
           area: area,
           areaVisionRepository: widget.areaVisionRepository,
+          reflectionAnswerRepository: widget.reflectionAnswerRepository,
           projectRepository: widget.projectRepository,
           starRepository: widget.starRepository,
         ),

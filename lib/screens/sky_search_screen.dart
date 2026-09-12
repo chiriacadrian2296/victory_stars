@@ -5,6 +5,7 @@ import '../data/custom_constellation_repository.dart';
 import '../data/habit_completion_repository.dart';
 import '../data/habit_repository.dart';
 import '../data/project_repository.dart';
+import '../data/reflection_answer_repository.dart';
 import '../data/star_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../theme/app_colors.dart';
@@ -29,6 +30,7 @@ class SkySearchScreen extends StatefulWidget {
     required this.habitCompletionRepository,
     required this.starsShapeRepository,
     required this.areaVisionRepository,
+    required this.reflectionAnswerRepository,
   });
 
   final ProjectRepository projectRepository;
@@ -37,6 +39,7 @@ class SkySearchScreen extends StatefulWidget {
   final HabitCompletionRepository habitCompletionRepository;
   final StarsShapeRepository starsShapeRepository;
   final AreaVisionRepository areaVisionRepository;
+  final ReflectionAnswerRepository reflectionAnswerRepository;
 
   @override
   State<SkySearchScreen> createState() => _SkySearchScreenState();
@@ -106,6 +109,7 @@ class _SkySearchScreenState extends State<SkySearchScreen> {
                 habitCompletionRepository: widget.habitCompletionRepository,
                 starsShapeRepository: widget.starsShapeRepository,
                 areaVisionRepository: widget.areaVisionRepository,
+                reflectionAnswerRepository: widget.reflectionAnswerRepository,
                 onNavigateTo: (target) => Navigator.of(context).pop(target),
                 onModeLabelChanged: (label) =>
                     setState(() => _modeLabel = label),

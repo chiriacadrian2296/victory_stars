@@ -48,6 +48,75 @@ class StringsRo implements AppStrings {
       'Impactul tău — a dărui, a sluji și viețile celorlalți.';
 
   @override
+  List<String> get reflectionQuestionsPhysical => const [
+    'Cum te simți în corpul tău în perioada asta?',
+    'Ce faci în mod regulat pentru a avea grijă de sănătatea ta?',
+    'Care este un obicei fizic pe care ai vrea să-l construiești, și ce te oprește?',
+    'Când te simți cel mai energic în timpul zilei? Ce provoacă asta?',
+  ];
+  @override
+  List<String> get reflectionQuestionsPsychological => const [
+    'Ce te apasă cel mai mult din punct de vedere mental acum?',
+    'Cum gestionezi stresul când apare?',
+    'Ce gând recurent ai vrea să lași să plece?',
+    'Ce te face să te simți calm și centrat?',
+  ];
+  @override
+  List<String> get reflectionQuestionsProfessional => const [
+    'Te simți împlinit în munca pe care o faci? De ce?',
+    'Care este următoarea abilitate pe care vrei să o dezvolți?',
+    'Ce ar face munca ta mai plină de sens?',
+    'Unde te vezi profesional peste un an?',
+  ];
+  @override
+  List<String> get reflectionQuestionsFinancial => const [
+    'Ce relație ai cu banii?',
+    'Ce te îngrijorează cel mai mult în privința finanțelor tale?',
+    'Care este un obiectiv financiar concret pentru lunile următoare?',
+    'Ce ar însemna pentru tine siguranța financiară?',
+  ];
+  @override
+  List<String> get reflectionQuestionsPersonal => const [
+    'Ce înveți despre tine în ultima vreme?',
+    'Ce valoare te ghidează cel mai mult în alegerile tale?',
+    'Ce ai vrea să nu mai amâni?',
+    'De ce ești mândru, chiar dacă e ceva mic?',
+  ];
+  @override
+  List<String> get reflectionQuestionsSocial => const [
+    'Cu cine ai vrea să petreci mai mult timp?',
+    'Cum ai grijă de relațiile tale cele mai importante?',
+    'Există o relație care are nevoie de atenția ta acum?',
+    'Ce cauți cu adevărat la oamenii din jurul tău?',
+  ];
+  @override
+  List<String> get reflectionQuestionsSpiritual => const [
+    'Ce dă sens zilelor tale?',
+    'În ce momente te simți conectat la ceva mai mare decât tine?',
+    'Cum cultivi pacea interioară?',
+    'Ce înseamnă pentru tine să trăiești autentic?',
+  ];
+  @override
+  List<String> get reflectionQuestionsPhilanthropic => const [
+    'Cum contribui la ceva mai mare decât tine?',
+    'Pe cine ai ajutat recent, și cum te-a făcut să te simți?',
+    'Ce cauză îți este dragă, și de ce?',
+    'Ce ai putea oferi — timp, abilități, energie — pe care nu-l oferi încă?',
+  ];
+  @override
+  String get reflectionQuestionsSectionLabel => 'Întrebări de reflecție';
+  @override
+  String get reflectionQuestionsSubtitle =>
+      'Răspunde când ceva te mișcă cu adevărat — poți lăsa unele necompletate.';
+  @override
+  String get reflectionAnswerHint => 'Scrie aici răspunsul tău...';
+  @override
+  String get reflectionDifficultyLabel =>
+      'Cât de greu a fost să găsești acest răspuns?';
+  @override
+  String get reflectionAnsweredCountLabel => 'răspunsuri';
+
+  @override
   String get openMenuAction => 'Meniu';
   @override
   String get menuButtonHoldHint => 'Ține apăsat pentru a deschide';

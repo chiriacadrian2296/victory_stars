@@ -62,6 +62,32 @@ extension LifeAreaX on LifeArea {
     }
   }
 
+  /// The four prepared reflection prompts for this area, shown as an
+  /// accordion on its Supernova page. Order is fixed and doubles as each
+  /// question's id (see [ReflectionAnswer.questionId]) — never reorder this
+  /// list, only ever append past index 3, or an existing answer will attach
+  /// itself to the wrong prompt.
+  List<String> reflectionQuestions(AppStrings s) {
+    switch (this) {
+      case LifeArea.physical:
+        return s.reflectionQuestionsPhysical;
+      case LifeArea.psychological:
+        return s.reflectionQuestionsPsychological;
+      case LifeArea.professional:
+        return s.reflectionQuestionsProfessional;
+      case LifeArea.financial:
+        return s.reflectionQuestionsFinancial;
+      case LifeArea.personal:
+        return s.reflectionQuestionsPersonal;
+      case LifeArea.social:
+        return s.reflectionQuestionsSocial;
+      case LifeArea.spiritual:
+        return s.reflectionQuestionsSpiritual;
+      case LifeArea.philanthropic:
+        return s.reflectionQuestionsPhilanthropic;
+    }
+  }
+
   /// A generic icon representing the area itself — distinct from a
   /// project's own [Project.iconSlug]-based constellation icon, and
   /// deliberately never offered as a project icon choice (see [iconSlug])

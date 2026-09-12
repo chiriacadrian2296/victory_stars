@@ -5,6 +5,7 @@ import '../data/custom_constellation_repository.dart';
 import '../data/habit_completion_repository.dart';
 import '../data/habit_repository.dart';
 import '../data/project_repository.dart';
+import '../data/reflection_answer_repository.dart';
 import '../data/star_repository.dart';
 import '../l10n/app_strings.dart';
 import '../l10n/strings_scope.dart';
@@ -89,6 +90,7 @@ class SkyExplorerView extends StatefulWidget {
     required this.habitCompletionRepository,
     required this.starsShapeRepository,
     required this.areaVisionRepository,
+    required this.reflectionAnswerRepository,
     required this.onNavigateTo,
     required this.onModeLabelChanged,
   });
@@ -99,6 +101,7 @@ class SkyExplorerView extends StatefulWidget {
   final HabitCompletionRepository habitCompletionRepository;
   final StarsShapeRepository starsShapeRepository;
   final AreaVisionRepository areaVisionRepository;
+  final ReflectionAnswerRepository reflectionAnswerRepository;
 
   /// See [SkyNavigationTarget] — called when a card's "take me there" button
   /// is tapped.
@@ -219,6 +222,7 @@ class _SkyExplorerViewState extends State<SkyExplorerView> {
         builder: (_) => AreaDetailScreen(
           area: area,
           areaVisionRepository: widget.areaVisionRepository,
+          reflectionAnswerRepository: widget.reflectionAnswerRepository,
           projectRepository: widget.projectRepository,
           starRepository: widget.starRepository,
         ),

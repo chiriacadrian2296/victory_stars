@@ -26,6 +26,25 @@ abstract class AppStrings {
   String get areaSpiritualDescription;
   String get areaPhilanthropicDescription;
 
+  // Reflection questions — four prepared prompts per life area, shown as an
+  // accordion on that area's own Supernova page (`AreaDetailScreen`),
+  // alongside its free-form vision. Kept as one `List<String>` getter per
+  // area (index = question id) rather than one getter per question, so
+  // adding/reordering doesn't grow the interface further.
+  List<String> get reflectionQuestionsPhysical;
+  List<String> get reflectionQuestionsPsychological;
+  List<String> get reflectionQuestionsProfessional;
+  List<String> get reflectionQuestionsFinancial;
+  List<String> get reflectionQuestionsPersonal;
+  List<String> get reflectionQuestionsSocial;
+  List<String> get reflectionQuestionsSpiritual;
+  List<String> get reflectionQuestionsPhilanthropic;
+  String get reflectionQuestionsSectionLabel;
+  String get reflectionQuestionsSubtitle;
+  String get reflectionAnswerHint;
+  String get reflectionDifficultyLabel;
+  String get reflectionAnsweredCountLabel;
+
   // The Sky's own side menu — the app has exactly one screen now (the
   // Sky), and everything else opens from there. Grouped into sections;
   // [menuLightAStar]/[menuNewConstellation]/[lightYourSkyChooserSupernovaOption]

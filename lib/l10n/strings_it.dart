@@ -48,6 +48,75 @@ class StringsIt implements AppStrings {
       'Il tuo impatto — dare, servire e la vita degli altri.';
 
   @override
+  List<String> get reflectionQuestionsPhysical => const [
+    'Come ti senti nel tuo corpo in questo periodo?',
+    'Cosa fai regolarmente per prenderti cura della tua salute?',
+    "Qual è un'abitudine fisica che vorresti costruire, e cosa te lo impedisce?",
+    'Quando ti senti più energico durante la giornata? Cosa lo provoca?',
+  ];
+  @override
+  List<String> get reflectionQuestionsPsychological => const [
+    'Cosa ti pesa di più mentalmente in questo momento?',
+    'Come gestisci lo stress quando arriva?',
+    'Quale pensiero ricorrente vorresti lasciar andare?',
+    'Cosa ti fa sentire calmo e centrato?',
+  ];
+  @override
+  List<String> get reflectionQuestionsProfessional => const [
+    'Ti senti realizzato nel lavoro che fai? Perché?',
+    'Qual è la prossima competenza che vuoi sviluppare?',
+    'Cosa renderebbe il tuo lavoro più significativo?',
+    'Dove ti vedi professionalmente tra un anno?',
+  ];
+  @override
+  List<String> get reflectionQuestionsFinancial => const [
+    'Che rapporto hai con il denaro?',
+    'Cosa ti preoccupa di più riguardo alle tue finanze?',
+    'Qual è un obiettivo finanziario concreto per i prossimi mesi?',
+    'Cosa significherebbe per te la sicurezza economica?',
+  ];
+  @override
+  List<String> get reflectionQuestionsPersonal => const [
+    'Cosa stai imparando su te stesso ultimamente?',
+    'Quale valore ti guida di più nelle scelte che fai?',
+    'Cosa vorresti smettere di rimandare?',
+    'Di cosa sei orgoglioso, anche se piccolo?',
+  ];
+  @override
+  List<String> get reflectionQuestionsSocial => const [
+    'Con chi vorresti passare più tempo?',
+    'Come ti prendi cura delle tue relazioni più importanti?',
+    "C'è una relazione che ha bisogno di attenzione in questo momento?",
+    'Cosa cerchi davvero nelle persone che ti circondano?',
+  ];
+  @override
+  List<String> get reflectionQuestionsSpiritual => const [
+    'Cosa dà senso alle tue giornate?',
+    'In quali momenti ti senti connesso a qualcosa di più grande di te?',
+    'Come coltivi la pace interiore?',
+    'Cosa significa per te vivere in modo autentico?',
+  ];
+  @override
+  List<String> get reflectionQuestionsPhilanthropic => const [
+    'In che modo contribuisci a qualcosa più grande di te?',
+    'Chi hai aiutato di recente, e come ti ha fatto sentire?',
+    'Quale causa ti sta a cuore, e perché?',
+    'Cosa potresti dare — tempo, competenze, energie — che non stai ancora dando?',
+  ];
+  @override
+  String get reflectionQuestionsSectionLabel => 'Domande di riflessione';
+  @override
+  String get reflectionQuestionsSubtitle =>
+      'Rispondi quando qualcosa ti smuove davvero — puoi lasciarne alcune in bianco.';
+  @override
+  String get reflectionAnswerHint => 'Scrivi qui la tua risposta...';
+  @override
+  String get reflectionDifficultyLabel =>
+      'Quanto è stato difficile trovare questa risposta?';
+  @override
+  String get reflectionAnsweredCountLabel => 'risposte';
+
+  @override
   String get openMenuAction => 'Menu';
   @override
   String get menuButtonHoldHint => 'Tieni premuto per aprire';

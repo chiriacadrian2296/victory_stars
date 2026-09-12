@@ -10,6 +10,7 @@ import 'data/habit_repository.dart';
 import 'data/legacy_constellation_migration.dart';
 import 'data/onboarding_prefs.dart';
 import 'data/project_repository.dart';
+import 'data/reflection_answer_repository.dart';
 import 'data/star_repository.dart';
 import 'debug/seed_data.dart';
 import 'l10n/strings_scope.dart';
@@ -58,6 +59,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
   HabitCompletionRepository? _habitCompletionRepository;
   StarsShapeRepository? _starsShapeRepository;
   AreaVisionRepository? _areaVisionRepository;
+  ReflectionAnswerRepository? _reflectionAnswerRepository;
   ReminderService? _reminderService;
 
   /// Set only if [_load] throws. A blank splash that silently never
@@ -84,6 +86,8 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
       final starsShapeRepository =
           await StarsShapeRepository.create();
       final areaVisionRepository = await AreaVisionRepository.create();
+      final reflectionAnswerRepository =
+          await ReflectionAnswerRepository.create();
       final onboardingPrefs = await OnboardingPrefs.create();
 
       // Debug builds only, and only for a genuinely empty install — the
@@ -141,6 +145,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
         _habitCompletionRepository = habitCompletionRepository;
         _starsShapeRepository = starsShapeRepository;
         _areaVisionRepository = areaVisionRepository;
+        _reflectionAnswerRepository = reflectionAnswerRepository;
         _reminderService = reminderService;
       });
 
@@ -219,6 +224,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
     final habitCompletionRepository = _habitCompletionRepository;
     final starsShapeRepository = _starsShapeRepository;
     final areaVisionRepository = _areaVisionRepository;
+    final reflectionAnswerRepository = _reflectionAnswerRepository;
     final reminderService = _reminderService;
     final loadError = _loadError;
     if (loadError != null) {
@@ -247,6 +253,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
         habitCompletionRepository == null ||
         starsShapeRepository == null ||
         areaVisionRepository == null ||
+        reflectionAnswerRepository == null ||
         reminderService == null) {
       // Nothing is known yet — a neutral, static splash rather than
       // guessing defaults that might flash-swap once everything loads.
@@ -301,6 +308,7 @@ class _VictoryStarsAppState extends State<VictoryStarsApp> {
           habitCompletionRepository: habitCompletionRepository,
           starsShapeRepository: starsShapeRepository,
           areaVisionRepository: areaVisionRepository,
+          reflectionAnswerRepository: reflectionAnswerRepository,
           reminderService: reminderService,
         ),
       ),

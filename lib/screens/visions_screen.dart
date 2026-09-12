@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/area_vision_repository.dart';
 import '../data/project_repository.dart';
+import '../data/reflection_answer_repository.dart';
 import '../data/star_repository.dart';
 import '../l10n/strings_scope.dart';
 import '../models/life_area.dart';
@@ -23,11 +24,13 @@ class VisionsScreen extends StatefulWidget {
   const VisionsScreen({
     super.key,
     required this.areaVisionRepository,
+    required this.reflectionAnswerRepository,
     required this.projectRepository,
     required this.starRepository,
   });
 
   final AreaVisionRepository areaVisionRepository;
+  final ReflectionAnswerRepository reflectionAnswerRepository;
   final ProjectRepository projectRepository;
   final StarRepository starRepository;
 
@@ -42,6 +45,7 @@ class _VisionsScreenState extends State<VisionsScreen> {
         builder: (_) => AreaDetailScreen(
           area: area,
           areaVisionRepository: widget.areaVisionRepository,
+          reflectionAnswerRepository: widget.reflectionAnswerRepository,
           projectRepository: widget.projectRepository,
           starRepository: widget.starRepository,
         ),

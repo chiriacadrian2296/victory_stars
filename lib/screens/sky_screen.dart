@@ -3344,16 +3344,28 @@ class _MenuStarSupernovaPainter extends CustomPainter {
       // either blocking the glow outright (opaque) or just letting it
       // passively show through (transparency) — "consumes what's around
       // it" rather than "lets it pass through".
-      canvas.drawImageRect(
-        image,
-        src,
-        rect,
-        Paint()
-          ..color = Colors.white.withValues(alpha: 0.7)
-          ..blendMode = BlendMode.plus
-          ..imageFilter = ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8)
-          ..filterQuality = FilterQuality.high,
-      );
+      //
+      // Skipped on web: `ImageFilter.blur` on an unclipped `drawImageRect`
+      // with `BlendMode.plus` doesn't blur at all there — confirmed via
+      // headless-Chrome screenshots (both software SwiftShader and real
+      // D3D11 GPU rendering) that it instead paints a hard-edged, roughly
+      // logoSize²-ish solid square, which is the "square glow" bug the
+      // user reported. Isolated by bisection: disabling this one pass
+      // (leaving 1/2/4 untouched) removes the square with no other visual
+      // change. A native-only bug in this exact filter+blend+unclipped
+      // combination, not reproducible on mobile — nothing to fix there.
+      if (!kIsWeb) {
+        canvas.drawImageRect(
+          image,
+          src,
+          rect,
+          Paint()
+            ..color = Colors.white.withValues(alpha: 0.7)
+            ..blendMode = BlendMode.plus
+            ..imageFilter = ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8)
+            ..filterQuality = FilterQuality.high,
+        );
+      }
 
       // 4. A small, tight white glow right on the star itself, on top of
       // everything else — the same idea as the shader's own glow further
